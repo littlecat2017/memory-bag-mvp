@@ -26,6 +26,8 @@ var name_label: Label
 var status_label: Label
 var progress_label: Label
 var bg_label: Label
+var bg_texture_rect: TextureRect
+var portrait_texture_rect: TextureRect
 var speaker_label: Label
 var text_label: Label
 var bag_grid: GridContainer
@@ -104,6 +106,28 @@ func _build_ui() -> void:
 
 	bg_label = Label.new()
 	root.add_child(bg_label)
+
+	var art_row := HBoxContainer.new()
+	art_row.custom_minimum_size = Vector2(0, 220)
+	art_row.add_theme_constant_override("separation", 12)
+	root.add_child(art_row)
+
+	bg_texture_rect = TextureRect.new()
+	bg_texture_rect.custom_minimum_size = Vector2(360, 220)
+	bg_texture_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bg_texture_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	bg_texture_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	bg_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg_texture_rect.visible = false
+	art_row.add_child(bg_texture_rect)
+
+	portrait_texture_rect = TextureRect.new()
+	portrait_texture_rect.custom_minimum_size = Vector2(180, 220)
+	portrait_texture_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	portrait_texture_rect.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
+	portrait_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait_texture_rect.visible = false
+	art_row.add_child(portrait_texture_rect)
 
 	var dialogue_panel := PanelContainer.new()
 	dialogue_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -261,6 +285,7 @@ func _show_load_error() -> void:
 	status_label.text = "数据校验失败"
 	progress_label.text = ""
 	bg_label.text = ""
+	_clear_art_preview()
 	speaker_label.text = "系统"
 	text_label.text = "\n".join(registry.validation_errors)
 	_update_bag_cards()
@@ -284,6 +309,7 @@ func _on_script_finished() -> void:
 	active_script_node_id = ""
 	status_label.text = "节点播放完成"
 	bg_label.text = ""
+	_clear_art_preview()
 	speaker_label.text = "系统"
 	text_label.text = "继续前进。"
 	_clear_choices()
@@ -296,6 +322,7 @@ func _update_static_labels(event: Dictionary) -> void:
 	name_label.text = "名字：%s" % game_state.display_name
 	status_label.text = "事件：%s / 类型：%s" % [event.get("id", ""), event.get("type", "")]
 	bg_label.text = "背景：%s / 立绘：%s" % [event.get("bg", ""), event.get("portrait", "")]
+	_apply_event_art(event)
 	speaker_label.text = str(event.get("speaker", ""))
 	text_label.text = str(event.get("text", ""))
 	_update_bag_cards()
@@ -312,7 +339,7 @@ func _update_bag_cards() -> void:
 		if index < game_state.owned_memory_ids.size():
 			var memory_id: String = str(game_state.owned_memory_ids[index])
 			var memory: Dictionary = registry.memories.get(memory_id, {})
-			card.set_memory(memory)
+			card.set_memory(memory, registry.get_art_asset_for_memory(memory_id))
 		else:
 			card.set_empty(index + 1)
 
@@ -390,7 +417,7 @@ func _on_memory_replacement_requested(memory_id: String, _next_event_id: String)
 	pending_core_discard_id = ""
 	replacement_confirm_box.visible = false
 	var memory: Dictionary = registry.memories.get(memory_id, {})
-	replacement_new_card.set_memory(memory)
+	replacement_new_card.set_memory(memory, registry.get_art_asset_for_memory(memory_id))
 	_rebuild_replacement_options()
 
 
@@ -639,6 +666,7 @@ func _advance_ending() -> void:
 		active_ending_lines.size(),
 	]
 	bg_label.text = "背景：%s / 立绘：%s" % [line.get("bg", ""), line.get("portrait", "")]
+	_apply_event_art(line)
 	speaker_label.text = str(line.get("speaker", ""))
 	text_label.text = str(line.get("text", ""))
 	next_button.visible = true
@@ -656,6 +684,31 @@ func _update_battle_labels(event: Dictionary, result: Dictionary) -> void:
 		game_state.gold,
 	]
 	bg_label.text = "背景：%s / 敌人：%s" % [event.get("bg", ""), event.get("enemy_id", "")]
+	_apply_event_art(event)
 	speaker_label.text = "胜利" if bool(result.get("victory", false)) else "濒死"
 	text_label.text = "\n".join(result.get("logs", []))
 	_update_bag_cards()
+
+
+func _apply_event_art(event: Dictionary) -> void:
+	_set_texture_rect(bg_texture_rect, registry.get_art_asset(str(event.get("bg", "")), "background"))
+	_set_texture_rect(portrait_texture_rect, registry.get_art_asset(str(event.get("portrait", "")), "portrait"))
+
+
+func _clear_art_preview() -> void:
+	_set_texture_rect(bg_texture_rect, {})
+	_set_texture_rect(portrait_texture_rect, {})
+
+
+func _set_texture_rect(texture_rect: TextureRect, art_asset: Dictionary) -> void:
+	if texture_rect == null:
+		return
+	texture_rect.visible = false
+	texture_rect.texture = null
+	var path := str(art_asset.get("path", ""))
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return
+	var texture := load(path)
+	if texture is Texture2D:
+		texture_rect.texture = texture
+		texture_rect.visible = true

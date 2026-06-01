@@ -6,6 +6,7 @@ var effect_label: Label
 var relation_label: Label
 var obligation_label: Label
 var loss_hint_label: Label
+var icon_texture_rect: TextureRect
 
 
 func _init() -> void:
@@ -15,6 +16,8 @@ func _init() -> void:
 
 
 func set_empty(slot_index: int) -> void:
+	icon_texture_rect.visible = false
+	icon_texture_rect.texture = null
 	title_label.text = "空记忆格 %d" % slot_index
 	tags_label.text = "标签：-"
 	effect_label.text = "效果：-"
@@ -23,7 +26,8 @@ func set_empty(slot_index: int) -> void:
 	loss_hint_label.text = "丢弃提示：-"
 
 
-func set_memory(memory: Dictionary) -> void:
+func set_memory(memory: Dictionary, art_asset: Dictionary = {}) -> void:
+	_apply_icon_asset(art_asset)
 	title_label.text = str(memory.get("name", "未知记忆"))
 	tags_label.text = "标签：%s" % _join_tags(memory.get("tags", []))
 	effect_label.text = "效果：%s" % memory.get("effect_text", "")
@@ -58,6 +62,13 @@ func _build() -> void:
 	title_label.text = "空记忆格"
 	box.add_child(title_label)
 
+	icon_texture_rect = TextureRect.new()
+	icon_texture_rect.custom_minimum_size = Vector2(72, 72)
+	icon_texture_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	icon_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_texture_rect.visible = false
+	box.add_child(icon_texture_rect)
+
 	tags_label = _new_label(13)
 	box.add_child(tags_label)
 
@@ -88,3 +99,15 @@ func _join_tags(tags) -> String:
 	for tag in tags:
 		values.append(str(tag))
 	return "、".join(values)
+
+
+func _apply_icon_asset(art_asset: Dictionary) -> void:
+	icon_texture_rect.visible = false
+	icon_texture_rect.texture = null
+	var path := str(art_asset.get("path", ""))
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return
+	var texture := load(path)
+	if texture is Texture2D:
+		icon_texture_rect.texture = texture
+		icon_texture_rect.visible = true

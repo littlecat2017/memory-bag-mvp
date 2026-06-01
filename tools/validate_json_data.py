@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 JSON_FILES = [
     "balance.json",
+    "art_assets.json",
     "chapter_flow.json",
     "enemies.json",
     "memories.json",

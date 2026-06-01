@@ -1,0 +1,59 @@
+{
+  "schema_version": "0.1",
+  "items": [
+    {
+      "id": "bg_village_dawn",
+      "type": "background",
+      "path": "res://assets/backgrounds/bg_village_dawn.png",
+      "source_doc": "BG-01",
+      "expected_size": [1920, 1080],
+      "aliases": ["bg_village_home", "bg_village_square", "bg_village_gate"],
+      "prompt_summary": "清晨村庄，低饱和暖光，远处有去往森林的路"
+    },
+    {
+      "id": "bg_forest_path",
+      "type": "background",
+      "path": "res://assets/backgrounds/bg_forest_path.png",
+      "source_doc": "BG-05",
+      "expected_size": [1920, 1080],
+      "aliases": ["bg_forest_camp", "bg_forest_deep", "bg_forest_old_shrine", "bg_forest_boss"],
+      "prompt_summary": "绿色灰雾森林小路，适合自动前进主背景"
+    },
+    {
+      "id": "hero_default",
+      "type": "portrait",
+      "path": "res://assets/portraits/portrait_hero_default.png",
+      "source_doc": "CH-01",
+      "expected_size": [1024, 1536],
+      "aliases": ["hero_confused", "hero_resolved", "hero_hurt"],
+      "prompt_summary": "年轻勇者，普通旅装，不要过度英雄化"
+    },
+    {
+      "id": "mother_warm",
+      "type": "portrait",
+      "path": "res://assets/portraits/portrait_mother_warm.png",
+      "source_doc": "CH-05",
+      "expected_size": [1024, 1536],
+      "aliases": ["lia_sick", "master_old", "elder_gray", "child_lost", "camp_shadow", "memory_lia", "hunter_hollow", "hunter_human", "system_memory", "system_choice"],
+      "prompt_summary": "温和母亲，像真实生活里做饭的人"
+    },
+    {
+      "id": "icon_memory_mothers_soup",
+      "type": "memory_icon",
+      "memory_id": "mem_mothers_soup",
+      "path": "res://assets/memory_icons/icon_memory_mothers_soup.png",
+      "source_doc": "MC-01",
+      "expected_size": [512, 512],
+      "prompt_summary": "木碗热汤，旁边有手织餐巾"
+    },
+    {
+      "id": "fx_slash_basic_sheet",
+      "type": "effect_sheet",
+      "path": "res://assets/effects/fx_slash_basic_sheet.png",
+      "source_doc": "FX-01",
+      "expected_size": [1536, 1536],
+      "grid": [3, 3],
+      "prompt_summary": "普通攻击斩击九宫格"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ const DATA_PATHS := {
 	"chapter_flow": "res://data/chapter_flow.json",
 	"balance": "res://data/balance.json",
 	"mvp_endings": "res://data/mvp_endings.json",
+	"art_assets": "res://data/art_assets.json",
 	"script_events": "res://data/script_events_mvp.jsonl",
 }
 
@@ -18,6 +19,9 @@ var branch_continue_by_target: Dictionary = {}
 var chapter_flow: Dictionary = {}
 var balance: Dictionary = {}
 var mvp_endings: Dictionary = {}
+var art_assets: Dictionary = {}
+var art_assets_by_type: Dictionary = {}
+var art_asset_aliases: Dictionary = {}
 var validation_errors: Array[String] = []
 
 
@@ -28,17 +32,20 @@ func load_all() -> bool:
 	chapter_flow = _load_json_file(DATA_PATHS.chapter_flow)
 	balance = _load_json_file(DATA_PATHS.balance)
 	mvp_endings = _load_json_file(DATA_PATHS.mvp_endings)
+	art_assets = _load_items_file(DATA_PATHS.art_assets, "art_asset")
 	script_events = _load_jsonl_events(DATA_PATHS.script_events)
 	_build_branch_lookup()
+	_build_art_asset_type_lookup()
 	validate()
 	return validation_errors.is_empty()
 
 
 func summary() -> String:
-	return "DataRegistry: memories=%d enemies=%d script_events=%d validation_errors=%d" % [
+	return "DataRegistry: memories=%d enemies=%d script_events=%d art_assets=%d validation_errors=%d" % [
 		memories.size(),
 		enemies.size(),
 		script_events.size(),
+		art_assets.size(),
 		validation_errors.size(),
 	]
 
@@ -48,6 +55,25 @@ func validate() -> void:
 	_validate_script_references()
 	_validate_chapter_flow_references()
 	_validate_ending_conditions()
+	_validate_art_assets()
+
+
+func get_art_asset(asset_id: String, expected_type: String = "") -> Dictionary:
+	if asset_id.is_empty() or asset_id == "none":
+		return {}
+	var asset: Dictionary = art_assets.get(asset_id, art_asset_aliases.get(asset_id, {}))
+	if asset.is_empty():
+		return {}
+	if not expected_type.is_empty() and str(asset.get("type", "")) != expected_type:
+		return {}
+	return asset
+
+
+func get_art_asset_for_memory(memory_id: String, expected_type: String = "memory_icon") -> Dictionary:
+	for asset in art_assets_by_type.get(expected_type, {}).values():
+		if typeof(asset) == TYPE_DICTIONARY and str(asset.get("memory_id", "")) == memory_id:
+			return asset
+	return {}
 
 
 func _load_json_file(path: String) -> Dictionary:
@@ -124,6 +150,21 @@ func _build_branch_lookup() -> void:
 		var continue_event_id := str(merge.get("continue_event_id", ""))
 		for target_id in merge.get("branch_target_ids", []):
 			branch_continue_by_target[str(target_id)] = continue_event_id
+
+
+func _build_art_asset_type_lookup() -> void:
+	art_assets_by_type.clear()
+	art_asset_aliases.clear()
+	for asset_id in art_assets:
+		var asset: Dictionary = art_assets[asset_id]
+		var asset_type := str(asset.get("type", ""))
+		if asset_type.is_empty():
+			continue
+		if not art_assets_by_type.has(asset_type):
+			art_assets_by_type[asset_type] = {}
+		art_assets_by_type[asset_type][asset_id] = asset
+		for alias_id in asset.get("aliases", []):
+			art_asset_aliases[str(alias_id)] = asset
 
 
 func _validate_memory_relation_fields() -> void:
@@ -225,6 +266,26 @@ func _validate_ending_conditions() -> void:
 			continue
 		for condition in rule.get("conditions", []):
 			_validate_condition("ending %s condition" % rule.get("id", "?"), str(condition))
+
+
+func _validate_art_assets() -> void:
+	var allowed_types := ["background", "portrait", "memory_icon", "effect_sheet"]
+	for asset_id in art_assets:
+		var asset: Dictionary = art_assets[asset_id]
+		var asset_type := str(asset.get("type", ""))
+		var path := str(asset.get("path", ""))
+		if not allowed_types.has(asset_type):
+			validation_errors.append("Art asset %s has unknown type: %s" % [asset_id, asset_type])
+		if path.is_empty() or not FileAccess.file_exists(path):
+			validation_errors.append("Art asset %s missing file: %s" % [asset_id, path])
+		var expected_size = asset.get("expected_size", [])
+		if typeof(expected_size) != TYPE_ARRAY or expected_size.size() != 2:
+			validation_errors.append("Art asset %s expected_size must be [width, height]" % asset_id)
+		var aliases = asset.get("aliases", [])
+		if typeof(aliases) != TYPE_ARRAY:
+			validation_errors.append("Art asset %s aliases must be an array" % asset_id)
+		if asset_type == "memory_icon":
+			_validate_memory_id(str(asset.get("memory_id", "")), "art asset %s memory_id" % asset_id)
 
 
 func _validate_condition_list(context: String, text: String) -> void:
