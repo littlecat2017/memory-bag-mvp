@@ -6,6 +6,7 @@ const ScriptPlayerScript := preload("res://scripts/runtime/script_player.gd")
 const RunControllerScript := preload("res://scripts/runtime/run_controller.gd")
 const BattleRunnerScript := preload("res://scripts/runtime/battle_runner.gd")
 const EndingRunnerScript := preload("res://scripts/runtime/ending_runner.gd")
+const SaveManagerScript := preload("res://scripts/runtime/save_manager.gd")
 const MemoryCardViewScript := preload("res://scripts/ui/memory_card_view.gd")
 
 var registry = DataRegistryScript.new()
@@ -14,10 +15,12 @@ var script_player = ScriptPlayerScript.new()
 var run_controller = RunControllerScript.new()
 var battle_runner = BattleRunnerScript.new()
 var ending_runner = EndingRunnerScript.new()
+var save_manager = SaveManagerScript.new()
 var active_script_node_id := ""
 var active_ending: Dictionary = {}
 var active_ending_lines: Array[Dictionary] = []
 var active_ending_index := -1
+var debug_status_label: Label
 
 var name_label: Label
 var status_label: Label
@@ -84,6 +87,16 @@ func _build_ui() -> void:
 	status_label = Label.new()
 	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(status_label)
+
+	var save_button := Button.new()
+	save_button.text = "保存"
+	save_button.pressed.connect(_on_save_pressed)
+	header.add_child(save_button)
+
+	var load_button := Button.new()
+	load_button.text = "读取"
+	load_button.pressed.connect(_on_load_pressed)
+	header.add_child(load_button)
 
 	progress_label = Label.new()
 	progress_label.text = "章节：序章"
@@ -190,6 +203,57 @@ func _build_ui() -> void:
 	next_button.text = "继续"
 	next_button.pressed.connect(_on_next_pressed)
 	root.add_child(next_button)
+
+	var debug_panel := PanelContainer.new()
+	root.add_child(debug_panel)
+
+	var debug_margin := MarginContainer.new()
+	debug_margin.add_theme_constant_override("margin_left", 10)
+	debug_margin.add_theme_constant_override("margin_top", 8)
+	debug_margin.add_theme_constant_override("margin_right", 10)
+	debug_margin.add_theme_constant_override("margin_bottom", 8)
+	debug_panel.add_child(debug_margin)
+
+	var debug_box := VBoxContainer.new()
+	debug_box.add_theme_constant_override("separation", 6)
+	debug_margin.add_child(debug_box)
+
+	var debug_title := Label.new()
+	debug_title.text = "调试面板"
+	debug_title.add_theme_font_size_override("font_size", 16)
+	debug_box.add_child(debug_title)
+
+	var jump_box := HBoxContainer.new()
+	jump_box.add_theme_constant_override("separation", 6)
+	debug_box.add_child(jump_box)
+	for target_event_id in ["P0034", "F0010", "F0021", "F0034", "F0040"]:
+		var jump_button := Button.new()
+		jump_button.text = target_event_id
+		jump_button.pressed.connect(_on_debug_jump_pressed.bind(target_event_id))
+		jump_box.add_child(jump_button)
+
+	var memory_box := HBoxContainer.new()
+	memory_box.add_theme_constant_override("separation", 6)
+	debug_box.add_child(memory_box)
+	for memory_id in ["mem_mothers_soup", "mem_wooden_sword", "mem_reason_to_depart", "mem_my_name", "mem_someone_waits", "mem_empty_nameplate"]:
+		var add_button := Button.new()
+		add_button.text = "+%s" % registry.memories.get(memory_id, {}).get("name", memory_id)
+		add_button.pressed.connect(_on_debug_add_memory_pressed.bind(memory_id))
+		memory_box.add_child(add_button)
+
+	var ending_box := HBoxContainer.new()
+	ending_box.add_theme_constant_override("separation", 6)
+	debug_box.add_child(ending_box)
+	for ending_id in ["mvp_named_with_reason", "mvp_named_without_reason", "mvp_nameless_with_reason", "mvp_nameless_without_reason"]:
+		var ending_button := Button.new()
+		ending_button.text = ending_id
+		ending_button.pressed.connect(_on_debug_force_ending_pressed.bind(ending_id))
+		ending_box.add_child(ending_button)
+
+	debug_status_label = Label.new()
+	debug_status_label.text = "调试：待命"
+	debug_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	debug_box.add_child(debug_status_label)
 
 
 func _show_load_error() -> void:
@@ -380,6 +444,145 @@ func _on_decline_pending_memory_pressed() -> void:
 	replacement_panel.visible = false
 	script_player.finish_memory_replacement()
 	_update_bag_cards()
+
+
+func _on_save_pressed() -> void:
+	var ok := save_manager.save_to_file(SaveManagerScript.DEFAULT_SAVE_PATH, game_state, run_controller, script_player, _ui_save_context())
+	debug_status_label.text = "调试：已保存" if ok else "调试：%s" % save_manager.last_error
+
+
+func _on_load_pressed() -> void:
+	var ui := save_manager.load_from_file(SaveManagerScript.DEFAULT_SAVE_PATH, game_state, run_controller, script_player)
+	if save_manager.last_error != "":
+		debug_status_label.text = "调试：%s" % save_manager.last_error
+		return
+	_restore_ui_context(ui)
+	debug_status_label.text = "调试：已读取"
+	_update_bag_cards()
+
+
+func _ui_save_context() -> Dictionary:
+	return {
+		"active_script_node_id": active_script_node_id,
+		"active_ending": active_ending.duplicate(true),
+		"active_ending_lines": active_ending_lines.duplicate(true),
+		"active_ending_index": active_ending_index,
+	}
+
+
+func _restore_ui_context(ui: Dictionary) -> void:
+	active_script_node_id = str(ui.get("active_script_node_id", ""))
+	active_ending = ui.get("active_ending", {}).duplicate(true) if typeof(ui.get("active_ending", {})) == TYPE_DICTIONARY else {}
+	active_ending_lines = _read_dictionary_array(ui.get("active_ending_lines", []))
+	active_ending_index = int(ui.get("active_ending_index", -1))
+	if not active_ending_lines.is_empty() and active_ending_index >= 0 and active_ending_index < active_ending_lines.size():
+		active_ending_index -= 1
+		_advance_ending()
+	elif not game_state.current_event_id.is_empty():
+		var event: Dictionary = registry.script_events.get(game_state.current_event_id, {})
+		if not event.is_empty():
+			_update_static_labels(event)
+			_rebuild_choices(event)
+	else:
+		status_label.text = "存档已恢复"
+		speaker_label.text = "系统"
+		text_label.text = "继续前进。"
+
+
+func _read_dictionary_array(value) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if typeof(value) != TYPE_ARRAY:
+		return result
+	for item in value:
+		if typeof(item) == TYPE_DICTIONARY:
+			result.append(item.duplicate(true))
+	return result
+
+
+func _on_debug_jump_pressed(event_id: String) -> void:
+	debug_jump_to_event(event_id)
+	debug_status_label.text = "调试：已跳转到 %s" % event_id
+
+
+func debug_jump_to_event(event_id: String) -> void:
+	active_ending_lines.clear()
+	active_ending = {}
+	active_ending_index = -1
+	if event_id.begins_with("P"):
+		active_script_node_id = ""
+		run_controller.pause()
+		script_player.start(event_id, event_id)
+		return
+	run_controller.start_chapter("forest")
+	var target_node := _find_node_for_event(event_id)
+	var target_progress: float = float(target_node.get("progress", run_controller.progress)) if not target_node.is_empty() else run_controller.progress
+	run_controller.pause()
+	run_controller.progress = target_progress
+	run_controller.debug_mark_nodes_before(target_progress)
+	run_controller.progress_changed.emit(run_controller.chapter_id, run_controller.progress, _chapter_distance_for("forest"))
+	active_script_node_id = str(target_node.get("node_id", ""))
+	var event: Dictionary = registry.script_events.get(event_id, {})
+	if str(event.get("type", "")) == "battle":
+		_run_battle_event(event)
+	else:
+		script_player.start(event_id, event_id)
+
+
+func _find_node_for_event(event_id: String) -> Dictionary:
+	var event_index: int = registry.script_event_order.find(event_id)
+	for chapter in registry.chapter_flow.get("chapters", []):
+		if typeof(chapter) != TYPE_DICTIONARY:
+			continue
+		for node in chapter.get("nodes", []):
+			if typeof(node) != TYPE_DICTIONARY:
+				continue
+			if str(node.get("event_id", "")) == event_id:
+				return node
+			if str(node.get("start_event_id", "")) == event_id or str(node.get("end_event_id", "")) == event_id:
+				return node
+			var start_index: int = registry.script_event_order.find(str(node.get("start_event_id", "")))
+			var end_index: int = registry.script_event_order.find(str(node.get("end_event_id", "")))
+			if event_index != -1 and start_index != -1 and end_index != -1 and event_index >= start_index and event_index <= end_index:
+				return node
+	return {}
+
+
+func _chapter_distance_for(chapter_id: String) -> float:
+	for chapter in registry.chapter_flow.get("chapters", []):
+		if typeof(chapter) == TYPE_DICTIONARY and str(chapter.get("chapter_id", "")) == chapter_id:
+			return float(chapter.get("distance", 0.0))
+	return 0.0
+
+
+func _on_debug_add_memory_pressed(memory_id: String) -> void:
+	if game_state.has_memory(memory_id):
+		game_state.discard_memory(memory_id)
+		debug_status_label.text = "调试：移除记忆 %s" % registry.memories.get(memory_id, {}).get("name", memory_id)
+	else:
+		game_state.gain_memory(memory_id)
+		debug_status_label.text = "调试：添加记忆 %s" % registry.memories.get(memory_id, {}).get("name", memory_id)
+	_update_bag_cards()
+
+
+func _on_debug_force_ending_pressed(ending_id: String) -> void:
+	_apply_debug_ending_memory_state(ending_id)
+	_start_mvp_ending()
+	debug_status_label.text = "调试：强制结尾 %s" % ending_id
+
+
+func _apply_debug_ending_memory_state(ending_id: String) -> void:
+	if ending_id == "mvp_named_with_reason":
+		game_state.gain_memory("mem_my_name")
+		game_state.gain_memory("mem_reason_to_depart")
+	elif ending_id == "mvp_named_without_reason":
+		game_state.gain_memory("mem_my_name")
+		game_state.discard_memory("mem_reason_to_depart")
+	elif ending_id == "mvp_nameless_with_reason":
+		game_state.discard_memory("mem_my_name")
+		game_state.gain_memory("mem_reason_to_depart")
+	elif ending_id == "mvp_nameless_without_reason":
+		game_state.discard_memory("mem_my_name")
+		game_state.discard_memory("mem_reason_to_depart")
 
 
 func _accept_pending_by_discard(memory_id: String) -> void:

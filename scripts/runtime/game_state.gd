@@ -243,6 +243,66 @@ func remember_ending(ending_id: String) -> void:
 		ending_history.append(ending_id)
 
 
+func to_save_data() -> Dictionary:
+	return {
+		"display_name": display_name,
+		"fallback_display_name": fallback_display_name,
+		"current_event_id": current_event_id,
+		"flags": flags.duplicate(true),
+		"route": route,
+		"owned_memory_ids": owned_memory_ids.duplicate(),
+		"discarded_memory_ids": discarded_memory_ids.duplicate(),
+		"consumed_memory_ids": consumed_memory_ids.duplicate(),
+		"offered_memory_ids": offered_memory_ids.duplicate(),
+		"seen_event_ids": seen_event_ids.duplicate(),
+		"choice_history": choice_history.duplicate(true),
+		"world_feedback_history": world_feedback_history.duplicate(),
+		"pending_memory_id": pending_memory_id,
+		"capacity_base": capacity_base,
+		"capacity_bonus_temp": capacity_bonus_temp,
+		"capacity_penalty": capacity_penalty,
+		"level": level,
+		"exp": exp,
+		"gold": gold,
+		"memory_fragment": memory_fragment,
+		"hp": hp,
+		"base_stats": base_stats.duplicate(true),
+		"last_battle_log": last_battle_log.duplicate(),
+		"last_battle_result": last_battle_result.duplicate(true),
+		"current_ending_id": current_ending_id,
+		"ending_history": ending_history.duplicate(),
+	}
+
+
+func load_save_data(data: Dictionary) -> void:
+	display_name = str(data.get("display_name", display_name))
+	fallback_display_name = str(data.get("fallback_display_name", fallback_display_name))
+	current_event_id = str(data.get("current_event_id", ""))
+	flags = _read_dictionary(data, "flags")
+	route = str(data.get("route", ""))
+	owned_memory_ids = _read_string_array(data, "owned_memory_ids")
+	discarded_memory_ids = _read_string_array(data, "discarded_memory_ids")
+	consumed_memory_ids = _read_string_array(data, "consumed_memory_ids")
+	offered_memory_ids = _read_string_array(data, "offered_memory_ids")
+	seen_event_ids = _read_string_array(data, "seen_event_ids")
+	choice_history = _read_dictionary_array(data, "choice_history")
+	world_feedback_history = _read_string_array(data, "world_feedback_history")
+	pending_memory_id = str(data.get("pending_memory_id", ""))
+	capacity_base = int(data.get("capacity_base", capacity_base))
+	capacity_bonus_temp = int(data.get("capacity_bonus_temp", capacity_bonus_temp))
+	capacity_penalty = int(data.get("capacity_penalty", capacity_penalty))
+	level = int(data.get("level", level))
+	exp = int(data.get("exp", exp))
+	gold = int(data.get("gold", gold))
+	memory_fragment = int(data.get("memory_fragment", memory_fragment))
+	hp = int(data.get("hp", hp))
+	base_stats = _read_dictionary(data, "base_stats")
+	last_battle_log = _read_string_array(data, "last_battle_log")
+	last_battle_result = _read_dictionary(data, "last_battle_result")
+	current_ending_id = str(data.get("current_ending_id", ""))
+	ending_history = _read_string_array(data, "ending_history")
+
+
 func record_choice(event_id: String, label: String, target: String) -> void:
 	choice_history.append({
 		"event_id": event_id,
@@ -278,6 +338,34 @@ func _append_discard_feedback(memory_id: String, registry) -> void:
 func _remove_string(values: Array[String], value: String) -> void:
 	while values.has(value):
 		values.erase(value)
+
+
+func _read_dictionary(data: Dictionary, key: String) -> Dictionary:
+	var value = data.get(key, {})
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	return value.duplicate(true)
+
+
+func _read_string_array(data: Dictionary, key: String) -> Array[String]:
+	var result: Array[String] = []
+	var value = data.get(key, [])
+	if typeof(value) != TYPE_ARRAY:
+		return result
+	for item in value:
+		result.append(str(item))
+	return result
+
+
+func _read_dictionary_array(data: Dictionary, key: String) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var value = data.get(key, [])
+	if typeof(value) != TYPE_ARRAY:
+		return result
+	for item in value:
+		if typeof(item) == TYPE_DICTIONARY:
+			result.append(item.duplicate(true))
+	return result
 
 
 func _apply_level_stats(stats: Dictionary, level_curve: Dictionary) -> void:

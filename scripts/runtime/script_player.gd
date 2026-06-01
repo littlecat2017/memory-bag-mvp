@@ -79,6 +79,18 @@ func finish_memory_replacement() -> void:
 		_go_to_event(next_id)
 
 
+func to_save_data() -> Dictionary:
+	return {
+		"pending_after_replacement_event_id": pending_after_replacement_event_id,
+		"active_stop_event_id": active_stop_event_id,
+	}
+
+
+func load_save_data(data: Dictionary) -> void:
+	pending_after_replacement_event_id = str(data.get("pending_after_replacement_event_id", ""))
+	active_stop_event_id = str(data.get("active_stop_event_id", ""))
+
+
 func get_visible_options(event: Dictionary) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for option in event.get("options", []):
