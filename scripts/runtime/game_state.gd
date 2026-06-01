@@ -16,12 +16,42 @@ var pending_memory_id := ""
 var capacity_base := 4
 var capacity_bonus_temp := 0
 var capacity_penalty := 0
+var level := 1
+var exp := 0
+var gold := 0
+var memory_fragment := 0
+var hp := 1
+var base_stats: Dictionary = {}
+var last_battle_log: Array[String] = []
+var last_battle_result: Dictionary = {}
 
 
 func configure_from_balance(balance: Dictionary) -> void:
 	var initial_player: Dictionary = balance.get("initial_player", {})
 	display_name = str(initial_player.get("display_name", display_name))
 	fallback_display_name = str(initial_player.get("fallback_display_name", fallback_display_name))
+	level = int(initial_player.get("level", level))
+	exp = int(initial_player.get("exp", exp))
+	gold = int(initial_player.get("gold", gold))
+	base_stats = initial_player.get("base_stats", {}).duplicate(true)
+	if base_stats.is_empty():
+		base_stats = {
+			"max_hp": 120,
+			"atk": 12,
+			"def": 2,
+			"speed": 1.0,
+			"crit_rate": 0.05,
+			"crit_damage": 1.75,
+			"regen_per_5s": 0,
+			"camp_heal_rate": 0.35,
+			"memory_resist": 0,
+			"boss_damage_bonus": 0,
+			"progress_speed": 1.0,
+			"healing_received": 1.0,
+			"normal_attack_damage": 0,
+		}
+	hp = int(initial_player.get("hp", int(base_stats.get("max_hp", hp))))
+	hp = clampi(hp, 1, int(round(float(base_stats.get("max_hp", hp)))))
 	var bag: Dictionary = balance.get("bag", {})
 	capacity_base = int(bag.get("capacity_base", capacity_base))
 	capacity_bonus_temp = int(bag.get("capacity_bonus_temp", capacity_bonus_temp))
@@ -125,6 +155,81 @@ func apply_non_gain_effects(effects: Dictionary) -> void:
 	apply_effects(copy)
 
 
+func derived_stats(registry) -> Dictionary:
+	var stats := base_stats.duplicate(true)
+	_apply_level_stats(stats, registry.balance.get("level_curve", {}))
+	var percent_add: Dictionary = {}
+	for memory_id in owned_memory_ids:
+		var memory: Dictionary = registry.memories.get(memory_id, {})
+		for modifier in memory.get("stat_modifiers", []):
+			if typeof(modifier) != TYPE_DICTIONARY:
+				continue
+			var stat := str(modifier.get("stat", ""))
+			var op := str(modifier.get("op", ""))
+			var value := float(modifier.get("value", 0.0))
+			if stat.is_empty():
+				continue
+			if op == "add":
+				stats[stat] = float(stats.get(stat, 0.0)) + value
+			elif op == "percent_add":
+				percent_add[stat] = float(percent_add.get(stat, 0.0)) + value
+	var combat: Dictionary = registry.balance.get("combat", {})
+	for stat in percent_add.keys():
+		var percent := float(percent_add[stat])
+		if stat == "atk":
+			percent = min(percent, float(combat.get("atk_percent_bonus_cap", 0.6)))
+		elif stat == "boss_damage_bonus":
+			percent = min(percent, float(combat.get("boss_damage_bonus_cap", 0.5)))
+		stats[stat] = float(stats.get(stat, 0.0)) * (1.0 + percent)
+	stats["crit_rate"] = clampf(float(stats.get("crit_rate", 0.0)), 0.0, float(combat.get("crit_rate_cap", 0.45)))
+	stats["speed"] = max(0.1, float(stats.get("speed", 1.0)))
+	stats["healing_received"] = max(0.0, float(stats.get("healing_received", 1.0)))
+	return stats
+
+
+func heal_flat(amount: int, stats: Dictionary) -> int:
+	var final_amount := int(round(float(amount) * float(stats.get("healing_received", 1.0))))
+	if final_amount <= 0:
+		return 0
+	var max_hp := int(round(float(stats.get("max_hp", base_stats.get("max_hp", hp)))))
+	var before := hp
+	hp = clampi(hp + final_amount, 0, max_hp)
+	return hp - before
+
+
+func take_damage(amount: int) -> int:
+	var damage: int = max(0, amount)
+	hp = max(0, hp - damage)
+	return damage
+
+
+func apply_reward_aliases(reward_ids: Array, aliases: Dictionary, balance: Dictionary) -> Dictionary:
+	var applied := {
+		"exp": 0,
+		"gold": 0,
+		"memory_fragment": 0,
+		"mvp_ending": false,
+		"levels_gained": 0,
+	}
+	for reward_id in reward_ids:
+		var reward: Dictionary = aliases.get(str(reward_id), {})
+		if reward.is_empty():
+			continue
+		applied["exp"] = int(applied["exp"]) + int(reward.get("exp", 0))
+		applied["gold"] = int(applied["gold"]) + int(reward.get("gold", 0))
+		applied["memory_fragment"] = int(applied["memory_fragment"]) + int(reward.get("memory_fragment", 0))
+		if bool(reward.get("mvp_ending", false)):
+			applied["mvp_ending"] = true
+	gold += int(applied["gold"])
+	memory_fragment += int(applied["memory_fragment"])
+	if bool(applied["mvp_ending"]):
+		flags["chapter_unlock_mountain"] = true
+	var levels_before := level
+	_add_exp(int(applied["exp"]), balance)
+	applied["levels_gained"] = level - levels_before
+	return applied
+
+
 func remember_event(event_id: String) -> void:
 	if not seen_event_ids.has(event_id):
 		seen_event_ids.append(event_id)
@@ -165,3 +270,48 @@ func _append_discard_feedback(memory_id: String, registry) -> void:
 func _remove_string(values: Array[String], value: String) -> void:
 	while values.has(value):
 		values.erase(value)
+
+
+func _apply_level_stats(stats: Dictionary, level_curve: Dictionary) -> void:
+	var per_level: Dictionary = level_curve.get("per_level", {})
+	var even_level_bonus: Dictionary = level_curve.get("even_level_bonus", {})
+	var every_3_levels_bonus: Dictionary = level_curve.get("every_3_levels_bonus", {})
+	for current_level in range(2, level + 1):
+		_apply_stat_adds(stats, per_level)
+		if current_level % 2 == 0:
+			_apply_stat_adds(stats, even_level_bonus)
+		if current_level % 3 == 0:
+			_apply_stat_adds(stats, every_3_levels_bonus)
+
+
+func _apply_stat_adds(stats: Dictionary, adds: Dictionary) -> void:
+	for stat in adds.keys():
+		stats[stat] = float(stats.get(stat, 0.0)) + float(adds[stat])
+
+
+func _add_exp(amount: int, balance: Dictionary) -> void:
+	if amount <= 0:
+		return
+	exp += amount
+	var level_curve: Dictionary = balance.get("level_curve", {})
+	var max_level := int(level_curve.get("max_level", 12))
+	var guard := 0
+	while level < max_level and guard < 100:
+		guard += 1
+		var required := _next_exp_required()
+		if exp < required:
+			break
+		exp -= required
+		level += 1
+		_heal_level_up_bonus(level_curve)
+
+
+func _next_exp_required() -> int:
+	return 50 + level * 35
+
+
+func _heal_level_up_bonus(level_curve: Dictionary) -> void:
+	var per_level: Dictionary = level_curve.get("per_level", {})
+	var hp_gain := int(per_level.get("max_hp", 0))
+	if hp_gain > 0:
+		hp += hp_gain

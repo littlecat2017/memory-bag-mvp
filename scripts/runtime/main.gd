@@ -4,12 +4,14 @@ const DataRegistryScript := preload("res://scripts/data/data_registry.gd")
 const GameStateScript := preload("res://scripts/runtime/game_state.gd")
 const ScriptPlayerScript := preload("res://scripts/runtime/script_player.gd")
 const RunControllerScript := preload("res://scripts/runtime/run_controller.gd")
+const BattleRunnerScript := preload("res://scripts/runtime/battle_runner.gd")
 const MemoryCardViewScript := preload("res://scripts/ui/memory_card_view.gd")
 
 var registry = DataRegistryScript.new()
 var game_state = GameStateScript.new()
 var script_player = ScriptPlayerScript.new()
 var run_controller = RunControllerScript.new()
+var battle_runner = BattleRunnerScript.new()
 
 var name_label: Label
 var status_label: Label
@@ -41,6 +43,7 @@ func _ready() -> void:
 	game_state.configure_from_balance(registry.balance)
 	script_player.setup(registry, game_state)
 	run_controller.setup(registry, game_state)
+	battle_runner.setup(registry, game_state)
 	script_player.event_changed.connect(_on_event_changed)
 	script_player.memory_replacement_requested.connect(_on_memory_replacement_requested)
 	script_player.script_finished.connect(_on_script_finished)
@@ -282,9 +285,23 @@ func _on_run_node_triggered(node: Dictionary) -> void:
 		script_player.start(str(node.get("start_event_id", "")), str(node.get("end_event_id", "")))
 	elif node_type == "event":
 		var event_id := str(node.get("event_id", ""))
-		script_player.start(event_id, event_id)
+		var event: Dictionary = registry.script_events.get(event_id, {})
+		if str(event.get("type", "")) == "battle":
+			_run_battle_event(event)
+		else:
+			script_player.start(event_id, event_id)
 	else:
 		run_controller.resume()
+
+
+func _run_battle_event(event: Dictionary) -> void:
+	replacement_panel.visible = false
+	pending_core_discard_id = ""
+	_clear_choices()
+	next_button.visible = false
+	var result := battle_runner.run_event(event)
+	_update_battle_labels(event, result)
+	run_controller.resume()
 
 
 func _on_memory_replacement_requested(memory_id: String, _next_event_id: String) -> void:
@@ -364,3 +381,18 @@ func _chapter_name(chapter_id: String) -> String:
 		if typeof(chapter) == TYPE_DICTIONARY and str(chapter.get("chapter_id", "")) == chapter_id:
 			return str(chapter.get("name", chapter_id))
 	return chapter_id
+
+
+func _update_battle_labels(event: Dictionary, result: Dictionary) -> void:
+	name_label.text = "名字：%s"
+	name_label.text = name_label.text % game_state.display_name
+	status_label.text = "战斗：%s / HP：%d / 等级：%d / 金币：%d" % [
+		event.get("id", ""),
+		game_state.hp,
+		game_state.level,
+		game_state.gold,
+	]
+	bg_label.text = "背景：%s / 敌人：%s" % [event.get("bg", ""), event.get("enemy_id", "")]
+	speaker_label.text = "胜利" if bool(result.get("victory", false)) else "濒死"
+	text_label.text = "\n".join(result.get("logs", []))
+	_update_bag_cards()
