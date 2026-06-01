@@ -3,6 +3,7 @@ extends Control
 const DataRegistryScript := preload("res://scripts/data/data_registry.gd")
 const GameStateScript := preload("res://scripts/runtime/game_state.gd")
 const ScriptPlayerScript := preload("res://scripts/runtime/script_player.gd")
+const MemoryCardViewScript := preload("res://scripts/ui/memory_card_view.gd")
 
 var registry = DataRegistryScript.new()
 var game_state = GameStateScript.new()
@@ -13,7 +14,8 @@ var status_label: Label
 var bg_label: Label
 var speaker_label: Label
 var text_label: Label
-var bag_label: Label
+var bag_grid: GridContainer
+var memory_cards: Array[PanelContainer] = []
 var next_button: Button
 var choices_box: VBoxContainer
 
@@ -88,9 +90,20 @@ func _build_ui() -> void:
 	choices_box.add_theme_constant_override("separation", 8)
 	dialogue_box.add_child(choices_box)
 
-	bag_label = Label.new()
-	bag_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	root.add_child(bag_label)
+	var bag_title := Label.new()
+	bag_title.text = "记忆背包"
+	bag_title.add_theme_font_size_override("font_size", 18)
+	root.add_child(bag_title)
+
+	bag_grid = GridContainer.new()
+	bag_grid.columns = 4
+	bag_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.add_child(bag_grid)
+	for index in range(4):
+		var card = MemoryCardViewScript.new()
+		card.set_empty(index + 1)
+		memory_cards.append(card)
+		bag_grid.add_child(card)
 
 	next_button = Button.new()
 	next_button.text = "继续"
@@ -104,7 +117,7 @@ func _show_load_error() -> void:
 	bg_label.text = ""
 	speaker_label.text = "系统"
 	text_label.text = "\n".join(registry.validation_errors)
-	bag_label.text = ""
+	_update_bag_cards()
 	next_button.disabled = true
 
 
@@ -120,7 +133,7 @@ func _on_script_finished() -> void:
 	text_label.text = "已播放到当前脚本段末尾。"
 	_clear_choices()
 	next_button.visible = false
-	_update_bag_label()
+	_update_bag_cards()
 
 
 func _update_static_labels(event: Dictionary) -> void:
@@ -129,11 +142,23 @@ func _update_static_labels(event: Dictionary) -> void:
 	bg_label.text = "背景：%s / 立绘：%s" % [event.get("bg", ""), event.get("portrait", "")]
 	speaker_label.text = str(event.get("speaker", ""))
 	text_label.text = str(event.get("text", ""))
-	_update_bag_label()
+	_update_bag_cards()
 
 
-func _update_bag_label() -> void:
-	bag_label.text = "背包：%s" % game_state.bag_summary(registry)
+func _update_bag_cards() -> void:
+	var capacity: int = int(registry.balance.get("bag", {}).get("capacity_base", 4))
+	for index in memory_cards.size():
+		var card = memory_cards[index]
+		if index >= capacity:
+			card.visible = false
+			continue
+		card.visible = true
+		if index < game_state.owned_memory_ids.size():
+			var memory_id: String = str(game_state.owned_memory_ids[index])
+			var memory: Dictionary = registry.memories.get(memory_id, {})
+			card.set_memory(memory)
+		else:
+			card.set_empty(index + 1)
 
 
 func _rebuild_choices(event: Dictionary) -> void:
