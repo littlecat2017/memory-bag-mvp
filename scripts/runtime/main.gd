@@ -5,6 +5,7 @@ const GameStateScript := preload("res://scripts/runtime/game_state.gd")
 const ScriptPlayerScript := preload("res://scripts/runtime/script_player.gd")
 const RunControllerScript := preload("res://scripts/runtime/run_controller.gd")
 const BattleRunnerScript := preload("res://scripts/runtime/battle_runner.gd")
+const EndingRunnerScript := preload("res://scripts/runtime/ending_runner.gd")
 const MemoryCardViewScript := preload("res://scripts/ui/memory_card_view.gd")
 
 var registry = DataRegistryScript.new()
@@ -12,6 +13,11 @@ var game_state = GameStateScript.new()
 var script_player = ScriptPlayerScript.new()
 var run_controller = RunControllerScript.new()
 var battle_runner = BattleRunnerScript.new()
+var ending_runner = EndingRunnerScript.new()
+var active_script_node_id := ""
+var active_ending: Dictionary = {}
+var active_ending_lines: Array[Dictionary] = []
+var active_ending_index := -1
 
 var name_label: Label
 var status_label: Label
@@ -44,6 +50,7 @@ func _ready() -> void:
 	script_player.setup(registry, game_state)
 	run_controller.setup(registry, game_state)
 	battle_runner.setup(registry, game_state)
+	ending_runner.setup(registry, game_state)
 	script_player.event_changed.connect(_on_event_changed)
 	script_player.memory_replacement_requested.connect(_on_memory_replacement_requested)
 	script_player.script_finished.connect(_on_script_finished)
@@ -207,6 +214,10 @@ func _on_script_finished() -> void:
 	if run_controller.chapter_id.is_empty():
 		run_controller.start_chapter("forest")
 		return
+	if _should_start_mvp_ending():
+		_start_mvp_ending()
+		return
+	active_script_node_id = ""
 	status_label.text = "节点播放完成"
 	bg_label.text = ""
 	speaker_label.text = "系统"
@@ -264,6 +275,9 @@ func _clear_choices() -> void:
 
 
 func _on_next_pressed() -> void:
+	if not active_ending_lines.is_empty():
+		_advance_ending()
+		return
 	script_player.advance()
 
 
@@ -281,6 +295,7 @@ func _on_progress_changed(chapter_id: String, progress: float, chapter_distance:
 
 func _on_run_node_triggered(node: Dictionary) -> void:
 	var node_type := str(node.get("type", ""))
+	active_script_node_id = str(node.get("node_id", ""))
 	if node_type == "script_sequence":
 		script_player.start(str(node.get("start_event_id", "")), str(node.get("end_event_id", "")))
 	elif node_type == "event":
@@ -381,6 +396,51 @@ func _chapter_name(chapter_id: String) -> String:
 		if typeof(chapter) == TYPE_DICTIONARY and str(chapter.get("chapter_id", "")) == chapter_id:
 			return str(chapter.get("name", chapter_id))
 	return chapter_id
+
+
+func _should_start_mvp_ending() -> bool:
+	return active_script_node_id == str(registry.mvp_endings.get("trigger_after_node_id", ""))
+
+
+func _start_mvp_ending() -> void:
+	run_controller.pause()
+	active_script_node_id = ""
+	active_ending = ending_runner.evaluate_mvp_ending()
+	active_ending_lines = active_ending.get("lines", [])
+	active_ending_index = -1
+	if active_ending_lines.is_empty():
+		status_label.text = "MVP 结尾判定失败"
+		bg_label.text = ""
+		speaker_label.text = "系统"
+		text_label.text = "没有匹配到 MVP 结尾规则。"
+		next_button.visible = false
+		return
+	_advance_ending()
+
+
+func _advance_ending() -> void:
+	active_ending_index += 1
+	if active_ending_index >= active_ending_lines.size():
+		status_label.text = "MVP 结尾：%s" % active_ending.get("id", "")
+		speaker_label.text = "系统"
+		text_label.text = "MVP 到此结束。"
+		next_button.visible = false
+		active_ending_lines.clear()
+		_update_bag_cards()
+		return
+	var line: Dictionary = active_ending_lines[active_ending_index]
+	name_label.text = "名字：%s" % game_state.display_name
+	status_label.text = "MVP 结尾：%s  %d/%d" % [
+		active_ending.get("id", ""),
+		active_ending_index + 1,
+		active_ending_lines.size(),
+	]
+	bg_label.text = "背景：%s / 立绘：%s" % [line.get("bg", ""), line.get("portrait", "")]
+	speaker_label.text = str(line.get("speaker", ""))
+	text_label.text = str(line.get("text", ""))
+	next_button.visible = true
+	next_button.text = "继续" if active_ending_index + 1 < active_ending_lines.size() else "结束"
+	_update_bag_cards()
 
 
 func _update_battle_labels(event: Dictionary, result: Dictionary) -> void:

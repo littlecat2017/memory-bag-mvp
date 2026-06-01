@@ -24,6 +24,8 @@ var hp := 1
 var base_stats: Dictionary = {}
 var last_battle_log: Array[String] = []
 var last_battle_result: Dictionary = {}
+var current_ending_id := ""
+var ending_history: Array[String] = []
 
 
 func configure_from_balance(balance: Dictionary) -> void:
@@ -233,6 +235,12 @@ func apply_reward_aliases(reward_ids: Array, aliases: Dictionary, balance: Dicti
 func remember_event(event_id: String) -> void:
 	if not seen_event_ids.has(event_id):
 		seen_event_ids.append(event_id)
+
+
+func remember_ending(ending_id: String) -> void:
+	current_ending_id = ending_id
+	if not ending_history.has(ending_id):
+		ending_history.append(ending_id)
 
 
 func record_choice(event_id: String, label: String, target: String) -> void:

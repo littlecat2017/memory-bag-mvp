@@ -42,6 +42,10 @@ func advance() -> void:
 		state.current_event_id = ""
 		script_finished.emit()
 		return
+	if _would_leave_active_segment(next_id):
+		state.current_event_id = ""
+		script_finished.emit()
+		return
 	_go_to_event(next_id)
 
 
@@ -184,3 +188,13 @@ func _next_event_id(event_id: String) -> String:
 	if index == -1 or index + 1 >= registry.script_event_order.size():
 		return ""
 	return registry.script_event_order[index + 1]
+
+
+func _would_leave_active_segment(next_event_id: String) -> bool:
+	if active_stop_event_id.is_empty():
+		return false
+	var stop_index: int = registry.script_event_order.find(active_stop_event_id)
+	var next_index: int = registry.script_event_order.find(next_event_id)
+	if stop_index == -1 or next_index == -1:
+		return false
+	return next_index > stop_index
