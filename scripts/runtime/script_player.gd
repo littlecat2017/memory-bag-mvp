@@ -1,10 +1,13 @@
 extends RefCounted
 
 signal event_changed(event: Dictionary)
+signal memory_replacement_requested(memory_id: String, next_event_id: String)
 signal script_finished
 
 var registry
 var state
+var pending_after_replacement_event_id := ""
+var active_stop_event_id := ""
 
 
 func setup(data_registry, game_state) -> void:
@@ -12,7 +15,8 @@ func setup(data_registry, game_state) -> void:
 	state = game_state
 
 
-func start(event_id: String) -> void:
+func start(event_id: String, stop_event_id: String = "") -> void:
+	active_stop_event_id = stop_event_id
 	_go_to_event(event_id)
 
 
@@ -28,6 +32,10 @@ func advance() -> void:
 		script_finished.emit()
 		return
 	if str(event.get("type", "")) == "choice":
+		return
+	if not active_stop_event_id.is_empty() and state.current_event_id == active_stop_event_id:
+		state.current_event_id = ""
+		script_finished.emit()
 		return
 	var next_id: String = _next_event_id(state.current_event_id)
 	if next_id.is_empty():
@@ -45,9 +53,26 @@ func select_choice(option_index: int) -> void:
 	if option_index < 0 or option_index >= visible_options.size():
 		return
 	var option: Dictionary = visible_options[option_index]
-	state.apply_effects(option.get("effects", {}))
+	var effects: Dictionary = option.get("effects", {})
 	state.record_choice(str(event.get("id", "")), str(option.get("label", "")), str(option.get("target", "")))
+	if _effects_need_memory_replacement(effects):
+		state.apply_non_gain_effects(effects)
+		var memory_id: String = str(effects.get("gain", [])[0])
+		state.begin_memory_replacement(memory_id)
+		pending_after_replacement_event_id = str(option.get("target", ""))
+		memory_replacement_requested.emit(memory_id, pending_after_replacement_event_id)
+		return
+	state.apply_effects(effects)
 	_go_to_event(str(option.get("target", "")))
+
+
+func finish_memory_replacement() -> void:
+	var next_id := pending_after_replacement_event_id
+	pending_after_replacement_event_id = ""
+	if next_id.is_empty():
+		advance()
+	else:
+		_go_to_event(next_id)
 
 
 func get_visible_options(event: Dictionary) -> Array[Dictionary]:
@@ -131,7 +156,25 @@ func _on_enter_event(event: Dictionary) -> void:
 	if event_type == "memory_offer" and event.has("memory_id"):
 		state.offer_memory(str(event.memory_id))
 	if event.has("effects") and event_type != "choice":
-		state.apply_effects(event.effects)
+		var effects: Dictionary = event.effects
+		if _effects_need_memory_replacement(effects):
+			state.apply_non_gain_effects(effects)
+			var memory_id: String = str(effects.get("gain", [])[0])
+			state.begin_memory_replacement(memory_id)
+			pending_after_replacement_event_id = _next_event_id(event_id)
+			memory_replacement_requested.emit(memory_id, pending_after_replacement_event_id)
+		else:
+			state.apply_effects(effects)
+
+
+func _effects_need_memory_replacement(effects: Dictionary) -> bool:
+	if not bool(effects.get("open_memory_replace", false)):
+		return false
+	var gains = effects.get("gain", [])
+	if typeof(gains) != TYPE_ARRAY or gains.is_empty():
+		return false
+	var memory_id: String = str(gains[0])
+	return not state.can_gain_without_replacement(memory_id)
 
 
 func _next_event_id(event_id: String) -> String:
