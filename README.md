@@ -14,6 +14,8 @@ Implementation should stay inside MVP-1 unless the design documents are updated:
 - 忘名猎人 Boss 前献名选择
 - 名字/出发理由组合的 MVP 结尾
 
+Progress tracking: see `docs/MVP_PROGRESS.md`.
+
 Do not improvise story text. Script events are extracted from
 `docs/source/记忆背包_完整脚本_JSONL_v1.3_完整主题统一版.txt`.
 
