@@ -21,6 +21,10 @@ var active_ending: Dictionary = {}
 var active_ending_lines: Array[Dictionary] = []
 var active_ending_index := -1
 var debug_status_label: Label
+var debug_panel: PanelContainer
+var bag_panel: Control
+var bag_toggle_button: Button
+var debug_toggle_button: Button
 
 var name_label: Label
 var status_label: Label
@@ -28,6 +32,9 @@ var progress_label: Label
 var bg_label: Label
 var bg_texture_rect: TextureRect
 var portrait_texture_rect: TextureRect
+var dialogue_texture_rect: TextureRect
+var nameplate_texture_rect: TextureRect
+var bag_panel_texture_rect: TextureRect
 var speaker_label: Label
 var text_label: Label
 var bag_grid: GridContainer
@@ -40,6 +47,7 @@ var replacement_owned_box: VBoxContainer
 var replacement_confirm_box: VBoxContainer
 var replacement_confirm_label: Label
 var pending_core_discard_id := ""
+var ui_root: Control
 
 
 func _ready() -> void:
@@ -48,6 +56,7 @@ func _ready() -> void:
 	for error in registry.validation_errors:
 		push_error(error)
 	_build_ui()
+	get_viewport().size_changed.connect(_on_viewport_size_changed)
 	if not ok:
 		_show_load_error()
 		return
@@ -69,98 +78,167 @@ func _process(delta: float) -> void:
 
 
 func _build_ui() -> void:
-	var root := VBoxContainer.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 10)
-	root.offset_left = 24
-	root.offset_top = 18
-	root.offset_right = -24
-	root.offset_bottom = -18
+	var root := Control.new()
+	root.position = Vector2.ZERO
+	root.size = _viewport_design_size()
+	ui_root = root
 	add_child(root)
 
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 16)
-	root.add_child(header)
+	bg_texture_rect = TextureRect.new()
+	bg_texture_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg_texture_rect.visible = false
+	root.add_child(bg_texture_rect)
+
+	var vignette := ColorRect.new()
+	vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vignette.color = Color(0.0, 0.0, 0.0, 0.18)
+	root.add_child(vignette)
+
+	portrait_texture_rect = TextureRect.new()
+	portrait_texture_rect.anchor_left = 0.48
+	portrait_texture_rect.anchor_top = 0.06
+	portrait_texture_rect.anchor_right = 0.96
+	portrait_texture_rect.anchor_bottom = 1.08
+	portrait_texture_rect.offset_left = 0
+	portrait_texture_rect.offset_top = 0
+	portrait_texture_rect.offset_right = 0
+	portrait_texture_rect.offset_bottom = 0
+	portrait_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait_texture_rect.visible = false
+	root.add_child(portrait_texture_rect)
+
+	var top_bar := HBoxContainer.new()
+	top_bar.anchor_left = 0.0
+	top_bar.anchor_top = 0.0
+	top_bar.anchor_right = 1.0
+	top_bar.anchor_bottom = 0.0
+	top_bar.offset_left = 24
+	top_bar.offset_top = 18
+	top_bar.offset_right = -24
+	top_bar.offset_bottom = 54
+	top_bar.add_theme_constant_override("separation", 10)
+	root.add_child(top_bar)
 
 	name_label = Label.new()
-	name_label.custom_minimum_size = Vector2(180, 28)
-	header.add_child(name_label)
+	name_label.visible = false
 
 	status_label = Label.new()
 	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(status_label)
+	status_label.add_theme_font_size_override("font_size", 15)
+	status_label.add_theme_color_override("font_color", Color(0.92, 0.86, 0.70))
+	top_bar.add_child(status_label)
+
+	progress_label = Label.new()
+	progress_label.text = "章节：序章"
+	progress_label.add_theme_font_size_override("font_size", 15)
+	progress_label.add_theme_color_override("font_color", Color(0.92, 0.86, 0.70))
+	top_bar.add_child(progress_label)
+
+	bag_toggle_button = Button.new()
+	bag_toggle_button.text = "背包"
+	bag_toggle_button.pressed.connect(_on_bag_toggle_pressed)
+	top_bar.add_child(bag_toggle_button)
 
 	var save_button := Button.new()
 	save_button.text = "保存"
 	save_button.pressed.connect(_on_save_pressed)
-	header.add_child(save_button)
+	top_bar.add_child(save_button)
 
 	var load_button := Button.new()
 	load_button.text = "读取"
 	load_button.pressed.connect(_on_load_pressed)
-	header.add_child(load_button)
+	top_bar.add_child(load_button)
 
-	progress_label = Label.new()
-	progress_label.text = "章节：序章"
-	root.add_child(progress_label)
+	debug_toggle_button = Button.new()
+	debug_toggle_button.text = "调试"
+	debug_toggle_button.pressed.connect(_on_debug_toggle_pressed)
+	top_bar.add_child(debug_toggle_button)
 
 	bg_label = Label.new()
-	root.add_child(bg_label)
+	bg_label.visible = false
 
-	var art_row := HBoxContainer.new()
-	art_row.custom_minimum_size = Vector2(0, 220)
-	art_row.add_theme_constant_override("separation", 12)
-	root.add_child(art_row)
-
-	bg_texture_rect = TextureRect.new()
-	bg_texture_rect.custom_minimum_size = Vector2(360, 220)
-	bg_texture_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bg_texture_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	bg_texture_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-	bg_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	bg_texture_rect.visible = false
-	art_row.add_child(bg_texture_rect)
-
-	portrait_texture_rect = TextureRect.new()
-	portrait_texture_rect.custom_minimum_size = Vector2(180, 220)
-	portrait_texture_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	portrait_texture_rect.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
-	portrait_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait_texture_rect.visible = false
-	art_row.add_child(portrait_texture_rect)
-
-	var dialogue_panel := PanelContainer.new()
-	dialogue_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var dialogue_panel := Control.new()
+	dialogue_panel.anchor_left = 0.04
+	dialogue_panel.anchor_top = 0.67
+	dialogue_panel.anchor_right = 0.96
+	dialogue_panel.anchor_bottom = 0.96
+	dialogue_panel.offset_left = 0
+	dialogue_panel.offset_top = 0
+	dialogue_panel.offset_right = 0
+	dialogue_panel.offset_bottom = 0
+	dialogue_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(dialogue_panel)
 
+	dialogue_texture_rect = TextureRect.new()
+	dialogue_texture_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dialogue_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	dialogue_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	dialogue_panel.add_child(dialogue_texture_rect)
+
 	var dialogue_margin := MarginContainer.new()
-	dialogue_margin.add_theme_constant_override("margin_left", 18)
-	dialogue_margin.add_theme_constant_override("margin_top", 18)
-	dialogue_margin.add_theme_constant_override("margin_right", 18)
-	dialogue_margin.add_theme_constant_override("margin_bottom", 18)
+	dialogue_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dialogue_margin.add_theme_constant_override("margin_left", 44)
+	dialogue_margin.add_theme_constant_override("margin_top", 48)
+	dialogue_margin.add_theme_constant_override("margin_right", 44)
+	dialogue_margin.add_theme_constant_override("margin_bottom", 24)
 	dialogue_panel.add_child(dialogue_margin)
 
 	var dialogue_box := VBoxContainer.new()
-	dialogue_box.add_theme_constant_override("separation", 12)
+	dialogue_box.add_theme_constant_override("separation", 8)
 	dialogue_margin.add_child(dialogue_box)
 
+	var speaker_row := Control.new()
+	speaker_row.custom_minimum_size = Vector2(0, 42)
+	dialogue_box.add_child(speaker_row)
+
+	nameplate_texture_rect = TextureRect.new()
+	nameplate_texture_rect.anchor_left = 0.0
+	nameplate_texture_rect.anchor_top = 0.0
+	nameplate_texture_rect.anchor_right = 0.0
+	nameplate_texture_rect.anchor_bottom = 0.0
+	nameplate_texture_rect.offset_left = -18
+	nameplate_texture_rect.offset_top = -16
+	nameplate_texture_rect.offset_right = 250
+	nameplate_texture_rect.offset_bottom = 48
+	nameplate_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	nameplate_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	speaker_row.add_child(nameplate_texture_rect)
+
 	speaker_label = Label.new()
-	speaker_label.add_theme_font_size_override("font_size", 22)
-	dialogue_box.add_child(speaker_label)
+	speaker_label.offset_left = 18
+	speaker_label.offset_top = -2
+	speaker_label.offset_right = 235
+	speaker_label.offset_bottom = 40
+	speaker_label.add_theme_font_size_override("font_size", 23)
+	speaker_label.add_theme_color_override("font_color", Color(0.16, 0.10, 0.06))
+	speaker_row.add_child(speaker_label)
 
 	text_label = Label.new()
 	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	text_label.add_theme_font_size_override("font_size", 24)
+	text_label.add_theme_font_size_override("font_size", 25)
+	text_label.add_theme_color_override("font_color", Color(0.93, 0.89, 0.78))
 	dialogue_box.add_child(text_label)
 
 	choices_box = VBoxContainer.new()
-	choices_box.add_theme_constant_override("separation", 8)
-	dialogue_box.add_child(choices_box)
+	choices_box.anchor_left = 0.15
+	choices_box.anchor_top = 0.34
+	choices_box.anchor_right = 0.85
+	choices_box.anchor_bottom = 0.54
+	choices_box.add_theme_constant_override("separation", 10)
+	root.add_child(choices_box)
 
 	replacement_panel = PanelContainer.new()
+	_apply_modal_panel_style(replacement_panel)
+	replacement_panel.anchor_left = 0.12
+	replacement_panel.anchor_top = 0.14
+	replacement_panel.anchor_right = 0.88
+	replacement_panel.anchor_bottom = 0.86
 	replacement_panel.visible = false
-	dialogue_box.add_child(replacement_panel)
+	root.add_child(replacement_panel)
 
 	var replacement_margin := MarginContainer.new()
 	replacement_margin.add_theme_constant_override("margin_left", 12)
@@ -176,6 +254,8 @@ func _build_ui() -> void:
 	var replacement_title := Label.new()
 	replacement_title.text = "背包已满，选择一段旧记忆留下，或放弃新记忆。"
 	replacement_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	replacement_title.add_theme_font_size_override("font_size", 22)
+	replacement_title.add_theme_color_override("font_color", Color(0.95, 0.88, 0.68))
 	replacement_box.add_child(replacement_title)
 
 	replacement_new_card = MemoryCardViewScript.new()
@@ -208,15 +288,48 @@ func _build_ui() -> void:
 	cancel_button.pressed.connect(_on_cancel_core_discard_pressed)
 	confirm_buttons.add_child(cancel_button)
 
+	bag_panel = Control.new()
+	bag_panel.anchor_left = 0.70
+	bag_panel.anchor_top = 0.08
+	bag_panel.anchor_right = 0.98
+	bag_panel.anchor_bottom = 0.86
+	bag_panel.visible = false
+	root.add_child(bag_panel)
+
+	bag_panel_texture_rect = TextureRect.new()
+	bag_panel_texture_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bag_panel_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bag_panel_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	bag_panel.add_child(bag_panel_texture_rect)
+
+	var bag_margin := MarginContainer.new()
+	bag_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bag_margin.add_theme_constant_override("margin_left", 22)
+	bag_margin.add_theme_constant_override("margin_top", 48)
+	bag_margin.add_theme_constant_override("margin_right", 22)
+	bag_margin.add_theme_constant_override("margin_bottom", 24)
+	bag_panel.add_child(bag_margin)
+
+	var bag_box := VBoxContainer.new()
+	bag_box.add_theme_constant_override("separation", 10)
+	bag_margin.add_child(bag_box)
+
 	var bag_title := Label.new()
 	bag_title.text = "记忆背包"
-	bag_title.add_theme_font_size_override("font_size", 18)
-	root.add_child(bag_title)
+	bag_title.add_theme_font_size_override("font_size", 22)
+	bag_title.add_theme_color_override("font_color", Color(0.91, 0.82, 0.64))
+	bag_box.add_child(bag_title)
+
+	var bag_scroll := ScrollContainer.new()
+	bag_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	bag_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	bag_box.add_child(bag_scroll)
 
 	bag_grid = GridContainer.new()
-	bag_grid.columns = 4
+	bag_grid.columns = 1
 	bag_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.add_child(bag_grid)
+	bag_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	bag_scroll.add_child(bag_grid)
 	for index in range(4):
 		var card = MemoryCardViewScript.new()
 		card.set_empty(index + 1)
@@ -225,10 +338,22 @@ func _build_ui() -> void:
 
 	next_button = Button.new()
 	next_button.text = "继续"
+	next_button.anchor_left = 0.84
+	next_button.anchor_top = 0.90
+	next_button.anchor_right = 0.94
+	next_button.anchor_bottom = 0.96
+	next_button.add_theme_font_size_override("font_size", 18)
+	next_button.add_theme_color_override("font_color", Color(0.94, 0.90, 0.78))
 	next_button.pressed.connect(_on_next_pressed)
 	root.add_child(next_button)
 
-	var debug_panel := PanelContainer.new()
+	debug_panel = PanelContainer.new()
+	_apply_modal_panel_style(debug_panel)
+	debug_panel.anchor_left = 0.02
+	debug_panel.anchor_top = 0.08
+	debug_panel.anchor_right = 0.52
+	debug_panel.anchor_bottom = 0.42
+	debug_panel.visible = false
 	root.add_child(debug_panel)
 
 	var debug_margin := MarginContainer.new()
@@ -279,6 +404,9 @@ func _build_ui() -> void:
 	debug_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	debug_box.add_child(debug_status_label)
 
+	_apply_static_ui_art()
+	_apply_button_texture_style(next_button, "ui_choice_button")
+
 
 func _show_load_error() -> void:
 	name_label.text = "记忆背包"
@@ -310,7 +438,7 @@ func _on_script_finished() -> void:
 		_start_mvp_ending()
 		return
 	active_script_node_id = ""
-	status_label.text = "节点播放完成"
+	_update_header_status()
 	bg_label.text = ""
 	_clear_art_preview()
 	speaker_label.text = "系统"
@@ -323,7 +451,7 @@ func _on_script_finished() -> void:
 
 func _update_static_labels(event: Dictionary) -> void:
 	name_label.text = "名字：%s" % game_state.display_name
-	status_label.text = "事件：%s / 类型：%s" % [event.get("id", ""), event.get("type", "")]
+	_update_header_status()
 	bg_label.text = "背景：%s / 立绘：%s" % [event.get("bg", ""), event.get("portrait", "")]
 	_apply_event_art(event)
 	speaker_label.text = str(event.get("speaker", ""))
@@ -359,6 +487,10 @@ func _rebuild_choices(event: Dictionary) -> void:
 		var button := Button.new()
 		button.text = str(option.get("label", ""))
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.custom_minimum_size = Vector2(0, 58)
+		button.add_theme_font_size_override("font_size", 20)
+		button.add_theme_color_override("font_color", Color(0.94, 0.90, 0.78))
+		_apply_button_texture_style(button, "ui_choice_button")
 		button.pressed.connect(_on_choice_pressed.bind(index))
 		choices_box.add_child(button)
 
@@ -435,11 +567,17 @@ func _rebuild_replacement_options() -> void:
 			memory.get("ui_loss_hint", ""),
 		]
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.custom_minimum_size = Vector2(0, 44)
+		button.add_theme_font_size_override("font_size", 16)
+		_apply_button_texture_style(button, "ui_choice_button")
 		button.pressed.connect(_on_discard_for_pending_pressed.bind(str(memory_id)))
 		replacement_owned_box.add_child(button)
 	var decline_button := Button.new()
 	decline_button.text = "放弃新记忆：%s" % registry.memories.get(game_state.pending_memory_id, {}).get("name", game_state.pending_memory_id)
 	decline_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	decline_button.custom_minimum_size = Vector2(0, 44)
+	decline_button.add_theme_font_size_override("font_size", 16)
+	_apply_button_texture_style(decline_button, "ui_choice_button")
 	decline_button.pressed.connect(_on_decline_pending_memory_pressed)
 	replacement_owned_box.add_child(decline_button)
 
@@ -491,6 +629,14 @@ func _on_load_pressed() -> void:
 	_update_bag_cards()
 
 
+func _on_bag_toggle_pressed() -> void:
+	bag_panel.visible = not bag_panel.visible
+
+
+func _on_debug_toggle_pressed() -> void:
+	debug_panel.visible = not debug_panel.visible
+
+
 func _ui_save_context() -> Dictionary:
 	return {
 		"active_script_node_id": active_script_node_id,
@@ -514,7 +660,7 @@ func _restore_ui_context(ui: Dictionary) -> void:
 			_update_static_labels(event)
 			_rebuild_choices(event)
 	else:
-		status_label.text = "存档已恢复"
+		_update_header_status()
 		speaker_label.text = "系统"
 		text_label.text = "继续前进。"
 
@@ -654,7 +800,7 @@ func _start_mvp_ending() -> void:
 func _advance_ending() -> void:
 	active_ending_index += 1
 	if active_ending_index >= active_ending_lines.size():
-		status_label.text = "MVP 结尾：%s" % active_ending.get("id", "")
+		_update_header_status()
 		speaker_label.text = "系统"
 		text_label.text = "MVP 到此结束。"
 		next_button.visible = false
@@ -663,10 +809,10 @@ func _advance_ending() -> void:
 		return
 	var line: Dictionary = active_ending_lines[active_ending_index]
 	name_label.text = "名字：%s" % game_state.display_name
-	status_label.text = "MVP 结尾：%s  %d/%d" % [
-		active_ending.get("id", ""),
+	status_label.text = "结尾 %d/%d  ·  %s" % [
 		active_ending_index + 1,
 		active_ending_lines.size(),
+		game_state.display_name,
 	]
 	bg_label.text = "背景：%s / 立绘：%s" % [line.get("bg", ""), line.get("portrait", "")]
 	_apply_event_art(line)
@@ -680,8 +826,7 @@ func _advance_ending() -> void:
 func _update_battle_labels(event: Dictionary, result: Dictionary) -> void:
 	name_label.text = "名字：%s"
 	name_label.text = name_label.text % game_state.display_name
-	status_label.text = "战斗：%s / HP：%d / 等级：%d / 金币：%d" % [
-		event.get("id", ""),
+	status_label.text = "战斗结束  ·  HP：%d  ·  等级：%d  ·  金币：%d" % [
 		game_state.hp,
 		game_state.level,
 		game_state.gold,
@@ -716,3 +861,85 @@ func _set_texture_rect(texture_rect: TextureRect, art_asset: Dictionary) -> void
 		return
 	texture_rect.texture = ImageTexture.create_from_image(image)
 	texture_rect.visible = true
+
+
+func _apply_static_ui_art() -> void:
+	_set_texture_rect(dialogue_texture_rect, registry.get_art_asset("ui_dialogue_box", "ui"))
+	_set_texture_rect(nameplate_texture_rect, registry.get_art_asset("ui_nameplate", "ui"))
+	_set_texture_rect(bag_panel_texture_rect, registry.get_art_asset("ui_bag_panel", "ui"))
+
+
+func _apply_button_texture_style(button: Button, _asset_id: String) -> void:
+	# Generated choice art has uneven transparent edges when sliced. Keep the
+	# asset registered, but use a clean themed button until UI art is redrawn.
+	_apply_flat_button_style(button)
+
+
+func _apply_flat_button_style(button: Button) -> void:
+	var normal := _new_button_style(Color(0.08, 0.10, 0.10, 0.76), Color(0.63, 0.54, 0.32, 0.92))
+	var hover := normal.duplicate()
+	hover.bg_color = Color(0.13, 0.15, 0.14, 0.86)
+	var pressed := normal.duplicate()
+	pressed.bg_color = Color(0.04, 0.05, 0.05, 0.9)
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+
+
+func _new_button_style(bg_color: Color, border_color: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = bg_color
+	style.border_color = border_color
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	style.content_margin_left = 18
+	style.content_margin_top = 8
+	style.content_margin_right = 18
+	style.content_margin_bottom = 8
+	return style
+
+
+func _on_viewport_size_changed() -> void:
+	if ui_root != null:
+		ui_root.size = _viewport_design_size()
+
+
+func _viewport_design_size() -> Vector2:
+	var size := get_viewport().get_visible_rect().size
+	if size.x < 640.0 or size.y < 360.0:
+		return Vector2(1280, 720)
+	return size
+
+
+func _update_header_status() -> void:
+	var capacity := int(registry.balance.get("bag", {}).get("capacity_base", 4))
+	if game_state.capacity() > 0:
+		capacity = game_state.capacity()
+	status_label.text = "%s  ·  HP：%d  ·  等级：%d  ·  记忆：%d/%d" % [
+		game_state.display_name,
+		game_state.hp,
+		game_state.level,
+		game_state.owned_memory_ids.size(),
+		capacity,
+	]
+
+
+func _apply_modal_panel_style(panel: PanelContainer) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.07, 0.055, 0.045, 0.88)
+	style.border_color = Color(0.63, 0.48, 0.26, 0.95)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	panel.add_theme_stylebox_override("panel", style)

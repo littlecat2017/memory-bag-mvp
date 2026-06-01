@@ -98,6 +98,14 @@ func _verify_main_art_preview() -> void:
 		main.queue_free()
 		_fail("main scene should show opening background art")
 		return
+	if main.dialogue_texture_rect.texture == null or main.nameplate_texture_rect.texture == null:
+		main.queue_free()
+		_fail("main scene should load visual novel dialogue UI art")
+		return
+	if main.bag_panel_texture_rect.texture == null:
+		main.queue_free()
+		_fail("main scene should load bag panel UI art")
+		return
 	main.debug_jump_to_event("P0012")
 	await process_frame
 	if not main.portrait_texture_rect.visible or main.portrait_texture_rect.texture == null:
@@ -105,6 +113,7 @@ func _verify_main_art_preview() -> void:
 		_fail("main scene should show hero portrait art")
 		return
 	main.queue_free()
+	await process_frame
 
 
 func _fail(message: String) -> void:

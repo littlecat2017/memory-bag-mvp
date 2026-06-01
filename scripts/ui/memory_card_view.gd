@@ -10,7 +10,7 @@ var icon_texture_rect: TextureRect
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(280, 210)
+	custom_minimum_size = Vector2(260, 132)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_build()
 
@@ -63,7 +63,7 @@ func _build() -> void:
 	box.add_child(title_label)
 
 	icon_texture_rect = TextureRect.new()
-	icon_texture_rect.custom_minimum_size = Vector2(72, 72)
+	icon_texture_rect.custom_minimum_size = Vector2(46, 46)
 	icon_texture_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	icon_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_texture_rect.visible = false
@@ -72,16 +72,16 @@ func _build() -> void:
 	tags_label = _new_label(13)
 	box.add_child(tags_label)
 
-	effect_label = _new_label(13)
+	effect_label = _new_label(12)
 	box.add_child(effect_label)
 
-	relation_label = _new_label(13)
+	relation_label = _new_label(12)
 	box.add_child(relation_label)
 
-	obligation_label = _new_label(13)
+	obligation_label = _new_label(11)
 	box.add_child(obligation_label)
 
-	loss_hint_label = _new_label(12)
+	loss_hint_label = _new_label(11)
 	box.add_child(loss_hint_label)
 
 

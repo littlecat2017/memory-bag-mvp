@@ -22,7 +22,7 @@
     {
       "id": "hero_default",
       "type": "portrait",
-      "path": "res://assets/portraits/portrait_hero_default.png",
+      "path": "res://assets/portraits/portrait_hero_default_cutout.png",
       "source_doc": "CH-01",
       "expected_size": [1024, 1536],
       "aliases": ["hero_confused", "hero_resolved", "hero_hurt"],
@@ -31,10 +31,10 @@
     {
       "id": "mother_warm",
       "type": "portrait",
-      "path": "res://assets/portraits/portrait_mother_warm.png",
+      "path": "res://assets/portraits/portrait_mother_warm_cutout.png",
       "source_doc": "CH-05",
       "expected_size": [1024, 1536],
-      "aliases": ["lia_sick", "master_old", "elder_gray", "child_lost", "camp_shadow", "memory_lia", "hunter_hollow", "hunter_human", "system_memory", "system_choice"],
+      "aliases": ["lia_sick", "master_old", "elder_gray", "child_lost", "camp_shadow", "memory_lia", "hunter_hollow", "hunter_human"],
       "prompt_summary": "温和母亲，像真实生活里做饭的人"
     },
     {
@@ -54,6 +54,38 @@
       "expected_size": [1536, 1536],
       "grid": [3, 3],
       "prompt_summary": "普通攻击斩击九宫格"
+    },
+    {
+      "id": "ui_dialogue_box",
+      "type": "ui",
+      "path": "res://assets/ui/ui_dialogue_box_trimmed.png",
+      "source_doc": "UI-01",
+      "expected_size": [3836, 733],
+      "prompt_summary": "视觉小说底部对话框底板"
+    },
+    {
+      "id": "ui_nameplate",
+      "type": "ui",
+      "path": "res://assets/ui/ui_nameplate_trimmed.png",
+      "source_doc": "UI-02",
+      "expected_size": [2268, 567],
+      "prompt_summary": "角色名牌框"
+    },
+    {
+      "id": "ui_choice_button",
+      "type": "ui",
+      "path": "res://assets/ui/ui_choice_button_trimmed.png",
+      "source_doc": "UI-03",
+      "expected_size": [2952, 260],
+      "prompt_summary": "视觉小说选项按钮底板"
+    },
+    {
+      "id": "ui_bag_panel",
+      "type": "ui",
+      "path": "res://assets/ui/ui_bag_panel_trimmed.png",
+      "source_doc": "UI-04",
+      "expected_size": [785, 1212],
+      "prompt_summary": "记忆背包侧栏面板"
     }
   ]
 }
