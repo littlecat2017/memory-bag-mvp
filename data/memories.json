@@ -201,9 +201,9 @@
           "interval_seconds": 5,
           "effect": {
             "type": "heal_flat",
-            "value": 2
+            "value": 4
           },
-          "log": "有人等我：恢复 2 点生命。"
+          "log": "有人等我：恢复 4 点生命。"
         }
       ],
       "world_flags_when_owned": [

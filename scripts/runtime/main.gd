@@ -293,10 +293,13 @@ func _show_load_error() -> void:
 
 
 func _on_event_changed(event: Dictionary) -> void:
-	replacement_panel.visible = false
-	pending_core_discard_id = ""
+	if not game_state.has_pending_memory():
+		replacement_panel.visible = false
+		pending_core_discard_id = ""
 	_update_static_labels(event)
 	_rebuild_choices(event)
+	if game_state.has_pending_memory():
+		next_button.visible = false
 
 
 func _on_script_finished() -> void:
@@ -708,7 +711,8 @@ func _set_texture_rect(texture_rect: TextureRect, art_asset: Dictionary) -> void
 	var path := str(art_asset.get("path", ""))
 	if path.is_empty() or not FileAccess.file_exists(path):
 		return
-	var texture := load(path)
-	if texture is Texture2D:
-		texture_rect.texture = texture
-		texture_rect.visible = true
+	var image := Image.new()
+	if image.load(path) != OK:
+		return
+	texture_rect.texture = ImageTexture.create_from_image(image)
+	texture_rect.visible = true

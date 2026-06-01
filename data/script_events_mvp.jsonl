@@ -78,6 +78,6 @@
 {"id":"F0035C","type":"line","chapter":"forest","scene":"forest_boss","bg":"bg_forest_boss","speaker":"勇者","portrait":"hero_default","text":"让开。"}
 {"id":"F0036","type":"battle","chapter":"forest","scene":"forest_boss","bg":"bg_forest_boss","speaker":"系统","portrait":"system_memory","text":"Boss 战开始：忘名猎人。","enemy_id":"boss_nameless_hunter","reward":["chapter_unlock_mountain"]}
 {"id":"F0037","type":"line","chapter":"forest","scene":"forest_boss","bg":"bg_forest_boss","speaker":"忘名猎人","portrait":"hunter_human","text":"我想起来一点了。她不是在门口喊一个称号。她是在喊我。"}
-{"id":"F0038","type":"memory_gain","chapter":"forest","scene":"forest_boss","bg":"bg_forest_boss","speaker":"系统","portrait":"system_memory","text":"获得记忆：空名牌。它不是你的名字，只是一块曾经属于某个人的空白。","condition":"not_has_memory:mem_empty_nameplate","effects":{"gain":["mem_empty_nameplate"]}}
+{"id":"F0038","type":"memory_gain","chapter":"forest","scene":"forest_boss","bg":"bg_forest_boss","speaker":"系统","portrait":"system_memory","text":"获得记忆：空名牌。它不是你的名字，只是一块曾经属于某个人的空白。","condition":"not_has_memory:mem_empty_nameplate","effects":{"gain":["mem_empty_nameplate"],"open_memory_replace":true}}
 {"id":"F0039","type":"line","chapter":"forest","scene":"forest_boss","bg":"bg_forest_boss","speaker":"系统","portrait":"system_memory","text":"空名牌上的裂痕变深了。它帮猎人想起一点声音，也让勇者少了一种被呼唤的方式。","condition":"has_memory:mem_empty_nameplate"}
 {"id":"F0040","type":"line","chapter":"forest","scene":"forest_path","bg":"bg_forest_path","speaker":"旁白","portrait":"none","text":"穿过森林后，勇者发现背包比出发时更重。不是因为装进了更多东西，而是因为他开始知道每一格都连着某个人、某句话、某个仍在等待回应的地方。"}

@@ -107,7 +107,8 @@ func _apply_icon_asset(art_asset: Dictionary) -> void:
 	var path := str(art_asset.get("path", ""))
 	if path.is_empty() or not FileAccess.file_exists(path):
 		return
-	var texture := load(path)
-	if texture is Texture2D:
-		icon_texture_rect.texture = texture
-		icon_texture_rect.visible = true
+	var image := Image.new()
+	if image.load(path) != OK:
+		return
+	icon_texture_rect.texture = ImageTexture.create_from_image(image)
+	icon_texture_rect.visible = true
