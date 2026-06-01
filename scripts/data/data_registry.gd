@@ -13,6 +13,8 @@ const DATA_PATHS := {
 var memories: Dictionary = {}
 var enemies: Dictionary = {}
 var script_events: Dictionary = {}
+var script_event_order: Array[String] = []
+var branch_continue_by_target: Dictionary = {}
 var chapter_flow: Dictionary = {}
 var balance: Dictionary = {}
 var mvp_endings: Dictionary = {}
@@ -27,6 +29,7 @@ func load_all() -> bool:
 	balance = _load_json_file(DATA_PATHS.balance)
 	mvp_endings = _load_json_file(DATA_PATHS.mvp_endings)
 	script_events = _load_jsonl_events(DATA_PATHS.script_events)
+	_build_branch_lookup()
 	validate()
 	return validation_errors.is_empty()
 
@@ -83,6 +86,7 @@ func _load_items_file(path: String, label: String) -> Dictionary:
 
 func _load_jsonl_events(path: String) -> Dictionary:
 	var result: Dictionary = {}
+	script_event_order.clear()
 	if not FileAccess.file_exists(path):
 		validation_errors.append("Missing JSONL file: %s" % path)
 		return result
@@ -108,7 +112,18 @@ func _load_jsonl_events(path: String) -> Dictionary:
 			validation_errors.append("Duplicate script event id: %s" % event_id)
 			continue
 		result[event_id] = parsed
+		script_event_order.append(event_id)
 	return result
+
+
+func _build_branch_lookup() -> void:
+	branch_continue_by_target.clear()
+	for merge in chapter_flow.get("branch_merges", []):
+		if typeof(merge) != TYPE_DICTIONARY:
+			continue
+		var continue_event_id := str(merge.get("continue_event_id", ""))
+		for target_id in merge.get("branch_target_ids", []):
+			branch_continue_by_target[str(target_id)] = continue_event_id
 
 
 func _validate_memory_relation_fields() -> void:
