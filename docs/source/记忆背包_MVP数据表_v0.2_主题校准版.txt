@@ -1,0 +1,979 @@
+《记忆背包》MVP 数据表 主题校准版
+
+版本：v0.2
+日期：2026-06-01
+文档格式：TXT
+基准文档：
+- 记忆背包_完整脚本_JSONL_v1.3_完整主题统一版.txt
+- 记忆背包_玩法系统与数值设计_v0.2_主题统一版.txt
+- 记忆背包_MVP原型开发任务拆分_v0.2_主题统一版.txt
+
+
+一、文档目标
+
+本文件把 MVP-1 需要的数据整理成可以直接落地的 JSON 草案。
+
+v0.2 相比 v0.1 的核心变化：
+
+1. 记忆不只作为装备和自我碎片，而是作为关系凭证。
+2. `memories.json` 增加关系字段：
+   - relation_target
+   - relation_type
+   - obligation
+   - owned_world_response
+   - discard_world_response
+   - ui_loss_hint
+3. `mvp_endings.json` 改成更明确回应“名字/理由”两条关系凭证。
+4. `balance.json` 增加 UI 名字擦除和核心记忆确认文案。
+5. MVP 的校验目标从“玩家是否痛苦”改成“玩家是否意识到世界不再同样回应勇者”。
+
+建议数据文件：
+
+data/script_extract_mvp.json
+data/memories.json
+data/enemies.json
+data/chapter_flow.json
+data/balance.json
+data/mvp_endings.json
+
+
+二、script_extract_mvp.json
+
+```json
+{
+  "schema_version": "0.2",
+  "source_file": "记忆背包_完整脚本_JSONL_v1.3_完整主题统一版.txt",
+  "output_file": "script_events_mvp.jsonl",
+  "include_global_types": [
+    "meta",
+    "event_schema",
+    "condition_syntax",
+    "asset_manifest",
+    "character_def",
+    "tutorial"
+  ],
+  "include_memory_ids": [
+    "mem_mothers_soup",
+    "mem_wooden_sword",
+    "mem_reason_to_depart",
+    "mem_my_name",
+    "mem_someone_waits",
+    "mem_abandoned_afternoon",
+    "mem_no_more_explaining",
+    "mem_empty_nameplate"
+  ],
+  "include_event_ranges": [
+    {
+      "from": "P0001",
+      "to": "P0037"
+    },
+    {
+      "from": "F0001",
+      "to": "F0040"
+    }
+  ],
+  "exclude_chapters": [
+    "mountain",
+    "city",
+    "castle",
+    "ending"
+  ]
+}
+```
+
+
+三、memories.json
+
+字段说明：
+
+relation_target：
+这段记忆连接着谁或什么。
+
+relation_type：
+关系类型，例如亲情、托付、称呼、等待。
+
+obligation：
+这段记忆代表的承诺、责任或关系重量。
+
+owned_world_response：
+拥有时世界如何回应勇者。
+
+discard_world_response：
+丢弃后世界如何改变。
+
+ui_loss_hint：
+丢弃确认界面展示的短提示。
+
+```json
+{
+  "schema_version": "0.2",
+  "items": [
+    {
+      "id": "mem_mothers_soup",
+      "name": "母亲做的热汤",
+      "tags": [
+        "温柔",
+        "故乡"
+      ],
+      "is_core": false,
+      "slot_cost": 1,
+      "relation_target": "母亲",
+      "relation_type": "亲情",
+      "obligation": "有人希望你活着回来。",
+      "owned_world_response": "空碗、营火和故乡 NPC 会把勇者重新指向家。",
+      "discard_world_response": "空碗仍在，但它只是一只空碗，不再通向母亲。",
+      "ui_loss_hint": "丢下它后，勇者仍会恢复生命，但世界少了一种叫他回家的味道。",
+      "effect_text": "营火恢复量提升。故乡相关 NPC 更容易认出勇者。",
+      "flavor": "热汤并不能打败魔王，但它证明有人希望你活着回来。",
+      "gain_text": "获得记忆：母亲做的热汤。",
+      "discard_text": "你忘记了那碗汤的味道。屋里的炉火暗了一些。",
+      "stat_modifiers": [
+        {
+          "stat": "camp_heal_rate",
+          "op": "add",
+          "value": 0.35
+        }
+      ],
+      "conditional_modifiers": [],
+      "triggers": [
+        {
+          "id": "soup_post_battle_heal",
+          "timing": "post_battle",
+          "effect": {
+            "type": "heal_flat",
+            "value": 8
+          },
+          "log": "母亲做的热汤让身体暖了一点。"
+        }
+      ],
+      "world_flags_when_owned": [
+        "soup_memory_owned"
+      ],
+      "world_flags_when_discarded": [
+        "soup_memory_discarded"
+      ]
+    },
+    {
+      "id": "mem_wooden_sword",
+      "name": "第一次拿起木剑",
+      "tags": [
+        "战斗",
+        "故乡"
+      ],
+      "is_core": false,
+      "slot_cost": 1,
+      "relation_target": "师父",
+      "relation_type": "师承",
+      "obligation": "有人曾经相信你能学会保护别人。",
+      "owned_world_response": "师父回响会把战斗动作还原成一次具体的教导。",
+      "discard_world_response": "勇者仍会挥剑，但剑法不再指向教他的人。",
+      "ui_loss_hint": "丢下它后，攻击方式还在，教你拿剑的人会变淡。",
+      "effect_text": "普通攻击提升。保留时可触发师父回响。",
+      "flavor": "那不是强者的开始，而是有人把一个孩子当作会长大的人训练。",
+      "gain_text": "获得记忆：第一次拿起木剑。",
+      "discard_text": "你忘记了木剑的重量，只记得自己应该会战斗。",
+      "stat_modifiers": [
+        {
+          "stat": "atk",
+          "op": "percent_add",
+          "value": 0.1
+        },
+        {
+          "stat": "normal_attack_damage",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "conditional_modifiers": [],
+      "triggers": [],
+      "world_flags_when_owned": [
+        "wooden_sword_owned"
+      ],
+      "world_flags_when_discarded": [
+        "wooden_sword_discarded"
+      ]
+    },
+    {
+      "id": "mem_reason_to_depart",
+      "name": "出发的理由",
+      "tags": [
+        "核心",
+        "约定"
+      ],
+      "is_core": true,
+      "slot_cost": 1,
+      "relation_target": "莉娅",
+      "relation_type": "托付",
+      "obligation": "替一个快要忘记一切的人继续记得。",
+      "owned_world_response": "莉娅的回响会出现，勇者能回答自己为什么前进。",
+      "discard_world_response": "刻字和道路仍在，但托付不再指向任何人。",
+      "ui_loss_hint": "丢下它后，勇者仍会继续前进，但那句托付将不再指向任何人。",
+      "effect_text": "无直接战斗加成。最终面对魔王的关键判定。",
+      "flavor": "有人快要忘记一切，你答应替她记得。",
+      "gain_text": "获得核心记忆：出发的理由。",
+      "discard_text": "你忘记了自己为什么出发，只记得必须继续。",
+      "stat_modifiers": [
+        {
+          "stat": "memory_resist",
+          "op": "add",
+          "value": 5
+        }
+      ],
+      "conditional_modifiers": [],
+      "triggers": [],
+      "world_flags_when_owned": [
+        "reason_to_depart_owned"
+      ],
+      "world_flags_when_discarded": [
+        "reason_to_depart_discarded"
+      ]
+    },
+    {
+      "id": "mem_my_name",
+      "name": "我的名字",
+      "tags": [
+        "核心",
+        "名字"
+      ],
+      "is_core": true,
+      "slot_cost": 1,
+      "relation_target": "世界",
+      "relation_type": "称呼",
+      "obligation": "让别人的等待、呼唤和记录能落到一个具体的人身上。",
+      "owned_world_response": "NPC、UI 和结局可以叫出艾尔。",
+      "discard_world_response": "世界仍会记录勇者，但无法把牺牲归还给艾尔。",
+      "ui_loss_hint": "丢下它后，勇者仍会继续前进，但世界会少一种呼唤他的方式。",
+      "effect_text": "无直接战斗加成。保留时，结局中有人能叫出勇者的名字。",
+      "flavor": "名字不是力量，却是世界把一句呼唤交给具体某人的方式。",
+      "gain_text": "获得核心记忆：我的名字。",
+      "discard_text": "你丢下了自己的名字。路还在，但没人知道是谁在走。",
+      "stat_modifiers": [
+        {
+          "stat": "memory_resist",
+          "op": "add",
+          "value": 5
+        }
+      ],
+      "conditional_modifiers": [],
+      "triggers": [
+        {
+          "id": "erase_ui_name_on_discard",
+          "timing": "on_discard",
+          "effect": {
+            "type": "set_ui_name",
+            "value": "勇者"
+          },
+          "log": "名字栏里的“艾尔”消失了。"
+        }
+      ],
+      "world_flags_when_owned": [
+        "my_name_owned"
+      ],
+      "world_flags_when_discarded": [
+        "my_name_discarded",
+        "ui_name_erased"
+      ]
+    },
+    {
+      "id": "mem_someone_waits",
+      "name": "有人等我",
+      "tags": [
+        "温柔",
+        "约定"
+      ],
+      "is_core": false,
+      "slot_cost": 1,
+      "relation_target": "等待者",
+      "relation_type": "等待",
+      "obligation": "承认自己不是只为终点而走，也有人在路的另一端等待。",
+      "owned_world_response": "营火旁会出现模糊人影。",
+      "discard_world_response": "营火仍会燃烧，但旁边不再像有人留位置。",
+      "ui_loss_hint": "丢下它后，恢复会消失，等待你的人也会从营火旁退开。",
+      "effect_text": "每前进一段距离恢复少量生命。营火旁出现模糊人影。",
+      "flavor": "不确定是谁，也不确定在哪里，但有人在等。",
+      "gain_text": "获得记忆：有人等我。",
+      "discard_text": "营火旁的人影消失了。",
+      "stat_modifiers": [
+        {
+          "stat": "camp_heal_rate",
+          "op": "add",
+          "value": 0.1
+        }
+      ],
+      "conditional_modifiers": [],
+      "triggers": [
+        {
+          "id": "someone_waits_regen",
+          "timing": "interval",
+          "interval_seconds": 5,
+          "effect": {
+            "type": "heal_flat",
+            "value": 2
+          },
+          "log": "有人等我：恢复 2 点生命。"
+        }
+      ],
+      "world_flags_when_owned": [
+        "camp_shadow_visible"
+      ],
+      "world_flags_when_discarded": [
+        "camp_shadow_gone"
+      ]
+    },
+    {
+      "id": "mem_abandoned_afternoon",
+      "name": "被抛下的下午",
+      "tags": [
+        "伤口",
+        "孤独"
+      ],
+      "is_core": false,
+      "slot_cost": 1,
+      "relation_target": "缺席的人",
+      "relation_type": "伤口",
+      "obligation": "记得自己也曾经等待过，因此知道被留下的人会怎样。",
+      "owned_world_response": "勇者更能一个人走下去，但更难相信有人会回来。",
+      "discard_world_response": "那个下午消失后，勇者少了一种理解等待的方式。",
+      "ui_loss_hint": "丢下它后，伤口会轻一点，但你也会忘记曾经等过很久。",
+      "effect_text": "独自战斗时攻击提升。同伴事件触发率下降。",
+      "flavor": "从那以后，一个人走路变得更容易，也更不容易相信脚步声会回来。",
+      "gain_text": "获得记忆：被抛下的下午。",
+      "discard_text": "你忘记了那个下午，也忘记了自己曾经等过很久。",
+      "stat_modifiers": [
+        {
+          "stat": "atk",
+          "op": "percent_add",
+          "value": 0.18
+        },
+        {
+          "stat": "healing_received",
+          "op": "percent_add",
+          "value": -0.1
+        }
+      ],
+      "conditional_modifiers": [],
+      "triggers": [],
+      "world_flags_when_owned": [
+        "abandoned_afternoon_owned"
+      ],
+      "world_flags_when_discarded": [
+        "abandoned_afternoon_discarded"
+      ]
+    },
+    {
+      "id": "mem_no_more_explaining",
+      "name": "不再解释",
+      "tags": [
+        "伤口",
+        "沉默"
+      ],
+      "is_core": false,
+      "slot_cost": 1,
+      "relation_target": "误解你的人",
+      "relation_type": "防御",
+      "obligation": "拒绝再把自己交给听不见的人审判。",
+      "owned_world_response": "部分解释选项关闭，勇者用行动替代说明。",
+      "discard_world_response": "解释重新变得可能，被误解也重新变得可能。",
+      "ui_loss_hint": "丢下它后，你可以再次解释，也必须再次承受没人听懂。",
+      "effect_text": "攻击提升，对沉默类敌人伤害降低。部分解释类对话关闭。",
+      "flavor": "不说话是一种盔甲，也是一种墙。",
+      "gain_text": "获得记忆：不再解释。",
+      "discard_text": "你重新获得了解释的可能，也重新获得了被误解的可能。",
+      "stat_modifiers": [
+        {
+          "stat": "atk",
+          "op": "percent_add",
+          "value": 0.15
+        }
+      ],
+      "conditional_modifiers": [
+        {
+          "condition": "source_has_tag:silent",
+          "stat": "damage_taken",
+          "op": "percent_add",
+          "value": -0.2
+        }
+      ],
+      "triggers": [],
+      "world_flags_when_owned": [
+        "explain_options_closed"
+      ],
+      "world_flags_when_discarded": [
+        "explain_options_reopened"
+      ]
+    },
+    {
+      "id": "mem_empty_nameplate",
+      "name": "空名牌",
+      "tags": [
+        "名字",
+        "伤口"
+      ],
+      "is_core": false,
+      "slot_cost": 1,
+      "relation_target": "失去名字的人",
+      "relation_type": "代偿",
+      "obligation": "替一个喊不出名字的人带走空白。",
+      "owned_world_response": "勇者更能伤害无名敌人，也更接近他们。",
+      "discard_world_response": "空白被再次丢下，远处有人仍喊不出声音。",
+      "ui_loss_hint": "丢下它后，你会少一件武器，也少一次替无名者带走空白的机会。",
+      "effect_text": "对无名敌人伤害提升。终章可触发额外回响。",
+      "flavor": "上面没有字，但它曾属于某个人。",
+      "gain_text": "获得记忆：空名牌。",
+      "discard_text": "你丢掉一块空名牌，却听见有人在远处喊不出声音。",
+      "stat_modifiers": [
+        {
+          "stat": "crit_rate",
+          "op": "add",
+          "value": 0.05
+        }
+      ],
+      "conditional_modifiers": [
+        {
+          "condition": "target_has_tag:nameless",
+          "stat": "damage_dealt",
+          "op": "percent_add",
+          "value": 0.25
+        }
+      ],
+      "triggers": [],
+      "world_flags_when_owned": [
+        "empty_nameplate_owned"
+      ],
+      "world_flags_when_discarded": [
+        "empty_nameplate_discarded"
+      ]
+    }
+  ]
+}
+```
+
+
+四、enemies.json
+
+```json
+{
+  "schema_version": "0.2",
+  "items": [
+    {
+      "id": "enemy_hollow_wolves",
+      "name": "空壳狼群",
+      "max_hp": 45,
+      "atk": 6,
+      "def": 1,
+      "attack_interval": 1.8,
+      "exp_reward": 18,
+      "gold_reward": 8,
+      "tags": [
+        "hollow"
+      ],
+      "mechanics": [],
+      "log_name": "空壳狼群"
+    },
+    {
+      "id": "enemy_nameless_deer",
+      "name": "无名鹿",
+      "max_hp": 65,
+      "atk": 8,
+      "def": 1,
+      "attack_interval": 2.2,
+      "exp_reward": 25,
+      "gold_reward": 10,
+      "tags": [
+        "nameless"
+      ],
+      "mechanics": [
+        {
+          "id": "charge",
+          "timing": "interval",
+          "interval_seconds": 10,
+          "effect": {
+            "type": "next_attack_damage_multiplier",
+            "value": 1.3
+          },
+          "log": "无名鹿低头冲撞。"
+        }
+      ],
+      "log_name": "无名鹿"
+    },
+    {
+      "id": "enemy_hollow_warden",
+      "name": "空壳巡林人",
+      "max_hp": 95,
+      "atk": 10,
+      "def": 3,
+      "attack_interval": 2.4,
+      "exp_reward": 35,
+      "gold_reward": 16,
+      "tags": [
+        "hollow",
+        "silent"
+      ],
+      "mechanics": [
+        {
+          "id": "low_hp_guard",
+          "timing": "hp_below",
+          "threshold": 0.4,
+          "once": true,
+          "effect": {
+            "type": "stat_add",
+            "stat": "def",
+            "value": 2
+          },
+          "log": "空壳巡林人蜷起身体，像在保护一个已经忘掉的名字。"
+        }
+      ],
+      "log_name": "空壳巡林人"
+    },
+    {
+      "id": "boss_nameless_hunter",
+      "name": "忘名猎人",
+      "max_hp": 260,
+      "atk": 14,
+      "def": 4,
+      "attack_interval": 2.0,
+      "exp_reward": 90,
+      "gold_reward": 40,
+      "tags": [
+        "nameless",
+        "hollow",
+        "boss"
+      ],
+      "mechanics": [
+        {
+          "id": "kept_name_pressure",
+          "timing": "interval",
+          "interval_seconds": 20,
+          "condition": "has_memory:mem_my_name",
+          "effect": {
+            "type": "try_fade_non_core_memory",
+            "duration_seconds": 10,
+            "resist_stat": "memory_resist"
+          },
+          "log": "忘名猎人拉紧弓弦，试图射落一个名字。"
+        },
+        {
+          "id": "gave_name_weaken_boss",
+          "timing": "battle_start",
+          "condition": "has_flag:gave_name_to_hunter",
+          "effect": {
+            "type": "hp_percent_add",
+            "value": -0.15
+          },
+          "log": "猎人的弓弦松了一瞬。"
+        }
+      ],
+      "log_name": "忘名猎人"
+    }
+  ]
+}
+```
+
+
+五、chapter_flow.json
+
+```json
+{
+  "schema_version": "0.2",
+  "start_chapter_id": "prologue",
+  "chapters": [
+    {
+      "chapter_id": "prologue",
+      "name": "序章：故乡",
+      "distance": 0,
+      "start_event_id": "P0001",
+      "end_event_id": "P0037",
+      "next_chapter_id": "forest",
+      "nodes": [
+        {
+          "node_id": "prologue_main",
+          "progress": 0,
+          "type": "script_sequence",
+          "start_event_id": "P0001",
+          "end_event_id": "P0037",
+          "repeatable": false
+        }
+      ]
+    },
+    {
+      "chapter_id": "forest",
+      "name": "第一章：遗忘森林",
+      "distance": 1000,
+      "start_event_id": "F0001",
+      "end_event_id": "F0040",
+      "next_chapter_id": "mvp_ending",
+      "nodes": [
+        {
+          "node_id": "forest_intro",
+          "progress": 0,
+          "type": "script_sequence",
+          "start_event_id": "F0001",
+          "end_event_id": "F0002",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_battle_01",
+          "progress": 150,
+          "type": "event",
+          "event_id": "F0003",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_memory_choice_01",
+          "progress": 300,
+          "type": "script_sequence",
+          "start_event_id": "F0004",
+          "end_event_id": "F0011C",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_camp_and_memory",
+          "progress": 550,
+          "type": "script_sequence",
+          "start_event_id": "F0012",
+          "end_event_id": "F0022B",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_battle_02",
+          "progress": 700,
+          "type": "event",
+          "event_id": "F0023",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_shrine_and_boss_choice",
+          "progress": 850,
+          "type": "script_sequence",
+          "start_event_id": "F0024",
+          "end_event_id": "F0035C",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_boss",
+          "progress": 1000,
+          "type": "event",
+          "event_id": "F0036",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_after_boss",
+          "progress": 1000,
+          "type": "script_sequence",
+          "start_event_id": "F0037",
+          "end_event_id": "F0040",
+          "repeatable": false,
+          "trigger_after_event_id": "F0036"
+        }
+      ]
+    }
+  ],
+  "branch_merges": [
+    {
+      "choice_id": "P0034",
+      "branch_target_ids": [
+        "P0035A",
+        "P0035B"
+      ],
+      "continue_event_id": "P0036"
+    },
+    {
+      "choice_id": "F0010",
+      "branch_target_ids": [
+        "F0011A",
+        "F0011B",
+        "F0011C"
+      ],
+      "continue_event_id": "F0012"
+    },
+    {
+      "choice_id": "F0021",
+      "branch_target_ids": [
+        "F0022A",
+        "F0022B"
+      ],
+      "continue_event_id": "F0023"
+    },
+    {
+      "choice_id": "F0034",
+      "branch_target_ids": [
+        "F0035A",
+        "F0035B",
+        "F0035C"
+      ],
+      "continue_event_id": "F0036"
+    }
+  ]
+}
+```
+
+
+六、balance.json
+
+```json
+{
+  "schema_version": "0.2",
+  "initial_player": {
+    "display_name": "艾尔",
+    "fallback_display_name": "勇者",
+    "level": 1,
+    "exp": 0,
+    "gold": 0,
+    "hp": 120,
+    "base_stats": {
+      "max_hp": 120,
+      "atk": 12,
+      "def": 2,
+      "speed": 1.0,
+      "crit_rate": 0.05,
+      "crit_damage": 1.75,
+      "regen_per_5s": 0,
+      "camp_heal_rate": 0.35,
+      "memory_resist": 0,
+      "boss_damage_bonus": 0,
+      "progress_speed": 1.0,
+      "healing_received": 1.0,
+      "normal_attack_damage": 0
+    }
+  },
+  "bag": {
+    "capacity_base": 4,
+    "capacity_bonus_temp": 0,
+    "capacity_penalty": 0,
+    "core_memory_requires_confirm": true
+  },
+  "travel": {
+    "meters_per_second": 8,
+    "pause_on_battle": true,
+    "pause_on_event": true,
+    "pause_on_choice": true,
+    "pause_on_memory_replace": true
+  },
+  "combat": {
+    "logic_tick_seconds": 0.2,
+    "player_attack_interval_formula": "2.0 / speed",
+    "damage_random_min": 0.9,
+    "damage_random_max": 1.1,
+    "minimum_damage": 1,
+    "crit_rate_cap": 0.45,
+    "atk_percent_bonus_cap": 0.6,
+    "boss_damage_bonus_cap": 0.5,
+    "low_hp_threshold": 0.35,
+    "defeat": {
+      "progress_rollback_percent": 0.15,
+      "revive_hp_percent": 0.5,
+      "apply_faded_in_mvp": false
+    }
+  },
+  "level_curve": {
+    "max_level": 12,
+    "next_exp_formula": "50 + level * 35",
+    "per_level": {
+      "max_hp": 10,
+      "atk": 2
+    },
+    "even_level_bonus": {
+      "def": 1
+    },
+    "every_3_levels_bonus": {
+      "crit_rate": 0.02
+    }
+  },
+  "reward_aliases": {
+    "exp_small": {
+      "exp": 18
+    },
+    "gold_small": {
+      "gold": 8
+    },
+    "exp_mid": {
+      "exp": 60
+    },
+    "gold_mid": {
+      "gold": 26
+    },
+    "mem_fragment_forest": {
+      "memory_fragment": 1
+    },
+    "chapter_unlock_mountain": {
+      "mvp_ending": true
+    }
+  },
+  "memory_replace": {
+    "allow_decline_new_memory": true,
+    "allow_discard_owned_memory": true,
+    "allow_discard_core_memory": true,
+    "default_confirm_text": "把这段记忆留在这里后，勇者仍会继续前进。但世界会少一种回应他的方式。",
+    "core_confirm_text_by_memory": {
+      "mem_my_name": "丢下它后，勇者仍会继续前进，但世界会少一种呼唤他的方式。",
+      "mem_reason_to_depart": "丢下它后，勇者仍会继续前进，但那句托付将不再指向任何人。"
+    }
+  },
+  "ui_rules": {
+    "show_relation_fields_on_memory_card": true,
+    "show_ui_loss_hint_on_discard": true,
+    "display_name_memory_id": "mem_my_name",
+    "display_name_when_name_lost": "勇者",
+    "blank_name_allowed": false
+  }
+}
+```
+
+
+七、mvp_endings.json
+
+```json
+{
+  "schema_version": "0.2",
+  "trigger_after_node_id": "forest_after_boss",
+  "rules": [
+    {
+      "id": "mvp_named_with_reason",
+      "priority": 1,
+      "conditions": [
+        "has_memory:mem_my_name",
+        "has_memory:mem_reason_to_depart"
+      ],
+      "lines": [
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "森林尽头，有人叫出了艾尔的名字。"
+        },
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "他知道自己还要继续前进，因为莉娅把那句托付交给了他。"
+        }
+      ]
+    },
+    {
+      "id": "mvp_named_without_reason",
+      "priority": 2,
+      "conditions": [
+        "has_memory:mem_my_name",
+        "not_has_memory:mem_reason_to_depart"
+      ],
+      "lines": [
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "森林尽头，有人叫出了艾尔的名字。"
+        },
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "但当他回头寻找那句托付时，只看见路牌上的空白。"
+        }
+      ]
+    },
+    {
+      "id": "mvp_nameless_with_reason",
+      "priority": 3,
+      "conditions": [
+        "not_has_memory:mem_my_name",
+        "has_memory:mem_reason_to_depart"
+      ],
+      "lines": [
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "森林尽头的石碑上写着：献给那位勇者。"
+        },
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "没人知道该如何称呼他，但他还记得莉娅把什么交给了自己。"
+        }
+      ]
+    },
+    {
+      "id": "mvp_nameless_without_reason",
+      "priority": 4,
+      "conditions": [
+        "not_has_memory:mem_my_name",
+        "not_has_memory:mem_reason_to_depart"
+      ],
+      "lines": [
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "森林尽头的石碑上写着：献给那位勇者。"
+        },
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "他赢了。可这场胜利既没有名字，也没有来处。"
+        }
+      ]
+    }
+  ]
+}
+```
+
+
+八、数据校验规则
+
+启动时建议做以下校验：
+
+1. memory id 不重复。
+2. enemy id 不重复。
+3. script event id 不重复。
+4. chapter_flow 节点引用的 event_id 存在。
+5. branch_merges.choice_id 存在且 type 为 choice。
+6. branch_merges.branch_target_ids 都存在。
+7. branch_merges.continue_event_id 存在。
+8. choice.options[].target 存在，或等于特殊目标。
+9. effects.gain / effects.discard / effects.consume 引用的 memory id 存在。
+10. battle.enemy_id 引用的 enemy id 存在。
+11. mvp_endings conditions 引用的 memory id 存在。
+12. 每个 memory 都必须有 relation_target、relation_type、obligation、owned_world_response、discard_world_response、ui_loss_hint。
+
+MVP 特殊规则：
+
+battle.enemy_id 如果包含逗号，按逗号拆分后逐个校验。
+
+
+九、实现备注
+
+1. 当前 JSONL 脚本里也有 memory_def，但程序建议以 memories.json 为准。
+   JSONL 里的 memory_def 用于剧情校对和脚本内说明。
+
+2. 丢弃 `mem_my_name` 时，UI 名字栏应从“艾尔”变成“勇者”。
+   如果后续想更激进，可以变成空白，但 MVP 建议先用“勇者”，避免玩家以为 UI 坏了。
+
+3. 丢弃 `mem_reason_to_depart` 后，不要只在结尾反馈。
+   森林空碗事件 F0028 已经提供即时反馈。
+
+4. `boss_nameless_hunter` 的 faded 机制可以先不实装。
+   如果战斗系统初版还不支持 faded，只显示日志即可。
+
+5. `chapter_unlock_mountain` 在 MVP-1 中不真正解锁第二章。
+   它只触发临时结尾。
+
+
+十、MVP 试玩观察重点
+
+试玩后不要只问玩家“你难过吗”。
+
+应该问：
+
+1. 你觉得你丢掉这张记忆影响了谁？
+2. 哪个场景让你意识到自己丢了东西？
+3. 你献出名字时，觉得是在换力量，还是在切断一种关系？
+4. 你觉得“热汤”是恢复道具，还是母亲和家的凭证？
+5. 你有没有注意到丢掉记忆后，世界不再用同一种方式回应勇者？
+
+如果玩家能说出：
+
+“我不是少了一张卡，我是把某个人和我的连接丢了。”
+
+则 v0.2 主题校准成立。

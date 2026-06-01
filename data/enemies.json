@@ -1,0 +1,115 @@
+{
+  "schema_version": "0.2",
+  "items": [
+    {
+      "id": "enemy_hollow_wolves",
+      "name": "空壳狼群",
+      "max_hp": 45,
+      "atk": 6,
+      "def": 1,
+      "attack_interval": 1.8,
+      "exp_reward": 18,
+      "gold_reward": 8,
+      "tags": [
+        "hollow"
+      ],
+      "mechanics": [],
+      "log_name": "空壳狼群"
+    },
+    {
+      "id": "enemy_nameless_deer",
+      "name": "无名鹿",
+      "max_hp": 65,
+      "atk": 8,
+      "def": 1,
+      "attack_interval": 2.2,
+      "exp_reward": 25,
+      "gold_reward": 10,
+      "tags": [
+        "nameless"
+      ],
+      "mechanics": [
+        {
+          "id": "charge",
+          "timing": "interval",
+          "interval_seconds": 10,
+          "effect": {
+            "type": "next_attack_damage_multiplier",
+            "value": 1.3
+          },
+          "log": "无名鹿低头冲撞。"
+        }
+      ],
+      "log_name": "无名鹿"
+    },
+    {
+      "id": "enemy_hollow_warden",
+      "name": "空壳巡林人",
+      "max_hp": 95,
+      "atk": 10,
+      "def": 3,
+      "attack_interval": 2.4,
+      "exp_reward": 35,
+      "gold_reward": 16,
+      "tags": [
+        "hollow",
+        "silent"
+      ],
+      "mechanics": [
+        {
+          "id": "low_hp_guard",
+          "timing": "hp_below",
+          "threshold": 0.4,
+          "once": true,
+          "effect": {
+            "type": "stat_add",
+            "stat": "def",
+            "value": 2
+          },
+          "log": "空壳巡林人蜷起身体，像在保护一个已经忘掉的名字。"
+        }
+      ],
+      "log_name": "空壳巡林人"
+    },
+    {
+      "id": "boss_nameless_hunter",
+      "name": "忘名猎人",
+      "max_hp": 260,
+      "atk": 14,
+      "def": 4,
+      "attack_interval": 2.0,
+      "exp_reward": 90,
+      "gold_reward": 40,
+      "tags": [
+        "nameless",
+        "hollow",
+        "boss"
+      ],
+      "mechanics": [
+        {
+          "id": "kept_name_pressure",
+          "timing": "interval",
+          "interval_seconds": 20,
+          "condition": "has_memory:mem_my_name",
+          "effect": {
+            "type": "try_fade_non_core_memory",
+            "duration_seconds": 10,
+            "resist_stat": "memory_resist"
+          },
+          "log": "忘名猎人拉紧弓弦，试图射落一个名字。"
+        },
+        {
+          "id": "gave_name_weaken_boss",
+          "timing": "battle_start",
+          "condition": "has_flag:gave_name_to_hunter",
+          "effect": {
+            "type": "hp_percent_add",
+            "value": -0.15
+          },
+          "log": "猎人的弓弦松了一瞬。"
+        }
+      ],
+      "log_name": "忘名猎人"
+    }
+  ]
+}

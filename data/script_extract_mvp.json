@@ -1,0 +1,39 @@
+{
+  "schema_version": "0.2",
+  "source_file": "记忆背包_完整脚本_JSONL_v1.3_完整主题统一版.txt",
+  "output_file": "script_events_mvp.jsonl",
+  "include_global_types": [
+    "meta",
+    "event_schema",
+    "condition_syntax",
+    "asset_manifest",
+    "character_def",
+    "tutorial"
+  ],
+  "include_memory_ids": [
+    "mem_mothers_soup",
+    "mem_wooden_sword",
+    "mem_reason_to_depart",
+    "mem_my_name",
+    "mem_someone_waits",
+    "mem_abandoned_afternoon",
+    "mem_no_more_explaining",
+    "mem_empty_nameplate"
+  ],
+  "include_event_ranges": [
+    {
+      "from": "P0001",
+      "to": "P0037"
+    },
+    {
+      "from": "F0001",
+      "to": "F0040"
+    }
+  ],
+  "exclude_chapters": [
+    "mountain",
+    "city",
+    "castle",
+    "ending"
+  ]
+}

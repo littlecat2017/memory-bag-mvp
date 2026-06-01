@@ -1,0 +1,106 @@
+{
+  "schema_version": "0.2",
+  "initial_player": {
+    "display_name": "艾尔",
+    "fallback_display_name": "勇者",
+    "level": 1,
+    "exp": 0,
+    "gold": 0,
+    "hp": 120,
+    "base_stats": {
+      "max_hp": 120,
+      "atk": 12,
+      "def": 2,
+      "speed": 1.0,
+      "crit_rate": 0.05,
+      "crit_damage": 1.75,
+      "regen_per_5s": 0,
+      "camp_heal_rate": 0.35,
+      "memory_resist": 0,
+      "boss_damage_bonus": 0,
+      "progress_speed": 1.0,
+      "healing_received": 1.0,
+      "normal_attack_damage": 0
+    }
+  },
+  "bag": {
+    "capacity_base": 4,
+    "capacity_bonus_temp": 0,
+    "capacity_penalty": 0,
+    "core_memory_requires_confirm": true
+  },
+  "travel": {
+    "meters_per_second": 8,
+    "pause_on_battle": true,
+    "pause_on_event": true,
+    "pause_on_choice": true,
+    "pause_on_memory_replace": true
+  },
+  "combat": {
+    "logic_tick_seconds": 0.2,
+    "player_attack_interval_formula": "2.0 / speed",
+    "damage_random_min": 0.9,
+    "damage_random_max": 1.1,
+    "minimum_damage": 1,
+    "crit_rate_cap": 0.45,
+    "atk_percent_bonus_cap": 0.6,
+    "boss_damage_bonus_cap": 0.5,
+    "low_hp_threshold": 0.35,
+    "defeat": {
+      "progress_rollback_percent": 0.15,
+      "revive_hp_percent": 0.5,
+      "apply_faded_in_mvp": false
+    }
+  },
+  "level_curve": {
+    "max_level": 12,
+    "next_exp_formula": "50 + level * 35",
+    "per_level": {
+      "max_hp": 10,
+      "atk": 2
+    },
+    "even_level_bonus": {
+      "def": 1
+    },
+    "every_3_levels_bonus": {
+      "crit_rate": 0.02
+    }
+  },
+  "reward_aliases": {
+    "exp_small": {
+      "exp": 18
+    },
+    "gold_small": {
+      "gold": 8
+    },
+    "exp_mid": {
+      "exp": 60
+    },
+    "gold_mid": {
+      "gold": 26
+    },
+    "mem_fragment_forest": {
+      "memory_fragment": 1
+    },
+    "chapter_unlock_mountain": {
+      "mvp_ending": true
+    }
+  },
+  "memory_replace": {
+    "allow_decline_new_memory": true,
+    "allow_discard_owned_memory": true,
+    "allow_discard_core_memory": true,
+    "default_confirm_text": "把这段记忆留在这里后，勇者仍会继续前进。但世界会少一种回应他的方式。",
+    "core_confirm_text_by_memory": {
+      "mem_my_name": "丢下它后，勇者仍会继续前进，但世界会少一种呼唤他的方式。",
+      "mem_reason_to_depart": "丢下它后，勇者仍会继续前进，但那句托付将不再指向任何人。"
+    }
+  },
+  "ui_rules": {
+    "show_relation_fields_on_memory_card": true,
+    "show_ui_loss_hint_on_discard": true,
+    "display_name_memory_id": "mem_my_name",
+    "display_name_when_name_lost": "勇者",
+    "blank_name_allowed": false
+  }
+}

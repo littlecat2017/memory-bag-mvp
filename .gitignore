@@ -1,0 +1,19 @@
+# Godot editor/cache output
+.godot/
+.import/
+*.translation
+
+# Build and temporary output
+builds/
+temp/
+*.tmp
+*.log
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local secrets
+.env
+*.local

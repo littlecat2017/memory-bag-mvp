@@ -1,0 +1,94 @@
+{
+  "schema_version": "0.2",
+  "trigger_after_node_id": "forest_after_boss",
+  "rules": [
+    {
+      "id": "mvp_named_with_reason",
+      "priority": 1,
+      "conditions": [
+        "has_memory:mem_my_name",
+        "has_memory:mem_reason_to_depart"
+      ],
+      "lines": [
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "森林尽头，有人叫出了艾尔的名字。"
+        },
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "他知道自己还要继续前进，因为莉娅把那句托付交给了他。"
+        }
+      ]
+    },
+    {
+      "id": "mvp_named_without_reason",
+      "priority": 2,
+      "conditions": [
+        "has_memory:mem_my_name",
+        "not_has_memory:mem_reason_to_depart"
+      ],
+      "lines": [
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "森林尽头，有人叫出了艾尔的名字。"
+        },
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "但当他回头寻找那句托付时，只看见路牌上的空白。"
+        }
+      ]
+    },
+    {
+      "id": "mvp_nameless_with_reason",
+      "priority": 3,
+      "conditions": [
+        "not_has_memory:mem_my_name",
+        "has_memory:mem_reason_to_depart"
+      ],
+      "lines": [
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "森林尽头的石碑上写着：献给那位勇者。"
+        },
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "没人知道该如何称呼他，但他还记得莉娅把什么交给了自己。"
+        }
+      ]
+    },
+    {
+      "id": "mvp_nameless_without_reason",
+      "priority": 4,
+      "conditions": [
+        "not_has_memory:mem_my_name",
+        "not_has_memory:mem_reason_to_depart"
+      ],
+      "lines": [
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "森林尽头的石碑上写着：献给那位勇者。"
+        },
+        {
+          "speaker": "旁白",
+          "portrait": "none",
+          "bg": "bg_forest_path",
+          "text": "他赢了。可这场胜利既没有名字，也没有来处。"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,384 @@
+《记忆背包》MVP 美术资源规划
+
+版本：v0.1
+日期：2026-06-01
+文档格式：TXT
+适用范围：MVP-1，序章 + 遗忘森林 + 忘名猎人 Boss
+当前基准：
+- 记忆背包_游戏策划书_v0.2_主题统一版.txt
+- 记忆背包_完整脚本_JSONL_v1.3_完整主题统一版.txt
+- 记忆背包_MVP数据表_v0.2_主题校准版.txt
+- 记忆背包_MVP原型开发任务拆分_v0.2_主题统一版.txt
+
+
+一、总体原则
+
+MVP 美术目标不是做完正式版，而是验证三件事：
+
+1. 玩家能立刻看懂这是一个王道勇者旅途。
+2. 玩家能从画面变化中感到“关系被保留或切断”。
+3. 程序可以用这些资源快速搭出可玩的原型。
+
+MVP 不追求：
+1. 全角色完整动作。
+2. 全章节背景。
+3. 高成本逐帧角色动画。
+4. 复杂 UI 皮肤。
+5. 正式 Steam 商店级宣传图。
+
+MVP 追求：
+1. 背景氛围统一。
+2. 立绘能支撑剧情阅读。
+3. 记忆卡图标能表达关系对象。
+4. 战斗特效足够清楚。
+5. 所有资源规格固定，便于程序直接接入。
+
+
+二、推荐美术方向
+
+整体风格：
+低饱和日式奇幻 + 记忆褪色质感。
+
+表现方式：
+2D 插画背景 + 半身立绘 + 简化 Q 版战斗单位 + 九宫格特效 spritesheet。
+
+不要做成过度黑暗、恐怖或纯抽象风格。
+第一眼仍然应该像传统勇者 RPG：
+村庄、森林、营火、猎人、魔物、旅途。
+
+主题表达靠细节：
+1. 保留关系时，画面里有可辨认的物件、光源、名字、影子。
+2. 丢弃关系时，物件还在，但它失去指向某个人的细节。
+3. 名字相关画面要避免直接煽情，重点表现“可被呼唤”和“无法落名”。
+
+
+三、规格总表
+
+MVP 总资源建议：
+
+1. 背景图：9 张
+2. 角色立绘：15 张
+3. 战斗单位图：7 张
+4. 记忆卡图标：8 张
+5. UI/状态图标：5 张
+6. 战斗特效九宫格：12 张
+7. 关键反馈插图：4 张
+8. 占位封面/标题图：1 张
+
+合计：
+61 张图片。
+
+其中必须优先完成：
+1. 背景图 9 张
+2. 角色立绘 10 张
+3. 战斗单位图 5 张
+4. 记忆卡图标 8 张
+5. 战斗特效九宫格 6 张
+
+MVP 最低可玩美术量：
+36 张图片。
+
+
+四、统一规格
+
+1. 背景图
+
+规格：
+1920 x 1080
+
+格式：
+PNG
+
+用途：
+剧情背景、场景氛围、章节节点。
+
+要求：
+画面中心偏上留出阅读空间。
+下方 35% 不要放太多关键细节，因为可能被对话框遮挡。
+左右边缘可以做延展，方便宽屏裁切。
+
+2. 角色立绘
+
+规格：
+1024 x 1536
+
+格式：
+PNG，透明背景。
+
+用途：
+剧情对话。
+
+构图：
+半身或膝上。
+人物面向屏幕 3/4 角度。
+头部和上半身细节清晰。
+
+3. 战斗单位图
+
+规格：
+512 x 512
+
+格式：
+PNG，透明背景。
+
+用途：
+自动战斗中的勇者、敌人、Boss。
+
+要求：
+统一视角。
+可做轻微上下浮动、缩放、受击闪白，不要求逐帧动作。
+
+4. 记忆卡图标
+
+规格：
+512 x 512
+
+格式：
+PNG，透明背景或简单底色。
+
+用途：
+记忆背包、替换界面、获得记忆弹窗。
+
+要求：
+每张图标必须一眼能对应关系对象或承诺，不要只做抽象符号。
+
+5. UI/状态图标
+
+规格：
+256 x 256
+
+格式：
+PNG，透明背景。
+
+用途：
+名字栏、背包容量、核心记忆、关系反馈、战斗日志。
+
+6. 战斗特效九宫格
+
+规格：
+1536 x 1536
+
+单帧：
+512 x 512
+
+布局：
+3 x 3，共 9 帧。
+
+格式：
+PNG，透明背景。
+
+用途：
+普通攻击、受击、恢复、记忆触发、无名侵蚀、Boss 技能等。
+
+播放建议：
+12 fps。
+9 帧总时长约 0.75 秒。
+程序可按 0-8 帧顺序播放，也可抽取其中 4-6 帧做短效果。
+
+
+五、背景图任务表
+
+编号 | 资源 ID | 文件名建议 | 规格 | 优先级 | 用途 | 画面要求
+--- | --- | --- | --- | --- | --- | ---
+BG-01 | bg_village_dawn | bg_village_dawn.png | 1920x1080 | P0 | 序章开场 | 清晨村庄，低饱和暖光，远处有去往森林的路
+BG-02 | bg_village_home | bg_village_home.png | 1920x1080 | P0 | 母亲热汤记忆 | 小屋室内，桌上有热汤，炉火温暖，下方留对话框空间
+BG-03 | bg_village_square | bg_village_square.png | 1920x1080 | P0 | 初始记忆选择 | 村庄广场，木剑训练痕迹，几个人影但不要太具体
+BG-04 | bg_village_gate | bg_village_gate.png | 1920x1080 | P0 | 出发 | 村口，晨雾，路标，画面要有“离开”的方向感
+BG-05 | bg_forest_path | bg_forest_path.png | 1920x1080 | P0 | 森林行进 | 绿色灰雾森林小路，适合自动前进主背景
+BG-06 | bg_forest_camp | bg_forest_camp.png | 1920x1080 | P0 | 营火/热汤反馈 | 森林营火，旁边有空碗位置，可做保留/丢弃文本反馈
+BG-07 | bg_forest_deep | bg_forest_deep.png | 1920x1080 | P1 | 森林深处 | 树影更密，出现无名魔物感
+BG-08 | bg_forest_old_shrine | bg_forest_old_shrine.png | 1920x1080 | P1 | 古老神龛/记忆节点 | 破旧小神龛，挂着褪色名牌
+BG-09 | bg_forest_boss | bg_forest_boss.png | 1920x1080 | P0 | 忘名猎人 Boss | 森林尽头空地，树上挂空名牌，中央留 Boss 站位
+
+
+六、角色立绘任务表
+
+编号 | 资源 ID | 文件名建议 | 规格 | 优先级 | 用途 | 画面要求
+--- | --- | --- | --- | --- | --- | ---
+CH-01 | hero_default | portrait_hero_default.png | 1024x1536 | P0 | 常态勇者 | 年轻勇者，普通旅装，不要过度英雄化
+CH-02 | hero_confused | portrait_hero_confused.png | 1024x1536 | P0 | 犹豫/困惑 | 眼神不确定，适合记忆选择
+CH-03 | hero_resolved | portrait_hero_resolved.png | 1024x1536 | P0 | 决意 | Boss 前和出发时使用
+CH-04 | hero_hurt | portrait_hero_hurt.png | 1024x1536 | P1 | 受伤/疲惫 | 森林深处或 Boss 后使用
+CH-05 | mother_warm | portrait_mother_warm.png | 1024x1536 | P0 | 母亲 | 温和，不要神圣化，像真实生活里做饭的人
+CH-06 | master_old | portrait_master_old.png | 1024x1536 | P0 | 师父 | 老练、严厉、疲惫，木剑训练感
+CH-07 | lia_sick | portrait_lia_sick.png | 1024x1536 | P0 | 莉娅 | 病弱但清醒，像把事情托付出去的人
+CH-08 | elder_gray | portrait_elder_gray.png | 1024x1536 | P1 | 长老 | 灰衣老人，负责说明出发
+CH-09 | child_lost | portrait_child_lost.png | 1024x1536 | P1 | 森林孩子 | 半透明、迷路感，对应“有人等我”
+CH-10 | camp_shadow | portrait_camp_shadow.png | 1024x1536 | P1 | 营火影子 | 不明确性别年龄，像等待者的影
+CH-11 | hunter_hollow | portrait_hunter_hollow.png | 1024x1536 | P0 | 忘名猎人空壳 | Boss 敌对状态，脸部像被名字擦掉
+CH-12 | hunter_human | portrait_hunter_human.png | 1024x1536 | P1 | 忘名猎人人性回响 | 献名或战后短暂出现
+CH-13 | memory_lia | portrait_memory_lia.png | 1024x1536 | P1 | 莉娅记忆回响 | 更淡、更像记忆碎片
+CH-14 | system_memory | portrait_system_memory.png | 1024x1536 | P2 | 系统：记忆 | 可用抽象书页/光点，不急
+CH-15 | system_choice | portrait_system_choice.png | 1024x1536 | P2 | 系统：选择 | 可用占位图，不急
+
+
+七、战斗单位图任务表
+
+编号 | 资源 ID | 文件名建议 | 规格 | 优先级 | 用途 | 画面要求
+--- | --- | --- | --- | --- | --- | ---
+BT-01 | battle_hero | battle_hero.png | 512x512 | P0 | 自动战斗勇者 | 小比例全身，持剑，朝右或朝左统一
+BT-02 | enemy_hollow_wolves | battle_enemy_hollow_wolves.png | 512x512 | P0 | 空壳狼群 | 2-3 只狼的组合剪影，灰绿
+BT-03 | enemy_nameless_deer | battle_enemy_nameless_deer.png | 512x512 | P0 | 无名鹿 | 鹿角挂着空白牌，优雅但异化
+BT-04 | enemy_hollow_warden | battle_enemy_hollow_warden.png | 512x512 | P0 | 空壳看守 | 人形空壳，拿破旧长矛
+BT-05 | boss_nameless_hunter | battle_boss_nameless_hunter.png | 512x512 | P0 | 忘名猎人 | 猎人斗篷、弓或短刀、脸部空白
+BT-06 | battle_memory_echo | battle_memory_echo.png | 512x512 | P1 | 记忆回响协助 | 半透明人影，可用于热汤/等待触发
+BT-07 | battle_empty_nameplate | battle_empty_nameplate.png | 512x512 | P1 | 空名牌召唤物 | 悬浮空名牌，用于献名后的特效表现
+
+
+八、记忆卡图标任务表
+
+编号 | 记忆 ID | 文件名建议 | 规格 | 优先级 | 图标内容 | 关系重点
+--- | --- | --- | --- | --- | --- | ---
+MC-01 | mem_mothers_soup | icon_memory_mothers_soup.png | 512x512 | P0 | 木碗热汤，旁边有手织餐巾 | 母亲希望你活着回来
+MC-02 | mem_wooden_sword | icon_memory_wooden_sword.png | 512x512 | P0 | 旧木剑，握柄有磨损 | 师父相信你能保护别人
+MC-03 | mem_reason_to_depart | icon_memory_reason_to_depart.png | 512x512 | P0 | 折好的信或手帕，带微弱光 | 莉娅的托付
+MC-04 | mem_my_name | icon_memory_my_name.png | 512x512 | P0 | 写着艾尔名字的旧名牌，字迹温和 | 世界能呼唤你
+MC-05 | mem_someone_waits | icon_memory_someone_waits.png | 512x512 | P0 | 远处窗灯/路口等待的人影 | 有人在路的另一端等你
+MC-06 | mem_abandoned_afternoon | icon_memory_abandoned_afternoon.png | 512x512 | P0 | 空长椅、斜阳、落下的小物件 | 知道被留下的人会怎样
+MC-07 | mem_no_more_explaining | icon_memory_no_more_explaining.png | 512x512 | P0 | 合上的嘴/封住的信/断裂对话框 | 拒绝再解释
+MC-08 | mem_empty_nameplate | icon_memory_empty_nameplate.png | 512x512 | P0 | 空白金属名牌，边缘有划痕 | 替无名者带走空白
+
+
+九、UI/状态图标任务表
+
+编号 | 资源 ID | 文件名建议 | 规格 | 优先级 | 用途 | 画面要求
+--- | --- | --- | --- | --- | --- | ---
+UI-01 | ui_bag_slot | ui_bag_slot.png | 256x256 | P0 | 背包格子 | 旧皮革或木框，不要太花
+UI-02 | ui_core_memory | ui_core_memory.png | 256x256 | P0 | 核心记忆标记 | 小锁/烙印/星形均可，表现二次确认
+UI-03 | ui_relation_link | ui_relation_link.png | 256x256 | P0 | 关系字段图标 | 细线连接两点，表示关系凭证
+UI-04 | ui_name_present | ui_name_present.png | 256x256 | P1 | 名字存在 | 小名牌上有可读痕迹
+UI-05 | ui_name_erased | ui_name_erased.png | 256x256 | P1 | 名字被擦除 | 同一名牌但字迹被刮掉
+
+
+十、战斗特效九宫格任务表
+
+统一规格：
+1536 x 1536 PNG，透明背景。
+3 x 3 九宫格。
+每帧 512 x 512。
+命名规则：
+fx_效果名_sheet.png
+
+编号 | 资源 ID | 文件名建议 | 优先级 | 用途 | 九帧内容说明
+--- | --- | --- | --- | --- | ---
+FX-01 | fx_slash_basic | fx_slash_basic_sheet.png | P0 | 勇者普通攻击 | 细白剑光从左下到右上，1-3 帧出现，4-6 帧最亮，7-9 帧消散
+FX-02 | fx_hit_spark | fx_hit_spark_sheet.png | P0 | 通用受击 | 小火花/碎光从中心爆开，适合所有敌人
+FX-03 | fx_heal_warm | fx_heal_warm_sheet.png | P0 | 热汤/营火恢复 | 暖色小光点上升，中心有柔和环形波纹
+FX-04 | fx_memory_gain | fx_memory_gain_sheet.png | P0 | 获得记忆 | 纸片/光点汇入中心，最后形成短暂记忆印记
+FX-05 | fx_memory_discard | fx_memory_discard_sheet.png | P0 | 丢弃记忆 | 光点从中心脱落、变淡、散开，最后留空
+FX-06 | fx_name_erase | fx_name_erase_sheet.png | P0 | 献出名字/名字擦除 | 名牌字迹被横向擦除，碎屑向外飘
+FX-07 | fx_nameless_cut | fx_nameless_cut_sheet.png | P1 | 空名牌对无名敌人伤害 | 冷白色切痕，夹杂空白名牌碎片
+FX-08 | fx_shadow_bite | fx_shadow_bite_sheet.png | P1 | 空壳狼攻击 | 暗影牙形从两侧合拢
+FX-09 | fx_hollow_arrow | fx_hollow_arrow_sheet.png | P1 | 忘名猎人攻击 | 灰白箭矢拖尾，命中后出现空白裂纹
+FX-10 | fx_relation_echo | fx_relation_echo_sheet.png | P1 | 关系回响触发 | 一条细线连接角色与半透明人影，随后发光
+FX-11 | fx_guard_break | fx_guard_break_sheet.png | P2 | 防御破碎 | 半透明护盾裂开，碎片消散
+FX-12 | fx_boss_defeat | fx_boss_defeat_sheet.png | P2 | Boss 击败 | 猎人轮廓碎成空名牌和灰色光点
+
+
+十一、关键反馈插图任务表
+
+这类图不是每次都全屏展示，可以作为结尾、记忆获得、重大选择时的插图。
+
+编号 | 资源 ID | 文件名建议 | 规格 | 优先级 | 用途 | 画面要求
+--- | --- | --- | --- | --- | --- | ---
+IL-01 | illust_departure_name_kept | illust_departure_name_kept.png | 1280x720 | P1 | 名字保留结尾 | 森林尽头有人叫住勇者，画面不需要露脸
+IL-02 | illust_departure_name_lost | illust_departure_name_lost.png | 1280x720 | P1 | 名字丢失结尾 | 同一构图，但呼唤没有落点，名牌空白
+IL-03 | illust_reason_kept | illust_reason_kept.png | 1280x720 | P2 | 出发理由保留 | 莉娅的信/手帕仍在勇者手中
+IL-04 | illust_reason_lost | illust_reason_lost.png | 1280x720 | P2 | 出发理由丢失 | 任务路标仍指向前方，但信纸空白
+
+
+十二、标题/封面占位
+
+编号 | 资源 ID | 文件名建议 | 规格 | 优先级 | 用途 | 画面要求
+--- | --- | --- | --- | --- | --- | ---
+CV-01 | cover_mvp | cover_mvp.png | 1920x1080 | P2 | MVP 标题页/线程展示 | 勇者背对镜头走向森林，背包里露出几张记忆卡，远处有魔王城剪影
+
+
+十三、生成顺序建议
+
+第一批：能跑通 MVP 的最小美术
+
+1. BG-01 到 BG-06、BG-09，共 7 张背景。
+2. CH-01、CH-02、CH-03、CH-05、CH-06、CH-07、CH-11，共 7 张立绘。
+3. BT-01 到 BT-05，共 5 张战斗单位。
+4. MC-01 到 MC-08，共 8 张记忆图标。
+5. UI-01 到 UI-03，共 3 张 UI 图标。
+6. FX-01 到 FX-06，共 6 张九宫格特效。
+
+第一批合计：
+36 张图片。
+
+第二批：强化森林表现和分支反馈
+
+1. BG-07、BG-08，共 2 张背景。
+2. CH-04、CH-08、CH-09、CH-10、CH-12、CH-13，共 6 张立绘。
+3. BT-06、BT-07，共 2 张战斗单位。
+4. UI-04、UI-05，共 2 张 UI 图标。
+5. FX-07 到 FX-10，共 4 张九宫格特效。
+6. IL-01、IL-02，共 2 张关键反馈插图。
+
+第二批合计：
+18 张图片。
+
+第三批：锦上添花
+
+1. CH-14、CH-15，共 2 张系统立绘。
+2. FX-11、FX-12，共 2 张九宫格特效。
+3. IL-03、IL-04，共 2 张关键反馈插图。
+4. CV-01，共 1 张封面占位。
+
+第三批合计：
+7 张图片。
+
+
+十四、单张图片生成提示词模板
+
+背景图模板：
+低饱和日式奇幻 RPG 场景，2D hand-painted background，1920x1080，清晰可读，画面下方 35% 留给对话框，柔和光影，轻微记忆褪色质感，不要现代物品，不要文字，不要 UI，不要人物特写。
+
+角色立绘模板：
+低饱和日式奇幻 RPG 半身角色立绘，透明背景，1024x1536，3/4 视角，清晰面部表情，服装简洁可识别，适合视觉小说对话，不要背景，不要文字，不要 UI。
+
+记忆图标模板：
+低饱和日式奇幻物件图标，512x512，中心构图，清晰剪影，轻微旧纸和记忆光点质感，适合游戏道具图标，不要文字，不要 UI。
+
+战斗单位模板：
+低饱和日式奇幻 RPG 战斗单位，512x512，透明背景，小比例全身，清晰轮廓，适合自动战斗界面，朝向统一，不要背景，不要文字。
+
+九宫格特效模板：
+透明背景 spritesheet，1536x1536，3x3 grid，9 frames，each frame 512x512，game VFX animation frames，clear progression from frame 1 to frame 9，不要角色，不要文字，不要背景。
+
+
+十五、验收标准
+
+每张图生成后检查：
+1. 是否符合规格。
+2. 是否没有文字、水印、UI。
+3. 是否能在小尺寸下看清主体。
+4. 是否和“低饱和日式奇幻 + 记忆褪色”方向一致。
+5. 是否服务“关系凭证”主题。
+
+九宫格特效额外检查：
+1. 是否真的是 3 x 3。
+2. 每帧主体是否在 512 x 512 格内。
+3. 帧之间是否有明确动画变化。
+4. 是否透明背景。
+5. 播放时是否能在 0.75 秒内读懂效果。
+
+
+十六、当前建议
+
+下一步先不要做全部 61 张。
+
+建议从第一批中的 6 张开始测试风格：
+1. BG-01：村庄清晨
+2. BG-05：森林小路
+3. CH-01：勇者常态
+4. CH-05：母亲
+5. MC-01：母亲做的热汤
+6. FX-01：普通斩击九宫格
+
+这 6 张能快速验证：
+背景风格、角色风格、图标风格、特效风格是否统一。
+
+风格确认后，再批量生成第一批剩余资源。

@@ -1,0 +1,132 @@
+{
+  "schema_version": "0.2",
+  "start_chapter_id": "prologue",
+  "chapters": [
+    {
+      "chapter_id": "prologue",
+      "name": "序章：故乡",
+      "distance": 0,
+      "start_event_id": "P0001",
+      "end_event_id": "P0037",
+      "next_chapter_id": "forest",
+      "nodes": [
+        {
+          "node_id": "prologue_main",
+          "progress": 0,
+          "type": "script_sequence",
+          "start_event_id": "P0001",
+          "end_event_id": "P0037",
+          "repeatable": false
+        }
+      ]
+    },
+    {
+      "chapter_id": "forest",
+      "name": "第一章：遗忘森林",
+      "distance": 1000,
+      "start_event_id": "F0001",
+      "end_event_id": "F0040",
+      "next_chapter_id": "mvp_ending",
+      "nodes": [
+        {
+          "node_id": "forest_intro",
+          "progress": 0,
+          "type": "script_sequence",
+          "start_event_id": "F0001",
+          "end_event_id": "F0002",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_battle_01",
+          "progress": 150,
+          "type": "event",
+          "event_id": "F0003",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_memory_choice_01",
+          "progress": 300,
+          "type": "script_sequence",
+          "start_event_id": "F0004",
+          "end_event_id": "F0011C",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_camp_and_memory",
+          "progress": 550,
+          "type": "script_sequence",
+          "start_event_id": "F0012",
+          "end_event_id": "F0022B",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_battle_02",
+          "progress": 700,
+          "type": "event",
+          "event_id": "F0023",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_shrine_and_boss_choice",
+          "progress": 850,
+          "type": "script_sequence",
+          "start_event_id": "F0024",
+          "end_event_id": "F0035C",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_boss",
+          "progress": 1000,
+          "type": "event",
+          "event_id": "F0036",
+          "repeatable": false
+        },
+        {
+          "node_id": "forest_after_boss",
+          "progress": 1000,
+          "type": "script_sequence",
+          "start_event_id": "F0037",
+          "end_event_id": "F0040",
+          "repeatable": false,
+          "trigger_after_event_id": "F0036"
+        }
+      ]
+    }
+  ],
+  "branch_merges": [
+    {
+      "choice_id": "P0034",
+      "branch_target_ids": [
+        "P0035A",
+        "P0035B"
+      ],
+      "continue_event_id": "P0036"
+    },
+    {
+      "choice_id": "F0010",
+      "branch_target_ids": [
+        "F0011A",
+        "F0011B",
+        "F0011C"
+      ],
+      "continue_event_id": "F0012"
+    },
+    {
+      "choice_id": "F0021",
+      "branch_target_ids": [
+        "F0022A",
+        "F0022B"
+      ],
+      "continue_event_id": "F0023"
+    },
+    {
+      "choice_id": "F0034",
+      "branch_target_ids": [
+        "F0035A",
+        "F0035B",
+        "F0035C"
+      ],
+      "continue_event_id": "F0036"
+    }
+  ]
+}
