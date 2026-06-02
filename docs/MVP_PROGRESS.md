@@ -39,7 +39,7 @@ MVP-1 暂不做：
 
 ## 2. 当前总完成度
 
-当前完成度：92%
+当前完成度：94%
 
 计算方式：按模块权重估算，不按文件数量估算。完成度只在对应验收标准通过后增加。
 
@@ -53,9 +53,9 @@ MVP-1 暂不做：
 | M3 自动行进 | 12% | 基本完成 | 11% | 调试 UI 按钮、章节结束后的正式跳转表现 | 从森林 0m 自动推进到 1000m，战斗完成后能恢复行进并继续触发后续节点 |
 | M4 自动战斗 | 16% | 基本完成 | 15% | 濒死回退与 faded 状态、战斗演出二次打磨 | 木剑提高攻击；有人等我恢复；空名牌对无名敌人更强；标准 MVP 路线可胜利打过 Boss 并进入结尾 |
 | M5 世界反馈 | 12% | 基本完成 | 10% | 反馈日志 UI 打磨、Boss 条件台词表现、结尾界面打磨 | 丢热汤后空碗文本变化；丢名字后 Boss 和结尾不再叫艾尔 |
-| M6 Boss 与 MVP 结尾 | 10% | 基本完成 | 9% | Boss 战专属美术、完整流程手动体验校验 | 至少跑出 4 种 MVP 结尾；标准路线可从开局跑到 `mvp_named_with_reason` |
+| M6 Boss 与 MVP 结尾 | 10% | 完成 | 10% | 完整流程手动体验校验、Boss 名字主题演出二次打磨 | 至少跑出 4 种 MVP 结尾；标准路线可从开局跑到 `mvp_named_with_reason` |
 | M7 存档与调试 | 6% | 基本完成 | 5% | 调试面板视觉打磨、更多运行态快捷开关、存档槽位 UI | 30 秒内跳到 `P0034/F0010/F0021/F0034/F0040`；可保存并恢复关键运行状态 |
-| M8 MVP 美术接入 | 4% | 基本完成 | 4% | 更多角色/敌人/场景资源、UI 皮肤二次精修 | 资源路径稳定，图片生成有日志，不超过每日 50 张 |
+| M8 MVP 美术接入 | 4% | 完成 | 4% | 更多记忆图标、场景差分、UI 皮肤二次精修 | 资源路径稳定，图片生成有日志，不超过每日 50 张 |
 
 ## 4. 已完成内容
 
@@ -353,6 +353,39 @@ MVP-1 暂不做：
 - `scripts/debug/verify_battle.gd` 增加 Boss 时间线标签验收，确认 `F0036` 的演出事件带有 `boss` 和 `nameless` 标签。
 - `scripts/debug/capture_ui_snapshots.gd` 增加 `05_boss_battle_stage.png`，结尾回顾截图顺延为 `06_ending_summary.png`。
 - 本轮仍未调用 image2，图片生成消耗不变。
+- 回顾 `docs/source/记忆背包_MVP美术资源规划_v0.1.txt`，按 MVP 第一批和当前脚本缺口补齐关键人物与敌人资源。
+- 使用桌面 image2 PHP 脚本生成并记录 11 张新图，均写入 `logs/image_generation.jsonl`，本日用量为 11 / 50：
+  - `master_old`
+  - `lia_sick`
+  - `elder_gray`
+  - `child_lost`
+  - `camp_shadow`
+  - `hunter_hollow`
+  - `hunter_human`
+  - `enemy_hollow_wolves`
+  - `enemy_nameless_deer`
+  - `enemy_hollow_warden`
+  - `boss_nameless_hunter`
+- 使用本地绿幕抠图流程生成透明 PNG，并保留最终项目资产：
+  - `assets/portraits/portrait_master_old_cutout.png`
+  - `assets/portraits/portrait_lia_sick_cutout.png`
+  - `assets/portraits/portrait_elder_gray_cutout.png`
+  - `assets/portraits/portrait_child_lost_cutout.png`
+  - `assets/portraits/portrait_camp_shadow_cutout.png`
+  - `assets/portraits/portrait_hunter_hollow_cutout.png`
+  - `assets/portraits/portrait_hunter_human_cutout.png`
+  - `assets/enemies/enemy_hollow_wolves_cutout.png`
+  - `assets/enemies/enemy_nameless_deer_cutout.png`
+  - `assets/enemies/enemy_hollow_warden_cutout.png`
+  - `assets/enemies/enemy_boss_nameless_hunter_cutout.png`
+- 更新 `data/art_assets.json`：
+  - 母亲立绘不再作为师父、莉娅、长老、迷路孩子、营火人影、猎人的别名。
+  - 新增 7 个独立剧情立绘资源。
+  - 新增 `enemy` 类型并登记 4 个敌人/Boss 战斗单位资源。
+  - `memory_lia` 暂时复用 `lia_sick`，不再复用母亲。
+- 战斗舞台右侧面板从敌人 id 读取 `enemy` 贴图，优先显示正式敌人图，符号身份保留为加载失败兜底。
+- `scripts/debug/verify_art_assets.gd` 增加角色去复用、敌人资源加载、战斗舞台敌人贴图显示验收。
+- 重新运行 JSON 校验和完整 Godot 自动验收，全部通过；并用 Windows 显示驱动重新导出 UI 截图，确认 `04_battle_stage.png` 和 `05_boss_battle_stage.png` 中真实敌人图片可见。
 
 ## 5. 近期开发顺序
 
@@ -375,7 +408,7 @@ MVP-1 暂不做：
 目标：
 
 - 检查调试入口、存档入口、截图和导出配置，确保试玩包不会暴露不必要的开发状态。
-- 评估是否需要为敌人/Boss 生成正式立绘；如果现有符号化表现足够 MVP，可推迟到 MVP 后。
+- 检查敌人/Boss 首批正式图片在不同分辨率下的缩放与可读性。
 - 准备最终 exe 打包前的验收清单。
 
 验收：
@@ -386,11 +419,11 @@ MVP-1 暂不做：
 
 ## 6. 图片生成计划
 
-当前累计已登记图片：10 张。
+当前累计已登记图片：21 张。
 
-2026-06-02 本日图片生成消耗：0 / 50 张（本轮未新增）。
+2026-06-02 本日图片生成消耗：11 / 50 张。
 
-已生成并登记的 10 张图片：
+已生成并登记的 21 张图片：
 
 1. `bg_village_dawn`
 2. `bg_forest_path`
@@ -402,6 +435,17 @@ MVP-1 暂不做：
 8. `ui_nameplate`
 9. `ui_choice_button`
 10. `ui_bag_panel`
+11. `master_old`
+12. `lia_sick`
+13. `elder_gray`
+14. `child_lost`
+15. `camp_shadow`
+16. `hunter_hollow`
+17. `hunter_human`
+18. `enemy_hollow_wolves`
+19. `enemy_nameless_deer`
+20. `enemy_hollow_warden`
+21. `boss_nameless_hunter`
 
 后续生成规则：
 
@@ -409,7 +453,7 @@ MVP-1 暂不做：
 - 不记录密钥、账号密码、token 或临时敏感 URL。
 - 单日最多 50 张。
 - 未确认风格前，不进入 36 张第一批美术批量生成。
-- 本日剩余可用额度：50 张；下一轮优先做体验验收和打包收口，不主动扩大生成量。
+- 本日剩余可用额度：39 张；下一轮优先做体验验收和打包收口，不主动扩大生成量。
 
 ## 7. 每轮更新规则
 
@@ -428,10 +472,10 @@ MVP-1 暂不做：
 
 ## 8. 当前风险
 
-- 自动战斗已接入基础演出时间线、斩击播放、敌人视觉身份和 Boss 压迫提示，但仍缺少正式敌人立绘和失败惩罚视觉反馈。
+- 自动战斗已接入基础演出时间线、斩击播放、正式敌人图片和 Boss 压迫提示，但仍缺少失败惩罚视觉反馈。
 - 濒死回退与 faded 状态尚未完整实现，失败惩罚目前只做复活记录。
-- Boss 后 MVP 结尾已接入通关回顾层；Boss 本体有基础压迫表现，但仍缺少正式立绘和更完整的名字主题演出。
+- Boss 后 MVP 结尾已接入通关回顾层；Boss 本体已有首批正式战斗图片和基础压迫表现，但仍缺少更完整的名字主题演出。
 - 调试面板功能可用且默认隐藏，但视觉仍偏工具化，后续应随正式 UI 一起整理。
-- 首批真实美术资源和视觉小说 UI 皮肤已接入，立绘已做本地透明化初版；边缘精度后续仍可继续抠图或重生透明背景版本。
+- 首批真实美术资源、敌人战斗图和视觉小说 UI 皮肤已接入，立绘与敌人图已做本地透明化初版；边缘精度后续仍可继续抠图或重生透明背景版本。
 - `fx_slash_basic_sheet` 已生成、登记并接入战斗演出播放；后续可根据实际观感重新生成更干净的透明特效表。
 - 已可用便携 Godot 4.6.3 运行 headless 验证；本机全局 PATH 仍未配置 Godot。

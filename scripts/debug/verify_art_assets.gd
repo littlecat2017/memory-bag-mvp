@@ -28,6 +28,17 @@ func _verify_registry(registry) -> void:
 		"bg_forest_path",
 		"hero_default",
 		"mother_warm",
+		"master_old",
+		"lia_sick",
+		"elder_gray",
+		"child_lost",
+		"camp_shadow",
+		"hunter_hollow",
+		"hunter_human",
+		"enemy_hollow_wolves",
+		"enemy_nameless_deer",
+		"enemy_hollow_warden",
+		"boss_nameless_hunter",
 		"icon_memory_mothers_soup",
 		"fx_slash_basic_sheet",
 	]
@@ -40,6 +51,18 @@ func _verify_registry(registry) -> void:
 		return
 	if registry.get_art_asset("hero_confused", "portrait").is_empty():
 		_fail("portrait alias should resolve hero_confused")
+		return
+	if registry.get_art_asset("master_old", "portrait").get("id", "") == "mother_warm":
+		_fail("master_old should not reuse mother_warm portrait")
+		return
+	if registry.get_art_asset("lia_sick", "portrait").get("id", "") == "mother_warm":
+		_fail("lia_sick should not reuse mother_warm portrait")
+		return
+	if registry.get_art_asset("enemy_hollow_wolves", "enemy").is_empty():
+		_fail("enemy art should resolve enemy_hollow_wolves")
+		return
+	if registry.get_art_asset("boss_nameless_hunter", "enemy").is_empty():
+		_fail("enemy art should resolve boss_nameless_hunter")
 		return
 	if registry.get_art_asset_for_memory("mem_mothers_soup").is_empty():
 		_fail("memory icon should resolve mem_mothers_soup")
@@ -111,6 +134,20 @@ func _verify_main_art_preview() -> void:
 	if not main.portrait_texture_rect.visible or main.portrait_texture_rect.texture == null:
 		main.queue_free()
 		_fail("main scene should show hero portrait art")
+		return
+	main.debug_jump_to_event("P0011")
+	await process_frame
+	var master_asset: Dictionary = main.registry.get_art_asset("master_old", "portrait")
+	if main.portrait_texture_rect.texture == null or str(master_asset.get("id", "")) != "master_old":
+		main.queue_free()
+		_fail("main scene should resolve master_old as its own portrait")
+		return
+	main.debug_jump_to_event("F0003")
+	for _index in range(3):
+		await process_frame
+	if not main.battle_enemy_texture_rect.visible or main.battle_enemy_texture_rect.texture == null:
+		main.queue_free()
+		_fail("battle stage should show enemy art texture")
 		return
 	main.queue_free()
 	await process_frame

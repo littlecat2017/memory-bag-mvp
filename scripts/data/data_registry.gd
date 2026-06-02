@@ -269,7 +269,7 @@ func _validate_ending_conditions() -> void:
 
 
 func _validate_art_assets() -> void:
-	var allowed_types := ["background", "portrait", "memory_icon", "effect_sheet", "ui"]
+	var allowed_types := ["background", "portrait", "enemy", "memory_icon", "effect_sheet", "ui"]
 	for asset_id in art_assets:
 		var asset: Dictionary = art_assets[asset_id]
 		var asset_type := str(asset.get("type", ""))

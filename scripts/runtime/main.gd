@@ -44,6 +44,7 @@ var battle_stage: Control
 var battle_pressure_rect: ColorRect
 var battle_hero_texture_rect: TextureRect
 var battle_enemy_panel: PanelContainer
+var battle_enemy_texture_rect: TextureRect
 var battle_enemy_name_label: Label
 var battle_enemy_type_label: Label
 var battle_enemy_symbol_label: Label
@@ -573,6 +574,15 @@ func _build_battle_stage(root: Control) -> void:
 	battle_enemy_symbol_label.add_theme_font_size_override("font_size", 74)
 	battle_enemy_symbol_label.add_theme_color_override("font_color", Color(0.18, 0.18, 0.18, 0.92))
 	enemy_box.add_child(battle_enemy_symbol_label)
+
+	battle_enemy_texture_rect = TextureRect.new()
+	battle_enemy_texture_rect.custom_minimum_size = Vector2(190, 190)
+	battle_enemy_texture_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	battle_enemy_texture_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	battle_enemy_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battle_enemy_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	battle_enemy_texture_rect.visible = false
+	enemy_box.add_child(battle_enemy_texture_rect)
 
 	battle_enemy_hp_bar = ProgressBar.new()
 	battle_enemy_hp_bar.min_value = 0
@@ -1212,8 +1222,8 @@ func _layout_battle_stage() -> void:
 	var size := _viewport_design_size()
 	battle_hero_texture_rect.position = Vector2(size.x * 0.07, size.y * 0.19)
 	battle_hero_texture_rect.size = Vector2(size.x * 0.23, size.y * 0.47)
-	battle_enemy_panel.position = Vector2(size.x * 0.64, size.y * 0.28)
-	battle_enemy_panel.size = Vector2(size.x * 0.24, size.y * 0.33)
+	battle_enemy_panel.position = Vector2(size.x * 0.60, size.y * 0.21)
+	battle_enemy_panel.size = Vector2(size.x * 0.29, size.y * 0.47)
 	battle_status_label.position = Vector2(size.x * 0.31, size.y * 0.19)
 	battle_status_label.size = Vector2(size.x * 0.38, size.y * 0.08)
 	battle_fx_texture_rect.position = Vector2(size.x * 0.56, size.y * 0.22)
@@ -1552,7 +1562,11 @@ func _apply_battle_enemy_identity(enemy_id: String, tags: Array[String]) -> void
 		var enemy: Dictionary = registry.enemies.get(enemy_id, {})
 		tags = _string_array_from_variant(enemy.get("tags", []))
 	var profile := _battle_enemy_profile(enemy_id, tags)
+	var enemy_texture := _texture_from_asset(registry.get_art_asset(enemy_id, "enemy"))
+	battle_enemy_texture_rect.texture = enemy_texture
+	battle_enemy_texture_rect.visible = enemy_texture != null
 	battle_enemy_symbol_label.text = str(profile.get("symbol", "◇"))
+	battle_enemy_symbol_label.visible = enemy_texture == null
 	battle_enemy_symbol_label.add_theme_font_size_override("font_size", int(profile.get("symbol_size", 74)))
 	battle_enemy_symbol_label.add_theme_color_override("font_color", profile.get("symbol_color", Color(0.18, 0.18, 0.18, 0.92)))
 	battle_enemy_type_label.text = str(profile.get("type_text", "空壳"))

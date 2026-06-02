@@ -34,8 +34,107 @@
       "path": "res://assets/portraits/portrait_mother_warm_cutout.png",
       "source_doc": "CH-05",
       "expected_size": [1024, 1536],
-      "aliases": ["lia_sick", "master_old", "elder_gray", "child_lost", "camp_shadow", "memory_lia", "hunter_hollow", "hunter_human"],
+      "aliases": [],
       "prompt_summary": "温和母亲，像真实生活里做饭的人"
+    },
+    {
+      "id": "master_old",
+      "type": "portrait",
+      "path": "res://assets/portraits/portrait_master_old_cutout.png",
+      "source_doc": "CH-06",
+      "expected_size": [1024, 1536],
+      "aliases": [],
+      "prompt_summary": "老练、严厉、疲惫的师父，带木剑训练感"
+    },
+    {
+      "id": "lia_sick",
+      "type": "portrait",
+      "path": "res://assets/portraits/portrait_lia_sick_cutout.png",
+      "source_doc": "CH-07",
+      "expected_size": [1024, 1536],
+      "aliases": ["memory_lia"],
+      "prompt_summary": "病弱但清醒的莉娅，像把事情托付出去的人"
+    },
+    {
+      "id": "elder_gray",
+      "type": "portrait",
+      "path": "res://assets/portraits/portrait_elder_gray_cutout.png",
+      "source_doc": "CH-08",
+      "expected_size": [1024, 1536],
+      "aliases": [],
+      "prompt_summary": "灰衣长老，负责说明出发与记忆背包规则"
+    },
+    {
+      "id": "child_lost",
+      "type": "portrait",
+      "path": "res://assets/portraits/portrait_child_lost_cutout.png",
+      "source_doc": "CH-09",
+      "expected_size": [1024, 1536],
+      "aliases": [],
+      "prompt_summary": "森林里迷路的孩子，半透明记忆碎片感"
+    },
+    {
+      "id": "camp_shadow",
+      "type": "portrait",
+      "path": "res://assets/portraits/portrait_camp_shadow_cutout.png",
+      "source_doc": "CH-10",
+      "expected_size": [1024, 1536],
+      "aliases": [],
+      "prompt_summary": "营火旁等待的人影，不明确身份"
+    },
+    {
+      "id": "hunter_hollow",
+      "type": "portrait",
+      "path": "res://assets/portraits/portrait_hunter_hollow_cutout.png",
+      "source_doc": "CH-11",
+      "expected_size": [1024, 1536],
+      "aliases": [],
+      "prompt_summary": "忘名猎人敌对状态，脸部像被名字擦掉"
+    },
+    {
+      "id": "hunter_human",
+      "type": "portrait",
+      "path": "res://assets/portraits/portrait_hunter_human_cutout.png",
+      "source_doc": "CH-12",
+      "expected_size": [1024, 1536],
+      "aliases": [],
+      "prompt_summary": "忘名猎人人性回响，疲惫且短暂想起自己"
+    },
+    {
+      "id": "enemy_hollow_wolves",
+      "type": "enemy",
+      "path": "res://assets/enemies/enemy_hollow_wolves_cutout.png",
+      "source_doc": "BT-02",
+      "expected_size": [512, 512],
+      "aliases": [],
+      "prompt_summary": "2-3 只空壳狼组合剪影，灰绿低饱和战斗单位"
+    },
+    {
+      "id": "enemy_nameless_deer",
+      "type": "enemy",
+      "path": "res://assets/enemies/enemy_nameless_deer_cutout.png",
+      "source_doc": "BT-03",
+      "expected_size": [512, 512],
+      "aliases": [],
+      "prompt_summary": "无名鹿，鹿角挂空白名牌，优雅但异化"
+    },
+    {
+      "id": "enemy_hollow_warden",
+      "type": "enemy",
+      "path": "res://assets/enemies/enemy_hollow_warden_cutout.png",
+      "source_doc": "BT-04",
+      "expected_size": [512, 512],
+      "aliases": [],
+      "prompt_summary": "空壳巡林人，人形空壳，拿破旧长矛"
+    },
+    {
+      "id": "boss_nameless_hunter",
+      "type": "enemy",
+      "path": "res://assets/enemies/enemy_boss_nameless_hunter_cutout.png",
+      "source_doc": "BT-05",
+      "expected_size": [512, 512],
+      "aliases": [],
+      "prompt_summary": "忘名猎人 Boss 战斗单位，斗篷、弓、空白脸"
     },
     {
       "id": "icon_memory_mothers_soup",
