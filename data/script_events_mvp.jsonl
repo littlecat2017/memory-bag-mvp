@@ -1,3 +1,6 @@
+{"id":"T0001","type":"tutorial","bg":"bg_village_gate","speaker":"系统","portrait":"system_tutorial","text":"勇者会自动前进并战斗。你不需要控制每一次攻击。"}
+{"id":"T0002","type":"tutorial","bg":"bg_village_gate","speaker":"系统","portrait":"system_tutorial","text":"你真正需要选择的是记忆。记忆会提供能力，也会改变世界对勇者的反应。它们不是私人物品，而是勇者和他人之间的凭证。"}
+{"id":"T0003","type":"tutorial","bg":"bg_forest_path","speaker":"系统","portrait":"system_tutorial","text":"发现记忆不会自动入包。接受记忆时，如果背包已满，会打开替换界面。丢下记忆后，失去的不只是效果，也可能是某个人回应勇者的方式。"}
 {"id":"P0001","type":"line","chapter":"prologue","scene":"village_dawn","bg":"bg_village_dawn","speaker":"旁白","portrait":"none","text":"天亮之前，余火村的钟声响了三次。"}
 {"id":"P0002","type":"line","chapter":"prologue","scene":"village_dawn","bg":"bg_village_dawn","speaker":"旁白","portrait":"none","text":"第一次是为了叫醒还记得自己名字的人。"}
 {"id":"P0003","type":"line","chapter":"prologue","scene":"village_dawn","bg":"bg_village_dawn","speaker":"旁白","portrait":"none","text":"第二次是为了确认谁已经忘了回家的路。"}

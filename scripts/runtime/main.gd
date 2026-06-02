@@ -8,6 +8,7 @@ const BattleRunnerScript := preload("res://scripts/runtime/battle_runner.gd")
 const EndingRunnerScript := preload("res://scripts/runtime/ending_runner.gd")
 const SaveManagerScript := preload("res://scripts/runtime/save_manager.gd")
 const MemoryCardViewScript := preload("res://scripts/ui/memory_card_view.gd")
+const SHOW_DEBUG_TOOLS := false
 
 var registry = DataRegistryScript.new()
 var game_state = GameStateScript.new()
@@ -17,6 +18,7 @@ var battle_runner = BattleRunnerScript.new()
 var ending_runner = EndingRunnerScript.new()
 var save_manager = SaveManagerScript.new()
 var active_script_node_id := ""
+var startup_tutorial_active := false
 var active_ending: Dictionary = {}
 var active_ending_lines: Array[Dictionary] = []
 var active_ending_index := -1
@@ -33,6 +35,11 @@ var ending_summary_reason_label: Label
 var ending_summary_bag_label: Label
 var ending_summary_lost_label: Label
 var ending_summary_stats_label: Label
+var system_hint_panel: PanelContainer
+var system_hint_title_label: Label
+var system_hint_body_label: Label
+var world_feedback_panel: PanelContainer
+var world_feedback_label: Label
 
 var name_label: Label
 var status_label: Label
@@ -116,7 +123,8 @@ func _ready() -> void:
 	script_player.script_finished.connect(_on_script_finished)
 	run_controller.progress_changed.connect(_on_progress_changed)
 	run_controller.node_triggered.connect(_on_run_node_triggered)
-	script_player.start("P0001", "P0037")
+	startup_tutorial_active = true
+	script_player.start("T0001", "T0003")
 
 
 func _process(delta: float) -> void:
@@ -204,11 +212,15 @@ func _build_ui() -> void:
 
 	debug_toggle_button = Button.new()
 	debug_toggle_button.text = "调试"
+	debug_toggle_button.visible = SHOW_DEBUG_TOOLS
 	debug_toggle_button.pressed.connect(_on_debug_toggle_pressed)
 	top_bar.add_child(debug_toggle_button)
 
 	bg_label = Label.new()
 	bg_label.visible = false
+
+	_build_system_hint_panel(root)
+	_build_world_feedback_panel(root)
 
 	dialogue_panel = Control.new()
 	dialogue_panel.anchor_left = 0.04
@@ -460,6 +472,64 @@ func _build_ui() -> void:
 
 	_apply_static_ui_art()
 	_apply_button_texture_style(next_button, "ui_choice_button")
+
+
+func _build_system_hint_panel(root: Control) -> void:
+	system_hint_panel = PanelContainer.new()
+	system_hint_panel.anchor_left = 0.05
+	system_hint_panel.anchor_top = 0.11
+	system_hint_panel.anchor_right = 0.36
+	system_hint_panel.anchor_bottom = 0.31
+	system_hint_panel.visible = false
+	_apply_battle_enemy_style(system_hint_panel, Color(0.055, 0.070, 0.070, 0.82), Color(0.62, 0.52, 0.30, 0.88), 6)
+	root.add_child(system_hint_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	system_hint_panel.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	margin.add_child(box)
+
+	system_hint_title_label = Label.new()
+	system_hint_title_label.text = "玩法提示"
+	system_hint_title_label.add_theme_font_size_override("font_size", 18)
+	system_hint_title_label.add_theme_color_override("font_color", Color(0.98, 0.88, 0.62))
+	box.add_child(system_hint_title_label)
+
+	system_hint_body_label = Label.new()
+	system_hint_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	system_hint_body_label.add_theme_font_size_override("font_size", 15)
+	system_hint_body_label.add_theme_color_override("font_color", Color(0.88, 0.84, 0.74))
+	box.add_child(system_hint_body_label)
+
+
+func _build_world_feedback_panel(root: Control) -> void:
+	world_feedback_panel = PanelContainer.new()
+	world_feedback_panel.anchor_left = 0.65
+	world_feedback_panel.anchor_top = 0.11
+	world_feedback_panel.anchor_right = 0.95
+	world_feedback_panel.anchor_bottom = 0.31
+	world_feedback_panel.visible = false
+	_apply_battle_enemy_style(world_feedback_panel, Color(0.050, 0.045, 0.038, 0.80), Color(0.58, 0.45, 0.25, 0.82), 6)
+	root.add_child(world_feedback_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	world_feedback_panel.add_child(margin)
+
+	world_feedback_label = Label.new()
+	world_feedback_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	world_feedback_label.add_theme_font_size_override("font_size", 15)
+	world_feedback_label.add_theme_color_override("font_color", Color(0.88, 0.82, 0.68))
+	margin.add_child(world_feedback_label)
 
 
 func _build_ending_summary_layer(root: Control) -> void:
@@ -839,6 +909,10 @@ func _on_event_changed(event: Dictionary) -> void:
 
 
 func _on_script_finished() -> void:
+	if startup_tutorial_active:
+		startup_tutorial_active = false
+		script_player.start("P0001", "P0037")
+		return
 	if run_controller.chapter_id.is_empty():
 		run_controller.start_chapter("forest")
 		return
@@ -865,6 +939,7 @@ func _update_static_labels(event: Dictionary) -> void:
 	speaker_label.text = str(event.get("speaker", ""))
 	text_label.text = str(event.get("text", ""))
 	_update_bag_cards()
+	_update_context_panels(event)
 
 
 func _update_bag_cards() -> void:
@@ -1051,6 +1126,7 @@ func _on_confirm_core_discard_pressed() -> void:
 	])
 	_update_header_status()
 	_update_bag_cards()
+	_update_world_feedback_panel()
 
 
 func _on_cancel_core_discard_pressed() -> void:
@@ -1111,6 +1187,7 @@ func _discard_memory_from_drag(memory_id: String) -> void:
 		memory.get("discard_text", "这段记忆被丢进了垃圾堆。"),
 	])
 	_update_header_status()
+	_update_world_feedback_panel()
 
 
 func _accept_pending_into_slot(target_index: int) -> void:
@@ -1164,15 +1241,18 @@ func _move_memory_slot(source_index: int, target_index: int) -> void:
 func _on_save_pressed() -> void:
 	var ok := save_manager.save_to_file(SaveManagerScript.DEFAULT_SAVE_PATH, game_state, run_controller, script_player, _ui_save_context())
 	debug_status_label.text = "调试：已保存" if ok else "调试：%s" % save_manager.last_error
+	_show_system_hint("存档", "已保存当前进度。" if ok else save_manager.last_error)
 
 
 func _on_load_pressed() -> void:
 	var ui := save_manager.load_from_file(SaveManagerScript.DEFAULT_SAVE_PATH, game_state, run_controller, script_player)
 	if save_manager.last_error != "":
 		debug_status_label.text = "调试：%s" % save_manager.last_error
+		_show_system_hint("读取失败", save_manager.last_error)
 		return
 	_restore_ui_context(ui)
 	debug_status_label.text = "调试：已读取"
+	_show_system_hint("读取", "已恢复上一次保存的进度。")
 	_update_bag_cards()
 
 
@@ -1318,6 +1398,7 @@ func _accept_pending_by_discard(memory_id: String) -> void:
 	pending_core_discard_id = ""
 	script_player.finish_memory_replacement()
 	_update_bag_cards()
+	_update_world_feedback_panel()
 
 
 func _chapter_name(chapter_id: String) -> String:
@@ -1383,6 +1464,7 @@ func _show_ending_summary() -> void:
 	if ending_summary_layer == null:
 		return
 	_hide_bottom_ui()
+	_hide_context_panels()
 	var ending_id := str(active_ending.get("id", game_state.current_ending_id))
 	ending_summary_title_label.text = _ending_title(ending_id)
 	ending_summary_subtitle_label.text = "MVP-1 通关回顾"
@@ -1458,6 +1540,7 @@ func _update_battle_labels(event: Dictionary, result: Dictionary) -> void:
 	speaker_label.text = "胜利" if bool(result.get("victory", false)) else "濒死"
 	text_label.text = _compact_battle_log(result.get("logs", []))
 	_update_bag_cards()
+	_update_context_panels(event)
 	_start_battle_stage(event, result)
 
 
@@ -1573,6 +1656,7 @@ func _set_bottom_ui_mode(mode: String) -> void:
 		next_button.visible = show_dialogue and next_button.visible
 	if quick_bag_bar != null:
 		quick_bag_bar.visible = show_backpack
+	_update_world_feedback_visibility()
 
 
 func _show_dialogue_ui() -> void:
@@ -1591,6 +1675,76 @@ func _hide_bottom_ui() -> void:
 	if next_button != null:
 		next_button.visible = false
 	_set_bottom_ui_mode("")
+
+
+func _update_context_panels(event: Dictionary) -> void:
+	var event_type := str(event.get("type", ""))
+	if event_type == "tutorial":
+		_show_system_hint("玩法提示", str(event.get("text", "")))
+	elif event_type == "memory_offer":
+		var memory_id := str(event.get("memory_id", ""))
+		var memory: Dictionary = registry.memories.get(memory_id, {})
+		_show_system_hint(
+			"发现记忆",
+			"%s\n%s" % [
+				memory.get("name", memory_id),
+				memory.get("ui_loss_hint", "记忆会影响能力，也会影响世界回应。"),
+			]
+		)
+	elif event_type == "choice":
+		_show_system_hint("选择", "每个选择都会改变背包和关系凭证。确认前先看清保留与丢下的内容。")
+	elif event_type == "battle":
+		_show_system_hint("自动战斗", "战斗会自动结算。你真正要管理的是下方的记忆背包。")
+	else:
+		_hide_system_hint()
+	_update_world_feedback_panel()
+
+
+func _show_system_hint(title: String, body: String) -> void:
+	if system_hint_panel == null:
+		return
+	system_hint_title_label.text = title
+	system_hint_body_label.text = body
+	system_hint_panel.visible = not body.strip_edges().is_empty()
+
+
+func _hide_system_hint() -> void:
+	if system_hint_panel != null:
+		system_hint_panel.visible = false
+
+
+func _update_world_feedback_panel() -> void:
+	if world_feedback_panel == null:
+		return
+	var recent := _recent_world_feedback_lines(3)
+	if recent.is_empty():
+		world_feedback_label.text = ""
+	else:
+		world_feedback_label.text = "世界回响\n%s" % "\n".join(recent)
+	_update_world_feedback_visibility()
+
+
+func _update_world_feedback_visibility() -> void:
+	if world_feedback_panel == null:
+		return
+	var has_feedback := not world_feedback_label.text.strip_edges().is_empty()
+	var lower_ui_visible := quick_bag_bar != null and quick_bag_bar.visible
+	var overlays_hidden := ending_summary_layer == null or not ending_summary_layer.visible
+	world_feedback_panel.visible = has_feedback and lower_ui_visible and overlays_hidden
+
+
+func _recent_world_feedback_lines(limit: int) -> Array[String]:
+	var result: Array[String] = []
+	var start_index: int = max(0, game_state.world_feedback_history.size() - limit)
+	for index in range(start_index, game_state.world_feedback_history.size()):
+		result.append("· %s" % str(game_state.world_feedback_history[index]))
+	return result
+
+
+func _hide_context_panels() -> void:
+	_hide_system_hint()
+	if world_feedback_panel != null:
+		world_feedback_panel.visible = false
 
 
 func _layout_battle_stage() -> void:

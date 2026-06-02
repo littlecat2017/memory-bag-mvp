@@ -23,6 +23,12 @@ func _verify_standard_start(registry) -> void:
 
 	var player = ScriptPlayerScript.new()
 	player.setup(registry, state)
+	player.start("T0001", "T0003")
+	if state.current_event_id != "T0001":
+		_fail("startup tutorial should begin at T0001, got %s" % state.current_event_id)
+		return
+	while not state.current_event_id.is_empty():
+		player.advance()
 	player.start("P0001")
 
 	var guard := 0
@@ -71,6 +77,9 @@ func _verify_light_start(registry) -> void:
 
 	var player = ScriptPlayerScript.new()
 	player.setup(registry, state)
+	player.start("T0001", "T0003")
+	while not state.current_event_id.is_empty():
+		player.advance()
 	player.start("P0001")
 
 	var guard := 0

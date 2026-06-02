@@ -374,7 +374,9 @@ func _apply_defeat_recovery() -> void:
 	var revive_percent := float(defeat.get("revive_hp_percent", 0.5))
 	var max_hp := int(round(float(stats.get("max_hp", 120))))
 	state.hp = max(1, int(round(float(max_hp) * revive_percent)))
-	_log("勇者重新站起，生命恢复到 %d。" % state.hp)
+	var message := "濒死回退：勇者重新站起，生命恢复到 %d。继续前进会让记忆变得不稳定。" % state.hp
+	_log(message)
+	state.world_feedback_history.append(message)
 	_stage({
 		"type": "revive",
 		"player_hp": state.hp,

@@ -42,6 +42,9 @@ func _init() -> void:
 
 
 func _run_standard_path() -> void:
+	player.start("T0001", "T0003")
+	_expect(state.current_event_id == "T0001", "MVP should start with tutorial T0001")
+	_advance_to_segment_end()
 	player.start("P0001", "P0037")
 	_advance_to_choice("P0034")
 	player.select_choice(0)
