@@ -43,16 +43,20 @@ var portrait_texture_rect: TextureRect
 var travel_stage: Control
 var travel_panel_texture_rect: TextureRect
 var travel_chibi_texture_rect: TextureRect
+var travel_chibi_shadow: PanelContainer
 var travel_step_marker: ColorRect
 var travel_walk_sheet_texture: Texture2D
 var travel_frame_index := 0
 var travel_frame_timer := 0.0
+var travel_chibi_base_top := 0.25
 var battle_stage: Control
 var battle_pressure_rect: ColorRect
 var battle_hero_texture_rect: TextureRect
 var battle_enemy_panel: PanelContainer
 var battle_enemy_texture_rect: TextureRect
+var battle_chibi_hero_shadow: PanelContainer
 var battle_chibi_hero_texture_rect: TextureRect
+var battle_chibi_enemy_shadow: PanelContainer
 var battle_chibi_enemy_texture_rect: TextureRect
 var chibi_hero_attack_sheet_texture: Texture2D
 var battle_enemy_name_label: Label
@@ -61,9 +65,8 @@ var battle_enemy_symbol_label: Label
 var battle_enemy_hp_bar: ProgressBar
 var battle_enemy_hp_label: Label
 var battle_status_label: Label
-var battle_fx_texture_rect: TextureRect
+var battle_slash_layer: Control
 var battle_float_label: Label
-var slash_sheet_texture: Texture2D
 var battle_hero_home := Vector2.ZERO
 var battle_enemy_home := Vector2.ZERO
 var battle_chibi_hero_home := Vector2.ZERO
@@ -76,6 +79,10 @@ var speaker_label: Label
 var text_label: Label
 var bag_grid: GridContainer
 var memory_cards: Array[PanelContainer] = []
+var quick_bag_bar: PanelContainer
+var quick_bag_slots: Array[PanelContainer] = []
+var trash_zone_card
+var found_zone_card
 var next_button: Button
 var choices_box: VBoxContainer
 var replacement_panel: PanelContainer
@@ -377,6 +384,8 @@ func _build_ui() -> void:
 		memory_cards.append(card)
 		bag_grid.add_child(card)
 
+	_build_quick_bag_bar(root)
+
 	next_button = Button.new()
 	next_button.text = "继续"
 	next_button.anchor_left = 0.84
@@ -535,6 +544,51 @@ func _new_summary_label(font_size: int, color: Color) -> Label:
 	return label
 
 
+func _build_quick_bag_bar(root: Control) -> void:
+	quick_bag_bar = PanelContainer.new()
+	quick_bag_bar.anchor_left = 0.15
+	quick_bag_bar.anchor_top = 0.600
+	quick_bag_bar.anchor_right = 0.85
+	quick_bag_bar.anchor_bottom = 0.655
+	quick_bag_bar.mouse_filter = Control.MOUSE_FILTER_PASS
+	_apply_battle_enemy_style(quick_bag_bar, Color(0.035, 0.031, 0.027, 0.66), Color(0.55, 0.43, 0.22, 0.86), 6)
+	root.add_child(quick_bag_bar)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 5)
+	quick_bag_bar.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 6)
+	margin.add_child(row)
+
+	trash_zone_card = MemoryCardViewScript.new()
+	trash_zone_card.set_compact(true)
+	trash_zone_card.set_zone("垃圾堆", "拖入丢弃", "trash")
+	trash_zone_card.configure_drop_target("trash")
+	trash_zone_card.memory_dropped.connect(_on_memory_card_dropped)
+	row.add_child(trash_zone_card)
+
+	for index in range(4):
+		var slot = MemoryCardViewScript.new()
+		slot.set_compact(true)
+		slot.configure_drop_target("bag", index)
+		slot.memory_dropped.connect(_on_memory_card_dropped)
+		quick_bag_slots.append(slot)
+		row.add_child(slot)
+
+	found_zone_card = MemoryCardViewScript.new()
+	found_zone_card.set_compact(true)
+	found_zone_card.set_zone("新发现", "等待拾取", "found")
+	found_zone_card.configure_drop_target("found")
+	found_zone_card.memory_dropped.connect(_on_memory_card_dropped)
+	row.add_child(found_zone_card)
+
+
 func _build_travel_stage(root: Control) -> void:
 	travel_stage = Control.new()
 	travel_stage.anchor_left = 0.08
@@ -558,6 +612,15 @@ func _build_travel_stage(root: Control) -> void:
 	travel_step_marker.anchor_bottom = 0.71
 	travel_step_marker.color = Color(0.95, 0.82, 0.48, 0.26)
 	travel_stage.add_child(travel_step_marker)
+
+	travel_chibi_shadow = PanelContainer.new()
+	travel_chibi_shadow.anchor_left = 0.24
+	travel_chibi_shadow.anchor_top = 0.80
+	travel_chibi_shadow.anchor_right = 0.40
+	travel_chibi_shadow.anchor_bottom = 0.86
+	_apply_chibi_shadow_style(travel_chibi_shadow)
+	travel_chibi_shadow.modulate = Color(1.0, 1.0, 1.0, 0.20)
+	travel_stage.add_child(travel_chibi_shadow)
 
 	travel_chibi_texture_rect = TextureRect.new()
 	travel_chibi_texture_rect.anchor_left = 0.18
@@ -588,11 +651,23 @@ func _build_battle_stage(root: Control) -> void:
 	battle_hero_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	battle_stage.add_child(battle_hero_texture_rect)
 
+	battle_chibi_hero_shadow = PanelContainer.new()
+	battle_chibi_hero_shadow.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_apply_chibi_shadow_style(battle_chibi_hero_shadow)
+	battle_chibi_hero_shadow.modulate = Color(1.0, 1.0, 1.0, 0.22)
+	battle_stage.add_child(battle_chibi_hero_shadow)
+
 	battle_chibi_hero_texture_rect = TextureRect.new()
 	battle_chibi_hero_texture_rect.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	battle_chibi_hero_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	battle_chibi_hero_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	battle_stage.add_child(battle_chibi_hero_texture_rect)
+
+	battle_chibi_enemy_shadow = PanelContainer.new()
+	battle_chibi_enemy_shadow.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_apply_chibi_shadow_style(battle_chibi_enemy_shadow)
+	battle_chibi_enemy_shadow.modulate = Color(1.0, 1.0, 1.0, 0.20)
+	battle_stage.add_child(battle_chibi_enemy_shadow)
 
 	battle_chibi_enemy_texture_rect = TextureRect.new()
 	battle_chibi_enemy_texture_rect.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -663,12 +738,11 @@ func _build_battle_stage(root: Control) -> void:
 	battle_status_label.add_theme_color_override("font_color", Color(0.98, 0.88, 0.62))
 	battle_stage.add_child(battle_status_label)
 
-	battle_fx_texture_rect = TextureRect.new()
-	battle_fx_texture_rect.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	battle_fx_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	battle_fx_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	battle_fx_texture_rect.visible = false
-	battle_stage.add_child(battle_fx_texture_rect)
+	battle_slash_layer = Control.new()
+	battle_slash_layer.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	battle_slash_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	battle_slash_layer.visible = false
+	battle_stage.add_child(battle_slash_layer)
 
 	battle_float_label = Label.new()
 	battle_float_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -742,9 +816,31 @@ func _update_bag_cards() -> void:
 		if index < game_state.owned_memory_ids.size():
 			var memory_id: String = str(game_state.owned_memory_ids[index])
 			var memory: Dictionary = registry.memories.get(memory_id, {})
-			card.set_memory(memory, registry.get_art_asset_for_memory(memory_id))
+			card.configure_drop_target("bag", index)
+			card.set_memory(memory, registry.get_art_asset_for_memory(memory_id), memory_id)
 		else:
+			card.configure_drop_target("bag", index)
 			card.set_empty(index + 1)
+	_update_quick_bag_cards(capacity)
+
+
+func _update_quick_bag_cards(capacity: int) -> void:
+	for index in quick_bag_slots.size():
+		var slot = quick_bag_slots[index]
+		slot.visible = index < capacity
+		slot.configure_drop_target("bag", index)
+		if index < game_state.owned_memory_ids.size():
+			var memory_id: String = str(game_state.owned_memory_ids[index])
+			slot.set_memory(registry.memories.get(memory_id, {}), registry.get_art_asset_for_memory(memory_id), memory_id)
+		else:
+			slot.set_empty(index + 1)
+	if found_zone_card != null:
+		found_zone_card.configure_drop_target("found")
+		if game_state.has_pending_memory():
+			var pending_id: String = game_state.pending_memory_id
+			found_zone_card.set_memory(registry.memories.get(pending_id, {}), registry.get_art_asset_for_memory(pending_id), pending_id)
+		else:
+			found_zone_card.set_zone("新发现", "等待拾取", "found")
 
 
 func _rebuild_choices(event: Dictionary) -> void:
@@ -824,8 +920,9 @@ func _on_memory_replacement_requested(memory_id: String, _next_event_id: String)
 	pending_core_discard_id = ""
 	replacement_confirm_box.visible = false
 	var memory: Dictionary = registry.memories.get(memory_id, {})
-	replacement_new_card.set_memory(memory, registry.get_art_asset_for_memory(memory_id))
+	replacement_new_card.set_memory(memory, registry.get_art_asset_for_memory(memory_id), memory_id)
 	_rebuild_replacement_options()
+	_update_bag_cards()
 
 
 func _rebuild_replacement_options() -> void:
@@ -871,7 +968,21 @@ func _on_discard_for_pending_pressed(memory_id: String) -> void:
 func _on_confirm_core_discard_pressed() -> void:
 	if pending_core_discard_id.is_empty():
 		return
-	_accept_pending_by_discard(pending_core_discard_id)
+	var memory_id := pending_core_discard_id
+	if game_state.has_pending_memory():
+		_accept_pending_by_discard(memory_id)
+		return
+	pending_core_discard_id = ""
+	replacement_panel.visible = false
+	replacement_confirm_box.visible = false
+	game_state.discard_memory(memory_id)
+	var memory: Dictionary = registry.memories.get(memory_id, {})
+	game_state.world_feedback_history.append("%s：%s" % [
+		memory.get("name", memory_id),
+		memory.get("discard_text", "这段核心记忆被丢进了垃圾堆。"),
+	])
+	_update_header_status()
+	_update_bag_cards()
 
 
 func _on_cancel_core_discard_pressed() -> void:
@@ -884,6 +995,90 @@ func _on_decline_pending_memory_pressed() -> void:
 	replacement_panel.visible = false
 	script_player.finish_memory_replacement()
 	_update_bag_cards()
+
+
+func _on_memory_card_dropped(data: Dictionary, target_kind: String, target_index: int) -> void:
+	var memory_id := str(data.get("memory_id", ""))
+	var source_kind := str(data.get("source_kind", ""))
+	var source_index := int(data.get("source_index", -1))
+	if memory_id.is_empty():
+		return
+	if target_kind == "trash":
+		_discard_memory_from_drag(memory_id)
+	elif target_kind == "bag":
+		if source_kind == "found" and game_state.has_pending_memory():
+			_accept_pending_into_slot(target_index)
+		elif source_kind == "card" or source_kind == "bag":
+			_move_memory_slot(source_index, target_index)
+	elif target_kind == "found" and source_kind == "bag":
+		_move_memory_slot(source_index, game_state.owned_memory_ids.size() - 1)
+	_update_bag_cards()
+
+
+func _discard_memory_from_drag(memory_id: String) -> void:
+	if game_state.has_pending_memory() and memory_id == game_state.pending_memory_id:
+		_on_decline_pending_memory_pressed()
+		return
+	var memory: Dictionary = registry.memories.get(memory_id, {})
+	if bool(memory.get("is_core", false)):
+		pending_core_discard_id = memory_id
+		replacement_confirm_label.text = str(registry.balance.get("memory_replace", {}).get("core_confirm_text_by_memory", {}).get(
+			memory_id,
+			registry.balance.get("memory_replace", {}).get("default_confirm_text", "")
+		))
+		replacement_panel.visible = true
+		replacement_confirm_box.visible = true
+		return
+	game_state.discard_memory(memory_id)
+	game_state.world_feedback_history.append("%s：%s" % [
+		memory.get("name", memory_id),
+		memory.get("discard_text", "这段记忆被丢进了垃圾堆。"),
+	])
+	_update_header_status()
+
+
+func _accept_pending_into_slot(target_index: int) -> void:
+	if not game_state.has_pending_memory():
+		return
+	var pending_id: String = game_state.pending_memory_id
+	if target_index >= 0 and target_index < game_state.owned_memory_ids.size():
+		var replaced_id := str(game_state.owned_memory_ids[target_index])
+		var replaced_memory: Dictionary = registry.memories.get(replaced_id, {})
+		if bool(replaced_memory.get("is_core", false)):
+			pending_core_discard_id = replaced_id
+			replacement_new_card.set_memory(registry.memories.get(pending_id, {}), registry.get_art_asset_for_memory(pending_id), pending_id)
+			replacement_confirm_label.text = str(registry.balance.get("memory_replace", {}).get("core_confirm_text_by_memory", {}).get(
+				replaced_id,
+				registry.balance.get("memory_replace", {}).get("default_confirm_text", "")
+			))
+			replacement_panel.visible = true
+			replacement_confirm_box.visible = true
+			return
+		game_state.accept_pending_by_discard(replaced_id, registry)
+	else:
+		game_state.gain_memory(pending_id)
+		game_state.pending_memory_id = ""
+		if target_index >= 0 and target_index < game_state.owned_memory_ids.size():
+			var current_index: int = game_state.owned_memory_ids.find(pending_id)
+			if current_index >= 0 and current_index != target_index:
+				game_state.owned_memory_ids.remove_at(current_index)
+				game_state.owned_memory_ids.insert(target_index, pending_id)
+	replacement_panel.visible = false
+	replacement_confirm_box.visible = false
+	pending_core_discard_id = ""
+	script_player.finish_memory_replacement()
+
+
+func _move_memory_slot(source_index: int, target_index: int) -> void:
+	if source_index < 0 or target_index < 0:
+		return
+	if source_index >= game_state.owned_memory_ids.size() or target_index >= game_state.owned_memory_ids.size():
+		return
+	if source_index == target_index:
+		return
+	var value: String = game_state.owned_memory_ids[source_index]
+	game_state.owned_memory_ids[source_index] = game_state.owned_memory_ids[target_index]
+	game_state.owned_memory_ids[target_index] = value
 
 
 func _on_save_pressed() -> void:
@@ -1210,11 +1405,12 @@ func _apply_static_ui_art() -> void:
 	_set_texture_rect(nameplate_texture_rect, registry.get_art_asset("ui_nameplate", "ui"))
 	_set_texture_rect(bag_panel_texture_rect, registry.get_art_asset("ui_bag_panel", "ui"))
 	_set_texture_rect(travel_panel_texture_rect, registry.get_art_asset("ui_travel_stage_panel", "ui"))
-	slash_sheet_texture = _texture_from_asset(registry.get_art_asset("fx_slash_basic_sheet", "effect_sheet"))
 	travel_walk_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_party_walk_sheet", "chibi_sheet"))
 	chibi_hero_attack_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_hero_attack_sheet", "chibi_sheet"))
 	if travel_walk_sheet_texture != null:
-		travel_chibi_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, 0)
+		travel_chibi_texture_rect.texture = _hero_only_frame_texture(travel_walk_sheet_texture, 0)
+	if chibi_hero_attack_sheet_texture != null:
+		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(chibi_hero_attack_sheet_texture, 0)
 
 
 func _apply_button_texture_style(button: Button, _asset_id: String) -> void:
@@ -1285,16 +1481,18 @@ func _layout_battle_stage() -> void:
 	var size := _viewport_design_size()
 	battle_hero_texture_rect.position = Vector2(size.x * 0.05, size.y * 0.16)
 	battle_hero_texture_rect.size = Vector2(size.x * 0.18, size.y * 0.38)
-	battle_chibi_hero_texture_rect.position = Vector2(size.x * 0.20, size.y * 0.43)
-	battle_chibi_hero_texture_rect.size = Vector2(size.x * 0.20, size.y * 0.24)
-	battle_chibi_enemy_texture_rect.position = Vector2(size.x * 0.61, size.y * 0.49)
-	battle_chibi_enemy_texture_rect.size = Vector2(size.x * 0.19, size.y * 0.25)
+	battle_chibi_hero_texture_rect.position = Vector2(size.x * 0.21, size.y * 0.34)
+	battle_chibi_hero_texture_rect.size = Vector2(size.x * 0.16, size.y * 0.19)
+	battle_chibi_enemy_texture_rect.position = Vector2(size.x * 0.61, size.y * 0.33)
+	battle_chibi_enemy_texture_rect.size = Vector2(size.x * 0.16, size.y * 0.20)
+	_layout_shadow_for(battle_chibi_hero_shadow, battle_chibi_hero_texture_rect, Vector2(0.52, 0.88), Vector2(0.38, 0.075))
+	_layout_shadow_for(battle_chibi_enemy_shadow, battle_chibi_enemy_texture_rect, Vector2(0.50, 0.88), Vector2(0.48, 0.075))
 	battle_enemy_panel.position = Vector2(size.x * 0.74, size.y * 0.11)
 	battle_enemy_panel.size = Vector2(size.x * 0.19, size.y * 0.24)
 	battle_status_label.position = Vector2(size.x * 0.31, size.y * 0.18)
 	battle_status_label.size = Vector2(size.x * 0.38, size.y * 0.08)
-	battle_fx_texture_rect.position = Vector2(size.x * 0.51, size.y * 0.36)
-	battle_fx_texture_rect.size = Vector2(size.x * 0.22, size.y * 0.26)
+	battle_slash_layer.position = Vector2(size.x * 0.50, size.y * 0.34)
+	battle_slash_layer.size = Vector2(size.x * 0.24, size.y * 0.24)
 	battle_float_label.position = Vector2(size.x * 0.56, size.y * 0.31)
 	battle_float_label.size = Vector2(size.x * 0.29, size.y * 0.12)
 	_update_battle_home_positions()
@@ -1315,7 +1513,7 @@ func _apply_modal_panel_style(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", style)
 
 
-func _apply_battle_enemy_style(panel: PanelContainer, bg_color := Color(0.06, 0.055, 0.045, 0.74), border_color := Color(0.60, 0.48, 0.26, 0.90)) -> void:
+func _apply_battle_enemy_style(panel: PanelContainer, bg_color := Color(0.06, 0.055, 0.045, 0.74), border_color := Color(0.60, 0.48, 0.26, 0.90), radius := 8) -> void:
 	var style := StyleBoxFlat.new()
 	style.bg_color = bg_color
 	style.border_color = border_color
@@ -1323,10 +1521,20 @@ func _apply_battle_enemy_style(panel: PanelContainer, bg_color := Color(0.06, 0.
 	style.border_width_top = 2
 	style.border_width_right = 2
 	style.border_width_bottom = 2
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
+	style.corner_radius_top_left = radius
+	style.corner_radius_top_right = radius
+	style.corner_radius_bottom_left = radius
+	style.corner_radius_bottom_right = radius
+	panel.add_theme_stylebox_override("panel", style)
+
+
+func _apply_chibi_shadow_style(panel: PanelContainer) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.0, 0.0, 0.0, 1.0)
+	style.corner_radius_top_left = 24
+	style.corner_radius_top_right = 24
+	style.corner_radius_bottom_left = 24
+	style.corner_radius_bottom_right = 24
 	panel.add_theme_stylebox_override("panel", style)
 
 
@@ -1351,6 +1559,41 @@ func _sheet_frame_texture(texture: Texture2D, frame: int, columns := 3, rows := 
 	return atlas
 
 
+func _hero_only_frame_texture(texture: Texture2D, frame: int) -> AtlasTexture:
+	var atlas := _sheet_frame_texture(texture, frame)
+	if atlas == null:
+		return null
+	var region := atlas.region
+	region.position.x += region.size.x * 0.46
+	region.size.x *= 0.44
+	atlas.region = region
+	return atlas
+
+
+func _layout_shadow_for(shadow: Control, sprite: Control, center: Vector2, scale: Vector2) -> void:
+	if shadow == null or sprite == null:
+		return
+	shadow.position = sprite.position + Vector2(sprite.size.x * (center.x - scale.x * 0.5), sprite.size.y * center.y)
+	shadow.size = Vector2(sprite.size.x * scale.x, max(4.0, sprite.size.y * scale.y))
+
+
+func _shadow_position_for(shadow: Control, sprite: Control, target_position: Vector2) -> Vector2:
+	if shadow == null or sprite == null:
+		return target_position
+	return target_position + (shadow.position - sprite.position)
+
+
+func _update_battle_chibi_shadows() -> void:
+	_layout_shadow_for(battle_chibi_hero_shadow, battle_chibi_hero_texture_rect, Vector2(0.52, 0.88), Vector2(0.38, 0.075))
+	_layout_shadow_for(battle_chibi_enemy_shadow, battle_chibi_enemy_texture_rect, Vector2(0.50, 0.88), Vector2(0.48, 0.075))
+	if battle_chibi_hero_shadow != null:
+		battle_chibi_hero_shadow.visible = battle_chibi_hero_texture_rect.visible
+		battle_chibi_hero_shadow.modulate = Color(1.0, 1.0, 1.0, 0.22)
+	if battle_chibi_enemy_shadow != null:
+		battle_chibi_enemy_shadow.visible = battle_chibi_enemy_texture_rect.visible
+		battle_chibi_enemy_shadow.modulate = Color(1.0, 1.0, 1.0, 0.20)
+
+
 func _update_travel_stage_animation(delta: float) -> void:
 	if travel_stage == null:
 		return
@@ -1365,15 +1608,24 @@ func _update_travel_stage_animation(delta: float) -> void:
 	if travel_frame_timer >= 0.12:
 		travel_frame_timer = 0.0
 		travel_frame_index = (travel_frame_index + 1) % 9
-		travel_chibi_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, travel_frame_index)
+		travel_chibi_texture_rect.texture = _hero_only_frame_texture(travel_walk_sheet_texture, travel_frame_index)
 	var progress_ratio := 0.0
 	if not run_controller.chapter_id.is_empty():
 		var distance := _chapter_distance_for(run_controller.chapter_id)
 		if distance > 0.0:
 			progress_ratio = clamp(run_controller.progress / distance, 0.0, 1.0)
-	var drift := sin(Time.get_ticks_msec() / 180.0) * 0.012
-	travel_chibi_texture_rect.anchor_left = 0.14 + progress_ratio * 0.18 + drift
-	travel_chibi_texture_rect.anchor_right = travel_chibi_texture_rect.anchor_left + 0.30
+	var time := Time.get_ticks_msec() / 1000.0
+	var drift := sin(time * 5.5) * 0.010
+	var bob := sin(time * 12.0) * 0.010
+	travel_chibi_texture_rect.anchor_left = 0.22 + progress_ratio * 0.22 + drift
+	travel_chibi_texture_rect.anchor_right = travel_chibi_texture_rect.anchor_left + 0.20
+	travel_chibi_texture_rect.anchor_top = travel_chibi_base_top + bob
+	travel_chibi_texture_rect.anchor_bottom = 0.86 + bob
+	travel_chibi_shadow.anchor_left = travel_chibi_texture_rect.anchor_left + 0.055
+	travel_chibi_shadow.anchor_right = travel_chibi_texture_rect.anchor_left + 0.155
+	travel_chibi_shadow.anchor_top = 0.81
+	travel_chibi_shadow.anchor_bottom = 0.855
+	travel_chibi_shadow.modulate = Color(1.0, 1.0, 1.0, 0.18 + abs(bob) * 4.0)
 
 
 func _should_show_travel_stage() -> bool:
@@ -1397,20 +1649,21 @@ func _start_battle_stage(event: Dictionary, result: Dictionary) -> void:
 	battle_status_label.text = "战斗开始"
 	_set_texture_rect(battle_hero_texture_rect, registry.get_art_asset("hero_default", "portrait"))
 	battle_hero_texture_rect.modulate = Color(1.0, 1.0, 1.0, 0.40)
-	if travel_walk_sheet_texture != null:
-		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, 0)
+	if chibi_hero_attack_sheet_texture != null:
+		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(chibi_hero_attack_sheet_texture, 0)
 	battle_chibi_hero_texture_rect.visible = battle_chibi_hero_texture_rect.texture != null
 	var enemy_name := _battle_enemy_name(event, result)
 	battle_enemy_name_label.text = enemy_name
 	_apply_battle_enemy_identity(_battle_enemy_id(event, result), [])
 	_update_enemy_hp_display(1, 1)
 	battle_float_label.visible = false
-	battle_fx_texture_rect.visible = false
+	battle_slash_layer.visible = false
 	_update_battle_home_positions()
 	battle_hero_texture_rect.position = battle_hero_home
 	battle_chibi_hero_texture_rect.position = battle_chibi_hero_home
 	battle_chibi_enemy_texture_rect.position = battle_chibi_enemy_home
 	battle_enemy_panel.position = battle_enemy_home
+	_update_battle_chibi_shadows()
 
 
 func _play_battle_result_then_resume(result: Dictionary) -> void:
@@ -1483,6 +1736,8 @@ func _animate_player_attack(event: Dictionary) -> void:
 	var out := create_tween()
 	out.set_parallel(true)
 	out.tween_property(battle_chibi_hero_texture_rect, "position", lunge_target, 0.12)
+	out.tween_property(battle_chibi_hero_shadow, "position", _shadow_position_for(battle_chibi_hero_shadow, battle_chibi_hero_texture_rect, lunge_target), 0.12)
+	out.tween_property(battle_chibi_hero_shadow, "modulate", Color(1.0, 1.0, 1.0, 0.30), 0.12)
 	out.tween_property(battle_chibi_hero_texture_rect, "scale", Vector2(1.08, 1.08), 0.12)
 	await out.finished
 	await _play_chibi_attack_effect()
@@ -1495,13 +1750,17 @@ func _animate_player_attack(event: Dictionary) -> void:
 	var hit := create_tween()
 	hit.set_parallel(true)
 	hit.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home + Vector2(16, 0), 0.06)
+	hit.tween_property(battle_chibi_enemy_shadow, "position", _shadow_position_for(battle_chibi_enemy_shadow, battle_chibi_enemy_texture_rect, battle_chibi_enemy_home + Vector2(16, 0)), 0.06)
 	hit.tween_property(battle_chibi_enemy_texture_rect, "modulate", Color(1.0, 0.65, 0.58, 1.0), 0.06)
 	await hit.finished
 	var back := create_tween()
 	back.set_parallel(true)
 	back.tween_property(battle_chibi_hero_texture_rect, "position", battle_chibi_hero_home, 0.16)
+	back.tween_property(battle_chibi_hero_shadow, "position", _shadow_position_for(battle_chibi_hero_shadow, battle_chibi_hero_texture_rect, battle_chibi_hero_home), 0.16)
+	back.tween_property(battle_chibi_hero_shadow, "modulate", Color(1.0, 1.0, 1.0, 0.22), 0.16)
 	back.tween_property(battle_chibi_hero_texture_rect, "scale", Vector2.ONE, 0.16)
 	back.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home, 0.10)
+	back.tween_property(battle_chibi_enemy_shadow, "position", _shadow_position_for(battle_chibi_enemy_shadow, battle_chibi_enemy_texture_rect, battle_chibi_enemy_home), 0.10)
 	back.tween_property(battle_chibi_enemy_texture_rect, "modulate", Color.WHITE, 0.10)
 	await back.finished
 
@@ -1509,19 +1768,24 @@ func _animate_player_attack(event: Dictionary) -> void:
 func _animate_enemy_attack(event: Dictionary) -> void:
 	battle_status_label.text = "%s 反击" % str(event.get("enemy_name", "敌人"))
 	var out := create_tween()
+	out.set_parallel(true)
 	out.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home + Vector2(-56, 0), 0.10)
+	out.tween_property(battle_chibi_enemy_shadow, "position", _shadow_position_for(battle_chibi_enemy_shadow, battle_chibi_enemy_texture_rect, battle_chibi_enemy_home + Vector2(-56, 0)), 0.10)
 	await out.finished
 	_show_damage_text("勇者 -%d" % int(event.get("damage", 0)), Color(1.0, 0.48, 0.43), Vector2(0.10, 0.30))
 	var hit := create_tween()
 	hit.set_parallel(true)
 	hit.tween_property(battle_chibi_hero_texture_rect, "modulate", Color(1.0, 0.66, 0.62, 1.0), 0.06)
 	hit.tween_property(battle_chibi_hero_texture_rect, "position", battle_chibi_hero_home + Vector2(-14, 0), 0.06)
+	hit.tween_property(battle_chibi_hero_shadow, "position", _shadow_position_for(battle_chibi_hero_shadow, battle_chibi_hero_texture_rect, battle_chibi_hero_home + Vector2(-14, 0)), 0.06)
 	await hit.finished
 	var back := create_tween()
 	back.set_parallel(true)
 	back.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home, 0.12)
+	back.tween_property(battle_chibi_enemy_shadow, "position", _shadow_position_for(battle_chibi_enemy_shadow, battle_chibi_enemy_texture_rect, battle_chibi_enemy_home), 0.12)
 	back.tween_property(battle_chibi_hero_texture_rect, "modulate", Color.WHITE, 0.10)
 	back.tween_property(battle_chibi_hero_texture_rect, "position", battle_chibi_hero_home, 0.10)
+	back.tween_property(battle_chibi_hero_shadow, "position", _shadow_position_for(battle_chibi_hero_shadow, battle_chibi_hero_texture_rect, battle_chibi_hero_home), 0.10)
 	await back.finished
 
 
@@ -1534,11 +1798,13 @@ func _animate_boss_appear() -> void:
 	tween.tween_property(battle_pressure_rect, "color", Color(0.20, 0.02, 0.04, 0.28), 0.22)
 	tween.tween_property(battle_enemy_panel, "scale", Vector2(1.05, 1.05), 0.18)
 	tween.tween_property(battle_chibi_enemy_texture_rect, "scale", Vector2(1.08, 1.08), 0.18)
+	tween.tween_property(battle_chibi_enemy_shadow, "scale", Vector2(1.12, 1.0), 0.18)
 	await tween.finished
 	var settle := create_tween()
 	settle.set_parallel(true)
 	settle.tween_property(battle_enemy_panel, "scale", Vector2.ONE, 0.12)
 	settle.tween_property(battle_chibi_enemy_texture_rect, "scale", Vector2.ONE, 0.12)
+	settle.tween_property(battle_chibi_enemy_shadow, "scale", Vector2.ONE, 0.12)
 	await settle.finished
 
 
@@ -1552,12 +1818,14 @@ func _animate_boss_pressure(message: String) -> void:
 	shake.set_parallel(true)
 	shake.tween_property(battle_enemy_panel, "position", battle_enemy_home + Vector2(-10, 0), 0.05)
 	shake.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home + Vector2(-14, 0), 0.05)
+	shake.tween_property(battle_chibi_enemy_shadow, "position", _shadow_position_for(battle_chibi_enemy_shadow, battle_chibi_enemy_texture_rect, battle_chibi_enemy_home + Vector2(-14, 0)), 0.05)
 	shake.tween_property(battle_pressure_rect, "color", Color(0.30, 0.02, 0.06, 0.34), 0.05)
 	await shake.finished
 	var back := create_tween()
 	back.set_parallel(true)
 	back.tween_property(battle_enemy_panel, "position", battle_enemy_home, 0.08)
 	back.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home, 0.08)
+	back.tween_property(battle_chibi_enemy_shadow, "position", _shadow_position_for(battle_chibi_enemy_shadow, battle_chibi_enemy_texture_rect, battle_chibi_enemy_home), 0.08)
 	back.tween_property(battle_pressure_rect, "color", Color(0.20, 0.02, 0.04, 0.24), 0.12)
 	await back.finished
 
@@ -1576,18 +1844,40 @@ func _animate_battle_notice(message: String, color: Color) -> void:
 
 
 func _play_slash_effect() -> void:
-	if slash_sheet_texture == null:
+	if battle_slash_layer == null:
 		return
-	battle_fx_texture_rect.visible = true
-	battle_fx_texture_rect.modulate = Color(1.0, 1.0, 1.0, 0.95)
-	battle_fx_texture_rect.scale = Vector2(1.0, 1.0)
-	for frame in range(9):
-		var atlas := AtlasTexture.new()
-		atlas.atlas = slash_sheet_texture
-		atlas.region = Rect2((frame % 3) * 512, int(frame / 3) * 512, 512, 512)
-		battle_fx_texture_rect.texture = atlas
-		await get_tree().create_timer(0.035).timeout
-	battle_fx_texture_rect.visible = false
+	for child in battle_slash_layer.get_children():
+		child.queue_free()
+	battle_slash_layer.visible = true
+	battle_slash_layer.modulate = Color.WHITE
+	var main_slash := _new_slash_line(7.0, Color(1.0, 1.0, 1.0, 0.96))
+	var glow_slash := _new_slash_line(18.0, Color(0.78, 0.88, 1.0, 0.24))
+	var spark := _new_slash_line(3.0, Color(1.0, 0.92, 0.70, 0.78), Vector2(0.26, 0.72), Vector2(0.92, 0.18))
+	battle_slash_layer.add_child(glow_slash)
+	battle_slash_layer.add_child(main_slash)
+	battle_slash_layer.add_child(spark)
+	battle_slash_layer.scale = Vector2(0.74, 0.74)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(battle_slash_layer, "scale", Vector2(1.08, 1.08), 0.11)
+	tween.tween_property(battle_slash_layer, "modulate", Color(1, 1, 1, 0), 0.18).set_delay(0.06)
+	await tween.finished
+	battle_slash_layer.visible = false
+
+
+func _new_slash_line(width: float, color: Color, from := Vector2(0.14, 0.82), to := Vector2(0.86, 0.12)) -> Line2D:
+	var line := Line2D.new()
+	var size := battle_slash_layer.size
+	line.points = PackedVector2Array([
+		Vector2(size.x * from.x, size.y * from.y),
+		Vector2(size.x * to.x, size.y * to.y),
+	])
+	line.width = width
+	line.default_color = color
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	line.joint_mode = Line2D.LINE_JOINT_ROUND
+	return line
 
 
 func _play_chibi_attack_effect() -> void:
@@ -1596,8 +1886,8 @@ func _play_chibi_attack_effect() -> void:
 	for frame in range(9):
 		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(chibi_hero_attack_sheet_texture, frame)
 		await get_tree().create_timer(0.035).timeout
-	if travel_walk_sheet_texture != null:
-		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, 0)
+	if chibi_hero_attack_sheet_texture != null:
+		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(chibi_hero_attack_sheet_texture, 0)
 
 
 func _show_damage_text(text: String, color: Color, anchor := Vector2(0.56, 0.22)) -> void:
@@ -1628,7 +1918,7 @@ func _finish_battle_stage() -> void:
 	if battle_stage == null:
 		return
 	battle_status_label.text = "战斗结束"
-	battle_fx_texture_rect.visible = false
+	battle_slash_layer.visible = false
 	battle_float_label.visible = false
 	battle_pressure_rect.visible = false
 	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
@@ -1650,7 +1940,10 @@ func _finish_battle_stage() -> void:
 	battle_hero_texture_rect.scale = Vector2.ONE
 	battle_chibi_hero_texture_rect.scale = Vector2.ONE
 	battle_chibi_enemy_texture_rect.scale = Vector2.ONE
+	battle_chibi_hero_shadow.scale = Vector2.ONE
+	battle_chibi_enemy_shadow.scale = Vector2.ONE
 	battle_enemy_panel.scale = Vector2.ONE
+	_update_battle_chibi_shadows()
 
 
 func _cancel_battle_animation() -> void:
@@ -1659,7 +1952,7 @@ func _cancel_battle_animation() -> void:
 		return
 	battle_stage.visible = false
 	battle_stage.modulate = Color.WHITE
-	battle_fx_texture_rect.visible = false
+	battle_slash_layer.visible = false
 	battle_float_label.visible = false
 	battle_pressure_rect.visible = false
 	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
@@ -1674,7 +1967,10 @@ func _cancel_battle_animation() -> void:
 	battle_hero_texture_rect.scale = Vector2.ONE
 	battle_chibi_hero_texture_rect.scale = Vector2.ONE
 	battle_chibi_enemy_texture_rect.scale = Vector2.ONE
+	battle_chibi_hero_shadow.scale = Vector2.ONE
+	battle_chibi_enemy_shadow.scale = Vector2.ONE
 	battle_enemy_panel.scale = Vector2.ONE
+	_update_battle_chibi_shadows()
 
 
 func _update_battle_home_positions() -> void:
@@ -1714,6 +2010,7 @@ func _apply_battle_enemy_identity(enemy_id: String, tags: Array[String]) -> void
 	var chibi_enemy_texture := _chibi_enemy_texture(enemy_id)
 	battle_chibi_enemy_texture_rect.texture = chibi_enemy_texture
 	battle_chibi_enemy_texture_rect.visible = chibi_enemy_texture != null
+	battle_chibi_enemy_shadow.visible = chibi_enemy_texture != null
 	battle_enemy_texture_rect.texture = chibi_enemy_texture
 	battle_enemy_texture_rect.visible = chibi_enemy_texture != null
 	battle_enemy_symbol_label.text = str(profile.get("symbol", "◇"))

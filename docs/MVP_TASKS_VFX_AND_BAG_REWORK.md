@@ -211,3 +211,56 @@ image2 消耗控制：
 - 不在没有验证的情况下重做所有 Q 版角色。
 - 不把背包系统做成复杂装备/合成系统。
 - 不改写 `docs/source/` 原始策划文档；本文件作为当前实现任务文档维护。
+
+## 7. 2026-06-02 本轮执行结果
+
+已完成：
+
+- 斩击特效改为 Godot 程序化 `Line2D` 刀光，不再播放有抠图风险的 `fx_slash_basic_sheet` 位图特效。
+- 行走小窗继续使用 3x3 行走图，但裁剪为主角显示，并加入轻微上下起伏与脚底阴影，去掉看起来像绿色幽灵的回响角色。
+- 战斗待机改用纯主角攻击序列第 1 帧，不再从三人行走图里裁主角，避免战斗画面出现绿色残影。
+- 战斗 Q 版主角和敌人加入脚底阴影、位移同步和受击/冲刺同步，角色与地面关系更清楚。
+- 主屏幕下方中心新增常驻记忆背包操作条：
+  - 左侧为“垃圾堆”。
+  - 中间为 4 格 MVP 记忆背包。
+  - 右侧为“新发现”。
+- `MemoryCardView` 支持紧凑模式、拖拽数据、拖放接收和区域卡片。
+- 背包拖拽行为已接入：
+  - 背包格之间可交换位置。
+  - 普通记忆拖入垃圾堆会立即丢弃并刷新状态。
+  - 核心记忆拖入垃圾堆会弹二次确认；没有待替换新记忆时，确认后直接丢弃该核心记忆。
+  - 新发现记忆可拖入空格；满包时可拖到目标格替换旧记忆；目标格是核心记忆时必须先二次确认。
+- 底部布局已重排，常驻背包条位于对话框上方，不遮挡对话文本、角色脚底或战斗信息面板。
+- 新增自动验证：
+  - `verify_quick_bag_interaction.gd`
+  - `verify_visual_layout_bounds.gd`
+
+测试结果：
+
+- `tools/validate_json_data.py` 通过。
+- 完整 headless 验证集通过：
+  - `verify_prologue.gd`
+  - `verify_memory_cards.gd`
+  - `verify_memory_replacement.gd`
+  - `verify_quick_bag_interaction.gd`
+  - `verify_run_flow.gd`
+  - `verify_battle.gd`
+  - `verify_run_battle_flow.gd`
+  - `verify_mvp_endings.gd`
+  - `verify_ending_summary_ui.gd`
+  - `verify_save_debug.gd`
+  - `verify_art_assets.gd`
+  - `verify_visual_layout_bounds.gd`
+  - `verify_full_game_flow.gd`
+- `capture_ui_snapshots.gd` 重新导出 `temp/ui_snapshots/`，检查行走、普通战斗、Boss 战和结尾回顾无明显遮挡。
+- `capture_motion_keyframes.gd` 重新导出 `temp/motion_review/keyframes_contact_sheet.png`，检查行走、冲刺、斩击和 Boss 压迫关键帧。
+
+image2 消耗：
+
+- 本轮没有调用 image2。
+- 2026-06-02 本日图片生成消耗保持 18 / 50。
+
+后续判断：
+
+- 30 帧序列帧仍可作为后续试验，但本轮先用程序化 motion polish 处理 9 帧资源，已经足够支撑 MVP 验收。
+- 背包系统已经从“查看面板”升级为主屏幕常驻操作核心；后续更适合继续做道具/记忆事件反馈、音效和正式试玩包收口。
