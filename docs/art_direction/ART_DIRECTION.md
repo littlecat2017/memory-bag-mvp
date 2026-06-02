@@ -314,6 +314,34 @@
 - 如果优先“主题贴合”和降低 AI 味，选 C 做基础，再补 B 的角色线条清晰度和 A 的 UI 可读性。
 - 当前更推荐 C 作为气质母版，B 作为角色/敌人精修参考，A 作为背包结构和交互可读性参考。
 
+## 12. A 版主角 Q 版动作试稿
+
+试稿文件：
+- 主角标准图：`docs/art_direction/chibi_trials/hero_chibi_a_reference.png`
+- 走路九宫格：`docs/art_direction/chibi_trials/hero_chibi_a_walk_3x3_ordered.png`
+- 挥剑九宫格：`docs/art_direction/chibi_trials/hero_chibi_a_attack_3x3_ordered.png`
+
+本轮目标：
+- 以 A 版成熟气质为基础，重新定义主角 Q 版标准形象。
+- 验证 image2 能否按参考图保持角色一致性。
+- 明确九宫格读取顺序，避免动作帧乱序。
+
+九宫格提示词规则：
+- `3 columns x 3 rows`。
+- 按照从左到右、从上到下读取。
+- 第 1 帧为左上，第 9 帧为右下。
+- 提示词必须逐帧列出动作，要求动作从第 1 帧到第 9 帧按时间顺序推进。
+
+视觉检查结论：
+- 主角标准图成熟度比旧 Q 版素材更好，适合版本 A。
+- 走路九宫格顺序基本可读，角色一致性较好，动作更像持剑行走/慢跑。
+- 挥剑九宫格动作顺序明显改善，但第 3 帧和第 7 帧存在较大身体转向；如果直接接入，动作会有更强扭身感。
+
+下一步接入建议：
+- 先让用户确认挥剑表是否接受“扭身挥剑”。
+- 如果接受，则本地抠绿、裁切、替换 `assets/chibi/chibi_hero_walk_sheet.png` 和 `assets/chibi/chibi_hero_attack_sheet.png`。
+- 如果不接受，则重做一张“全程面向右、无背向转身”的保守挥剑表，再接入。
+
 ## 7. 后续生成提示词基线
 
 通用正向：
