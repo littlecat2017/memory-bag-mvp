@@ -37,6 +37,13 @@ func _run() -> void:
 	main.debug_jump_to_event("F0003")
 	await _settle()
 	_save_snapshot("04_battle_stage.png")
+	main._on_debug_force_ending_pressed("mvp_named_with_reason")
+	await _settle()
+	main._on_next_pressed()
+	await _settle()
+	main._on_next_pressed()
+	await _settle()
+	_save_snapshot("05_ending_summary.png")
 	main.queue_free()
 	viewport.queue_free()
 	await process_frame

@@ -25,6 +25,14 @@ var debug_panel: PanelContainer
 var bag_panel: Control
 var bag_toggle_button: Button
 var debug_toggle_button: Button
+var ending_summary_layer: Control
+var ending_summary_title_label: Label
+var ending_summary_subtitle_label: Label
+var ending_summary_name_label: Label
+var ending_summary_reason_label: Label
+var ending_summary_bag_label: Label
+var ending_summary_lost_label: Label
+var ending_summary_stats_label: Label
 
 var name_label: Label
 var status_label: Label
@@ -44,6 +52,7 @@ var battle_float_label: Label
 var slash_sheet_texture: Texture2D
 var battle_hero_home := Vector2.ZERO
 var battle_enemy_home := Vector2.ZERO
+var battle_animation_generation := 0
 var dialogue_texture_rect: TextureRect
 var nameplate_texture_rect: TextureRect
 var bag_panel_texture_rect: TextureRect
@@ -418,8 +427,94 @@ func _build_ui() -> void:
 	debug_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	debug_box.add_child(debug_status_label)
 
+	_build_ending_summary_layer(root)
+
 	_apply_static_ui_art()
 	_apply_button_texture_style(next_button, "ui_choice_button")
+
+
+func _build_ending_summary_layer(root: Control) -> void:
+	ending_summary_layer = Control.new()
+	ending_summary_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ending_summary_layer.visible = false
+	root.add_child(ending_summary_layer)
+
+	var shade := ColorRect.new()
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.color = Color(0.0, 0.0, 0.0, 0.46)
+	ending_summary_layer.add_child(shade)
+
+	var panel := PanelContainer.new()
+	_apply_modal_panel_style(panel)
+	panel.anchor_left = 0.18
+	panel.anchor_top = 0.13
+	panel.anchor_right = 0.82
+	panel.anchor_bottom = 0.84
+	ending_summary_layer.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 30)
+	margin.add_theme_constant_override("margin_top", 26)
+	margin.add_theme_constant_override("margin_right", 30)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	panel.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	margin.add_child(box)
+
+	ending_summary_title_label = Label.new()
+	ending_summary_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ending_summary_title_label.add_theme_font_size_override("font_size", 31)
+	ending_summary_title_label.add_theme_color_override("font_color", Color(0.98, 0.88, 0.62))
+	box.add_child(ending_summary_title_label)
+
+	ending_summary_subtitle_label = Label.new()
+	ending_summary_subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ending_summary_subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ending_summary_subtitle_label.add_theme_font_size_override("font_size", 18)
+	ending_summary_subtitle_label.add_theme_color_override("font_color", Color(0.86, 0.82, 0.72))
+	box.add_child(ending_summary_subtitle_label)
+
+	var divider := HSeparator.new()
+	box.add_child(divider)
+
+	ending_summary_name_label = _new_summary_label(21, Color(0.93, 0.89, 0.78))
+	box.add_child(ending_summary_name_label)
+
+	ending_summary_reason_label = _new_summary_label(21, Color(0.93, 0.89, 0.78))
+	box.add_child(ending_summary_reason_label)
+
+	ending_summary_bag_label = _new_summary_label(18, Color(0.82, 0.78, 0.67))
+	box.add_child(ending_summary_bag_label)
+
+	ending_summary_lost_label = _new_summary_label(18, Color(0.82, 0.78, 0.67))
+	box.add_child(ending_summary_lost_label)
+
+	ending_summary_stats_label = _new_summary_label(17, Color(0.76, 0.72, 0.63))
+	box.add_child(ending_summary_stats_label)
+
+	var button_row := HBoxContainer.new()
+	button_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	button_row.add_theme_constant_override("separation", 10)
+	box.add_child(button_row)
+
+	var close_button := Button.new()
+	close_button.text = "关闭回顾"
+	close_button.custom_minimum_size = Vector2(150, 46)
+	close_button.add_theme_font_size_override("font_size", 18)
+	close_button.add_theme_color_override("font_color", Color(0.94, 0.90, 0.78))
+	close_button.pressed.connect(func(): ending_summary_layer.visible = false)
+	_apply_flat_button_style(close_button)
+	button_row.add_child(close_button)
+
+
+func _new_summary_label(font_size: int, color: Color) -> Label:
+	var label := Label.new()
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	return label
 
 
 func _build_battle_stage(root: Control) -> void:
@@ -789,6 +884,8 @@ func _on_debug_jump_pressed(event_id: String) -> void:
 
 
 func debug_jump_to_event(event_id: String) -> void:
+	_cancel_battle_animation()
+	_hide_ending_summary()
 	active_ending_lines.clear()
 	active_ending = {}
 	active_ending_index = -1
@@ -890,6 +987,8 @@ func _should_start_mvp_ending() -> bool:
 
 
 func _start_mvp_ending() -> void:
+	_cancel_battle_animation()
+	_hide_ending_summary()
 	run_controller.pause()
 	active_script_node_id = ""
 	active_ending = ending_runner.evaluate_mvp_ending()
@@ -914,6 +1013,7 @@ func _advance_ending() -> void:
 		next_button.visible = false
 		active_ending_lines.clear()
 		_update_bag_cards()
+		_show_ending_summary()
 		return
 	var line: Dictionary = active_ending_lines[active_ending_index]
 	name_label.text = "名字：%s" % game_state.display_name
@@ -929,6 +1029,70 @@ func _advance_ending() -> void:
 	next_button.visible = true
 	next_button.text = "继续" if active_ending_index + 1 < active_ending_lines.size() else "结束"
 	_update_bag_cards()
+
+
+func _show_ending_summary() -> void:
+	if ending_summary_layer == null:
+		return
+	var ending_id := str(active_ending.get("id", game_state.current_ending_id))
+	ending_summary_title_label.text = _ending_title(ending_id)
+	ending_summary_subtitle_label.text = "MVP-1 通关回顾"
+	ending_summary_name_label.text = _memory_state_line(
+		"名字",
+		"mem_my_name",
+		"世界还能叫出 %s。" % game_state.display_name,
+		"名字已经留在森林里，世界只能称他为%s。" % game_state.display_name
+	)
+	ending_summary_reason_label.text = _memory_state_line(
+		"出发理由",
+		"mem_reason_to_depart",
+		"莉娅的托付仍在背包中。",
+		"莉娅的托付已经失落，胜利少了来处。"
+	)
+	ending_summary_bag_label.text = "保留的记忆：%s" % _memory_names(game_state.owned_memory_ids)
+	ending_summary_lost_label.text = "丢失的记忆：%s" % _memory_names(game_state.discarded_memory_ids)
+	ending_summary_stats_label.text = "通关状态：HP %d  ·  等级 %d  ·  金币 %d  ·  记忆碎片 %d" % [
+		game_state.hp,
+		game_state.level,
+		game_state.gold,
+		game_state.memory_fragment,
+	]
+	ending_summary_layer.visible = true
+
+
+func _hide_ending_summary() -> void:
+	if ending_summary_layer != null:
+		ending_summary_layer.visible = false
+
+
+func _ending_title(ending_id: String) -> String:
+	match ending_id:
+		"mvp_named_with_reason":
+			return "结局：名字与理由仍在"
+		"mvp_named_without_reason":
+			return "结局：名字仍在，理由失落"
+		"mvp_nameless_with_reason":
+			return "结局：无名者仍记得理由"
+		"mvp_nameless_without_reason":
+			return "结局：没有名字，也没有来处"
+		_:
+			return "结局：未记录"
+
+
+func _memory_state_line(label: String, memory_id: String, kept_text: String, lost_text: String) -> String:
+	if game_state.has_memory(memory_id):
+		return "%s：保留  ·  %s" % [label, kept_text]
+	return "%s：失去  ·  %s" % [label, lost_text]
+
+
+func _memory_names(memory_ids: Array[String]) -> String:
+	if memory_ids.is_empty():
+		return "无"
+	var names: Array[String] = []
+	for memory_id in memory_ids:
+		var memory: Dictionary = registry.memories.get(memory_id, {})
+		names.append(str(memory.get("name", memory_id)))
+	return " / ".join(names)
 
 
 func _update_battle_labels(event: Dictionary, result: Dictionary) -> void:
@@ -1083,6 +1247,7 @@ func _texture_from_asset(art_asset: Dictionary) -> Texture2D:
 func _start_battle_stage(event: Dictionary, result: Dictionary) -> void:
 	if battle_stage == null:
 		return
+	battle_animation_generation += 1
 	battle_stage.visible = true
 	battle_status_label.text = "战斗开始"
 	_set_texture_rect(battle_hero_texture_rect, registry.get_art_asset("hero_default", "portrait"))
@@ -1097,17 +1262,23 @@ func _start_battle_stage(event: Dictionary, result: Dictionary) -> void:
 
 
 func _play_battle_result_then_resume(result: Dictionary) -> void:
-	await _play_battle_timeline(result.get("timeline", []))
+	var generation := battle_animation_generation
+	await _play_battle_timeline(result.get("timeline", []), generation)
+	if generation != battle_animation_generation:
+		return
 	run_controller.resume()
 
 
-func _play_battle_timeline(events) -> void:
+func _play_battle_timeline(events, generation: int) -> void:
 	if typeof(events) != TYPE_ARRAY or events.is_empty():
 		await get_tree().create_timer(0.45).timeout
-		await _finish_battle_stage()
+		if generation == battle_animation_generation:
+			await _finish_battle_stage()
 		return
 	var played := 0
 	for event in events:
+		if generation != battle_animation_generation:
+			return
 		if typeof(event) != TYPE_DICTIONARY:
 			continue
 		await _play_battle_step(event)
@@ -1115,7 +1286,8 @@ func _play_battle_timeline(events) -> void:
 		if played >= 16:
 			break
 	await get_tree().create_timer(0.28).timeout
-	await _finish_battle_stage()
+	if generation == battle_animation_generation:
+		await _finish_battle_stage()
 
 
 func _play_battle_step(event: Dictionary) -> void:
@@ -1258,6 +1430,22 @@ func _finish_battle_stage() -> void:
 	await tween.finished
 	battle_stage.visible = false
 	battle_stage.modulate = Color.WHITE
+	battle_enemy_panel.modulate = Color.WHITE
+	battle_hero_texture_rect.modulate = Color.WHITE
+	battle_hero_texture_rect.position = battle_hero_home
+	battle_enemy_panel.position = battle_enemy_home
+	battle_hero_texture_rect.scale = Vector2.ONE
+	battle_enemy_panel.scale = Vector2.ONE
+
+
+func _cancel_battle_animation() -> void:
+	battle_animation_generation += 1
+	if battle_stage == null:
+		return
+	battle_stage.visible = false
+	battle_stage.modulate = Color.WHITE
+	battle_fx_texture_rect.visible = false
+	battle_float_label.visible = false
 	battle_enemy_panel.modulate = Color.WHITE
 	battle_hero_texture_rect.modulate = Color.WHITE
 	battle_hero_texture_rect.position = battle_hero_home
