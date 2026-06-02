@@ -206,27 +206,18 @@ func _apply_compact_visibility() -> void:
 
 func _apply_panel_style() -> void:
 	var style := StyleBoxFlat.new()
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
+	var border_width := 0 if compact_mode else 2
+	style.border_width_left = border_width
+	style.border_width_top = border_width
+	style.border_width_right = border_width
+	style.border_width_bottom = border_width
 	style.corner_radius_top_left = 7
 	style.corner_radius_top_right = 7
 	style.corner_radius_bottom_left = 7
 	style.corner_radius_bottom_right = 7
 	if compact_mode:
-		if zone_kind == "trash":
-			style.bg_color = Color(0.13, 0.055, 0.045, 0.94)
-			style.border_color = Color(0.68, 0.23, 0.18, 0.95)
-		elif zone_kind == "found":
-			style.bg_color = Color(0.045, 0.105, 0.13, 0.94)
-			style.border_color = Color(0.28, 0.62, 0.72, 0.96)
-		elif memory_id.is_empty():
-			style.bg_color = Color(0.11, 0.095, 0.070, 0.90)
-			style.border_color = Color(0.40, 0.32, 0.19, 0.92)
-		else:
-			style.bg_color = Color(0.20, 0.155, 0.090, 0.96)
-			style.border_color = Color(0.78, 0.58, 0.26, 0.98)
+		style.bg_color = Color(0, 0, 0, 0)
+		style.border_color = Color(0, 0, 0, 0)
 	else:
 		style.bg_color = Color(0.10, 0.08, 0.06, 0.86)
 		style.border_color = Color(0.48, 0.36, 0.20, 0.92)

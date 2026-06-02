@@ -48,6 +48,7 @@ func _verify_registry(registry) -> void:
 		"chibi_enemy_hollow_warden",
 		"chibi_boss_nameless_hunter",
 		"ui_travel_stage_panel",
+		"ui_quick_bag_tray",
 		"icon_memory_mothers_soup",
 		"fx_slash_basic_sheet",
 	]
@@ -169,6 +170,10 @@ func _verify_main_art_preview() -> void:
 	if main.bag_panel_texture_rect.texture == null:
 		main.queue_free()
 		_fail("main scene should load bag panel UI art")
+		return
+	if main.quick_bag_texture_rect.texture == null:
+		main.queue_free()
+		_fail("main scene should load image2 quick bag tray UI art")
 		return
 	main.debug_jump_to_event("P0012")
 	await process_frame

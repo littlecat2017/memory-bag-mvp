@@ -468,6 +468,11 @@ MVP-1 暂不做：
   - `verify_visual_layout_bounds.gd` 增加对 dialogue/backpack 两种底部模式的互斥验收；`verify_quick_bag_interaction.gd` 增加满包拾取后进入背包模式的验收。
   - UI 截图脚本调整为：对话截图只看聊天框，行走/战斗截图只看背包操作台。
 - 本轮继续没有调用 image2；2026-06-02 本日图片生成消耗保持 18 / 50。
+- 根据用户反馈重做底部背包操作台视觉：
+  - 使用桌面 image2 PHP 脚本生成 `ui_quick_bag_tray`，左侧弃牌堆、中间 2x2 记忆背包、右侧新记忆区均由图片皮肤承载，不再依赖代码画线作为主视觉。
+  - 运行时在 `quick_bag_bar` 底层加载 `assets/ui/ui_quick_bag_tray.png`，旧 PanelContainer 边框改为透明，紧凑记忆卡片改为透明命中层，只保留文字、图标和拖拽交互，让 image2 的木框、皮革和羊皮纸质感可见。
+  - `verify_art_assets.gd` 和 `verify_quick_bag_interaction.gd` 增加 `ui_quick_bag_tray` 资源与运行时加载验收。
+  - 已写入 `logs/image_generation.jsonl`；2026-06-02 本日图片生成消耗更新为 19 / 50。
 
 ## 5. 近期开发顺序
 
@@ -489,11 +494,11 @@ MVP-1 暂不做：
 
 ## 6. 图片生成计划
 
-当前累计已登记图片：28 张。
+当前累计已登记图片：29 张。
 
-2026-06-02 本日图片生成消耗：18 / 50 张。
+2026-06-02 本日图片生成消耗：19 / 50 张。
 
-已生成并登记的 28 张图片：
+已生成并登记的 29 张图片：
 
 1. `bg_village_dawn`
 2. `bg_forest_path`
@@ -523,6 +528,7 @@ MVP-1 暂不做：
 26. `chibi_enemy_hollow_warden`
 27. `chibi_boss_nameless_hunter`
 28. `ui_travel_stage_panel`
+29. `ui_quick_bag_tray`
 
 后续生成规则：
 
@@ -530,7 +536,7 @@ MVP-1 暂不做：
 - 不记录密钥、账号密码、token 或临时敏感 URL。
 - 单日最多 50 张。
 - 未确认风格前，不进入 36 张第一批美术批量生成。
-- 本日剩余可用额度：32 张；下一轮优先做体验验收和打包收口，不主动扩大生成量。
+- 本日剩余可用额度：31 张；下一轮优先做体验验收和打包收口，不主动扩大生成量。
 
 ## 7. 每轮更新规则
 

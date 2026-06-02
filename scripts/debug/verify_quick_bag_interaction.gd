@@ -30,11 +30,12 @@ func _run() -> void:
 
 func _verify_quick_bar_exists(main: Control) -> void:
 	_expect(main.quick_bag_bar != null, "quick bag bar should exist")
+	_expect(main.quick_bag_texture_rect != null and main.quick_bag_texture_rect.texture != null, "quick bag should use image2 tray art")
 	_expect(main.trash_zone_card != null, "trash zone should exist")
 	_expect(main.found_zone_card != null, "found zone should exist")
 	_expect(main.quick_bag_slots.size() == 4, "quick bag should have 4 visible MVP slots")
-	_expect(abs(main.quick_bag_bar.anchor_top - 0.690) < 0.001, "quick bag should sit in the lower operation area")
-	_expect(abs(main.quick_bag_bar.anchor_bottom - 0.965) < 0.001, "quick bag should be a large backpack tray")
+	_expect(abs(main.quick_bag_bar.anchor_top - 0.535) < 0.001, "quick bag should sit in the lower operation area")
+	_expect(abs(main.quick_bag_bar.anchor_bottom - 0.985) < 0.001, "quick bag should be a large image2 backpack tray")
 	main._show_backpack_ui()
 	_expect(main.quick_bag_bar.visible, "quick bag should be visible in backpack mode")
 	_expect(not main.dialogue_panel.visible, "dialogue panel should be hidden in backpack mode")

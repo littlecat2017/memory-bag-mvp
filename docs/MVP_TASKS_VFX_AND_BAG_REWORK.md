@@ -234,6 +234,10 @@ image2 消耗控制：
 - 新增自动验证：
   - `verify_quick_bag_interaction.gd`
   - `verify_visual_layout_bounds.gd`
+- 根据用户反馈追加 image2 背包操作台皮肤：
+  - 生成并接入 `assets/ui/ui_quick_bag_tray.png`，用图片资产承载左侧弃牌堆、中间 2x2 记忆背包、右侧新记忆区。
+  - 旧的代码绘制底栏边框已改为透明，`MemoryCardView` 紧凑模式改为透明命中层，只保留文字、图标和拖拽交互，避免遮住 image2 的木框、皮革和羊皮纸质感。
+  - 图片生成已写入 `logs/image_generation.jsonl`，2026-06-02 本日 image2 用量更新为 19 / 50。
 
 测试结果：
 

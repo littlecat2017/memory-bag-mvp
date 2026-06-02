@@ -81,6 +81,7 @@ var text_label: Label
 var bag_grid: GridContainer
 var memory_cards: Array[PanelContainer] = []
 var quick_bag_bar: PanelContainer
+var quick_bag_texture_rect: TextureRect
 var quick_bag_slots: Array[PanelContainer] = []
 var trash_zone_card
 var found_zone_card
@@ -547,28 +548,37 @@ func _new_summary_label(font_size: int, color: Color) -> Label:
 
 func _build_quick_bag_bar(root: Control) -> void:
 	quick_bag_bar = PanelContainer.new()
-	quick_bag_bar.anchor_left = 0.05
-	quick_bag_bar.anchor_top = 0.69
-	quick_bag_bar.anchor_right = 0.95
-	quick_bag_bar.anchor_bottom = 0.965
+	quick_bag_bar.anchor_left = 0.04
+	quick_bag_bar.anchor_top = 0.535
+	quick_bag_bar.anchor_right = 0.96
+	quick_bag_bar.anchor_bottom = 0.985
 	quick_bag_bar.mouse_filter = Control.MOUSE_FILTER_PASS
-	_apply_battle_enemy_style(quick_bag_bar, Color(0.070, 0.052, 0.034, 0.94), Color(0.70, 0.49, 0.22, 0.98), 8)
+	_apply_battle_enemy_style(quick_bag_bar, Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0)
 	root.add_child(quick_bag_bar)
 
+	quick_bag_texture_rect = TextureRect.new()
+	quick_bag_texture_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	quick_bag_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	quick_bag_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	quick_bag_texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	quick_bag_bar.add_child(quick_bag_texture_rect)
+
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 18)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 18)
-	margin.add_theme_constant_override("margin_bottom", 12)
+	margin.add_theme_constant_override("margin_left", 34)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_right", 34)
+	margin.add_theme_constant_override("margin_bottom", 22)
 	quick_bag_bar.add_child(margin)
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 16)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(row)
 
 	var trash_section := VBoxContainer.new()
-	trash_section.custom_minimum_size = Vector2(170, 0)
+	trash_section.custom_minimum_size = Vector2(280, 0)
+	trash_section.alignment = BoxContainer.ALIGNMENT_CENTER
 	trash_section.add_theme_constant_override("separation", 8)
 	row.add_child(trash_section)
 
@@ -577,14 +587,15 @@ func _build_quick_bag_bar(root: Control) -> void:
 
 	trash_zone_card = MemoryCardViewScript.new()
 	trash_zone_card.set_compact(true)
-	trash_zone_card.custom_minimum_size = Vector2(160, 130)
+	trash_zone_card.custom_minimum_size = Vector2(230, 155)
 	trash_zone_card.set_zone("弃牌堆", "拖入丢弃", "trash")
 	trash_zone_card.configure_drop_target("trash")
 	trash_zone_card.memory_dropped.connect(_on_memory_card_dropped)
 	trash_section.add_child(trash_zone_card)
 
 	var bag_section := VBoxContainer.new()
-	bag_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bag_section.custom_minimum_size = Vector2(500, 0)
+	bag_section.alignment = BoxContainer.ALIGNMENT_CENTER
 	bag_section.add_theme_constant_override("separation", 8)
 	row.add_child(bag_section)
 
@@ -602,7 +613,7 @@ func _build_quick_bag_bar(root: Control) -> void:
 	for index in range(4):
 		var slot = MemoryCardViewScript.new()
 		slot.set_compact(true)
-		slot.custom_minimum_size = Vector2(170, 72)
+		slot.custom_minimum_size = Vector2(220, 92)
 		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slot.configure_drop_target("bag", index)
 		slot.memory_dropped.connect(_on_memory_card_dropped)
@@ -610,7 +621,8 @@ func _build_quick_bag_bar(root: Control) -> void:
 		quick_bag_grid.add_child(slot)
 
 	var found_section := VBoxContainer.new()
-	found_section.custom_minimum_size = Vector2(190, 0)
+	found_section.custom_minimum_size = Vector2(280, 0)
+	found_section.alignment = BoxContainer.ALIGNMENT_CENTER
 	found_section.add_theme_constant_override("separation", 8)
 	row.add_child(found_section)
 
@@ -619,7 +631,7 @@ func _build_quick_bag_bar(root: Control) -> void:
 
 	found_zone_card = MemoryCardViewScript.new()
 	found_zone_card.set_compact(true)
-	found_zone_card.custom_minimum_size = Vector2(180, 130)
+	found_zone_card.custom_minimum_size = Vector2(230, 155)
 	found_zone_card.set_zone("新发现", "等待拾取", "found")
 	found_zone_card.configure_drop_target("found")
 	found_zone_card.memory_dropped.connect(_on_memory_card_dropped)
@@ -1478,6 +1490,7 @@ func _apply_static_ui_art() -> void:
 	_set_texture_rect(dialogue_texture_rect, registry.get_art_asset("ui_dialogue_box", "ui"))
 	_set_texture_rect(nameplate_texture_rect, registry.get_art_asset("ui_nameplate", "ui"))
 	_set_texture_rect(bag_panel_texture_rect, registry.get_art_asset("ui_bag_panel", "ui"))
+	_set_texture_rect(quick_bag_texture_rect, registry.get_art_asset("ui_quick_bag_tray", "ui"))
 	_set_texture_rect(travel_panel_texture_rect, registry.get_art_asset("ui_travel_stage_panel", "ui"))
 	travel_walk_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_hero_walk_sheet", "chibi_sheet"))
 	chibi_hero_attack_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_hero_attack_sheet", "chibi_sheet"))

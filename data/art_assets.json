@@ -212,6 +212,14 @@
       "prompt_summary": "Q版行进小窗底图，道路与边框"
     },
     {
+      "id": "ui_quick_bag_tray",
+      "type": "ui",
+      "path": "res://assets/ui/ui_quick_bag_tray.png",
+      "source_doc": "UI-05",
+      "expected_size": [3840, 1280],
+      "prompt_summary": "底部背包操作台皮肤：左弃牌堆、中 2x2 记忆背包、右新记忆"
+    },
+    {
       "id": "icon_memory_mothers_soup",
       "type": "memory_icon",
       "memory_id": "mem_mothers_soup",
