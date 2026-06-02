@@ -38,10 +38,10 @@ func _run() -> void:
 	await _settle()
 	_save_snapshot("04_travel_stage.png")
 	main.debug_jump_to_event("F0003")
-	await _settle()
+	await _wait_for_battle_identity(main)
 	_save_snapshot("05_battle_stage.png")
 	main.debug_jump_to_event("F0036")
-	await _settle()
+	await _wait_for_battle_identity(main)
 	_save_snapshot("06_boss_battle_stage.png")
 	main._on_debug_force_ending_pressed("mvp_named_with_reason")
 	await _settle()
@@ -60,6 +60,15 @@ func _run() -> void:
 func _settle() -> void:
 	for _index in range(4):
 		await process_frame
+
+
+func _wait_for_battle_identity(main: Control) -> void:
+	for _index in range(90):
+		if main.battle_stage.visible and main.battle_enemy_panel.modulate.a > 0.85 and main.battle_enemy_texture_rect.visible:
+			await _settle()
+			return
+		await process_frame
+	await _settle()
 
 
 func _save_snapshot(file_name: String) -> void:
