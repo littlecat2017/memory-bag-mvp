@@ -30,11 +30,21 @@ func _run() -> void:
 	_save_snapshot("02_memory_choice.png")
 	main._on_choice_pressed(0)
 	await _settle()
+	main._show_backpack_ui()
 	main._on_bag_toggle_pressed()
 	await _settle()
 	_save_snapshot("03_bag_panel.png")
 	main._on_bag_toggle_pressed()
 	main.debug_jump_to_event("F0004")
+	await _settle()
+	main.script_player.active_stop_event_id = ""
+	main.game_state.current_event_id = ""
+	main.active_script_node_id = ""
+	main.run_controller.start_chapter("forest")
+	main.run_controller.progress = 80.0
+	main.run_controller.debug_mark_nodes_before(80.0)
+	main.run_controller.resume()
+	main._show_backpack_ui()
 	await _settle()
 	_save_snapshot("04_travel_stage.png")
 	main.debug_jump_to_event("F0003")

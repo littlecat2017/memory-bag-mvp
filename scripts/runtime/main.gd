@@ -72,6 +72,7 @@ var battle_enemy_home := Vector2.ZERO
 var battle_chibi_hero_home := Vector2.ZERO
 var battle_chibi_enemy_home := Vector2.ZERO
 var battle_animation_generation := 0
+var dialogue_panel: Control
 var dialogue_texture_rect: TextureRect
 var nameplate_texture_rect: TextureRect
 var bag_panel_texture_rect: TextureRect
@@ -208,7 +209,7 @@ func _build_ui() -> void:
 	bg_label = Label.new()
 	bg_label.visible = false
 
-	var dialogue_panel := Control.new()
+	dialogue_panel = Control.new()
 	dialogue_panel.anchor_left = 0.04
 	dialogue_panel.anchor_top = 0.50
 	dialogue_panel.anchor_right = 0.96
@@ -802,6 +803,7 @@ func _build_battle_stage(root: Control) -> void:
 
 
 func _show_load_error() -> void:
+	_show_dialogue_ui()
 	name_label.text = "记忆背包"
 	status_label.text = "数据校验失败"
 	progress_label.text = ""
@@ -817,10 +819,11 @@ func _on_event_changed(event: Dictionary) -> void:
 	if not game_state.has_pending_memory():
 		replacement_panel.visible = false
 		pending_core_discard_id = ""
+	_show_dialogue_ui()
 	_update_static_labels(event)
 	_rebuild_choices(event)
 	if game_state.has_pending_memory():
-		next_button.visible = false
+		_show_backpack_ui()
 
 
 func _on_script_finished() -> void:
@@ -837,7 +840,7 @@ func _on_script_finished() -> void:
 	speaker_label.text = "系统"
 	text_label.text = "继续前进。"
 	_clear_choices()
-	next_button.visible = false
+	_show_backpack_ui()
 	_update_bag_cards()
 	run_controller.resume()
 
@@ -894,6 +897,8 @@ func _rebuild_choices(event: Dictionary) -> void:
 	_clear_choices()
 	var is_choice := str(event.get("type", "")) == "choice"
 	next_button.visible = not is_choice
+	if dialogue_panel != null and dialogue_panel.visible:
+		_set_bottom_ui_mode("dialogue")
 	if not is_choice:
 		return
 	var visible_options := script_player.get_visible_options(event)
@@ -953,19 +958,19 @@ func _on_run_node_triggered(node: Dictionary) -> void:
 func _run_battle_event(event: Dictionary) -> void:
 	replacement_panel.visible = false
 	pending_core_discard_id = ""
-	_clear_choices()
-	next_button.visible = false
+	_show_backpack_ui()
 	var result := battle_runner.run_event(event)
 	_update_battle_labels(event, result)
 	call_deferred("_play_battle_result_then_resume", result)
 
 
 func _on_memory_replacement_requested(memory_id: String, _next_event_id: String) -> void:
-	_clear_choices()
-	next_button.visible = false
-	replacement_panel.visible = true
+	_show_backpack_ui()
+	replacement_panel.visible = false
 	pending_core_discard_id = ""
 	replacement_confirm_box.visible = false
+	replacement_new_card.visible = false
+	replacement_owned_box.visible = false
 	var memory: Dictionary = registry.memories.get(memory_id, {})
 	replacement_new_card.set_memory(memory, registry.get_art_asset_for_memory(memory_id), memory_id)
 	_rebuild_replacement_options()
@@ -1002,6 +1007,8 @@ func _on_discard_for_pending_pressed(memory_id: String) -> void:
 	var memory: Dictionary = registry.memories.get(memory_id, {})
 	if bool(memory.get("is_core", false)):
 		pending_core_discard_id = memory_id
+		replacement_new_card.visible = game_state.has_pending_memory()
+		replacement_owned_box.visible = false
 		var confirm_text := str(registry.balance.get("memory_replace", {}).get("core_confirm_text_by_memory", {}).get(
 			memory_id,
 			registry.balance.get("memory_replace", {}).get("default_confirm_text", "")
@@ -1022,6 +1029,8 @@ func _on_confirm_core_discard_pressed() -> void:
 	pending_core_discard_id = ""
 	replacement_panel.visible = false
 	replacement_confirm_box.visible = false
+	replacement_new_card.visible = false
+	replacement_owned_box.visible = false
 	game_state.discard_memory(memory_id)
 	var memory: Dictionary = registry.memories.get(memory_id, {})
 	game_state.world_feedback_history.append("%s：%s" % [
@@ -1035,11 +1044,17 @@ func _on_confirm_core_discard_pressed() -> void:
 func _on_cancel_core_discard_pressed() -> void:
 	pending_core_discard_id = ""
 	replacement_confirm_box.visible = false
+	replacement_panel.visible = false
+	replacement_new_card.visible = false
+	replacement_owned_box.visible = false
 
 
 func _on_decline_pending_memory_pressed() -> void:
 	game_state.decline_pending_memory()
 	replacement_panel.visible = false
+	replacement_confirm_box.visible = false
+	replacement_new_card.visible = false
+	replacement_owned_box.visible = false
 	script_player.finish_memory_replacement()
 	_update_bag_cards()
 
@@ -1069,6 +1084,8 @@ func _discard_memory_from_drag(memory_id: String) -> void:
 	var memory: Dictionary = registry.memories.get(memory_id, {})
 	if bool(memory.get("is_core", false)):
 		pending_core_discard_id = memory_id
+		replacement_new_card.visible = false
+		replacement_owned_box.visible = false
 		replacement_confirm_label.text = str(registry.balance.get("memory_replace", {}).get("core_confirm_text_by_memory", {}).get(
 			memory_id,
 			registry.balance.get("memory_replace", {}).get("default_confirm_text", "")
@@ -1094,6 +1111,8 @@ func _accept_pending_into_slot(target_index: int) -> void:
 		if bool(replaced_memory.get("is_core", false)):
 			pending_core_discard_id = replaced_id
 			replacement_new_card.set_memory(registry.memories.get(pending_id, {}), registry.get_art_asset_for_memory(pending_id), pending_id)
+			replacement_new_card.visible = true
+			replacement_owned_box.visible = false
 			replacement_confirm_label.text = str(registry.balance.get("memory_replace", {}).get("core_confirm_text_by_memory", {}).get(
 				replaced_id,
 				registry.balance.get("memory_replace", {}).get("default_confirm_text", "")
@@ -1112,6 +1131,8 @@ func _accept_pending_into_slot(target_index: int) -> void:
 				game_state.owned_memory_ids.insert(target_index, pending_id)
 	replacement_panel.visible = false
 	replacement_confirm_box.visible = false
+	replacement_new_card.visible = false
+	replacement_owned_box.visible = false
 	pending_core_discard_id = ""
 	script_player.finish_memory_replacement()
 
@@ -1177,6 +1198,7 @@ func _restore_ui_context(ui: Dictionary) -> void:
 		_update_header_status()
 		speaker_label.text = "系统"
 		text_label.text = "继续前进。"
+		_show_backpack_ui()
 
 
 func _read_dictionary_array(value) -> Array[Dictionary]:
@@ -1306,6 +1328,7 @@ func _start_mvp_ending() -> void:
 	active_ending_lines = active_ending.get("lines", [])
 	active_ending_index = -1
 	if active_ending_lines.is_empty():
+		_show_dialogue_ui()
 		status_label.text = "MVP 结尾判定失败"
 		bg_label.text = ""
 		speaker_label.text = "系统"
@@ -1318,6 +1341,7 @@ func _start_mvp_ending() -> void:
 func _advance_ending() -> void:
 	active_ending_index += 1
 	if active_ending_index >= active_ending_lines.size():
+		_show_dialogue_ui()
 		_update_header_status()
 		speaker_label.text = "系统"
 		text_label.text = "MVP 到此结束。"
@@ -1327,6 +1351,7 @@ func _advance_ending() -> void:
 		_show_ending_summary()
 		return
 	var line: Dictionary = active_ending_lines[active_ending_index]
+	_show_dialogue_ui()
 	name_label.text = "名字：%s" % game_state.display_name
 	status_label.text = "结尾 %d/%d  ·  %s" % [
 		active_ending_index + 1,
@@ -1345,6 +1370,7 @@ func _advance_ending() -> void:
 func _show_ending_summary() -> void:
 	if ending_summary_layer == null:
 		return
+	_hide_bottom_ui()
 	var ending_id := str(active_ending.get("id", game_state.current_ending_id))
 	ending_summary_title_label.text = _ending_title(ending_id)
 	ending_summary_subtitle_label.text = "MVP-1 通关回顾"
@@ -1407,6 +1433,7 @@ func _memory_names(memory_ids: Array[String]) -> String:
 
 
 func _update_battle_labels(event: Dictionary, result: Dictionary) -> void:
+	_show_backpack_ui()
 	name_label.text = "名字：%s"
 	name_label.text = name_label.text % game_state.display_name
 	status_label.text = "战斗结束  ·  HP：%d  ·  等级：%d  ·  金币：%d" % [
@@ -1520,6 +1547,37 @@ func _update_header_status() -> void:
 		game_state.owned_memory_ids.size(),
 		capacity,
 	]
+
+
+func _set_bottom_ui_mode(mode: String) -> void:
+	var show_dialogue := mode == "dialogue"
+	var show_backpack := mode == "backpack"
+	if dialogue_panel != null:
+		dialogue_panel.visible = show_dialogue
+	if choices_box != null:
+		choices_box.visible = show_dialogue
+	if next_button != null:
+		next_button.visible = show_dialogue and next_button.visible
+	if quick_bag_bar != null:
+		quick_bag_bar.visible = show_backpack
+
+
+func _show_dialogue_ui() -> void:
+	_set_bottom_ui_mode("dialogue")
+
+
+func _show_backpack_ui() -> void:
+	_clear_choices()
+	if next_button != null:
+		next_button.visible = false
+	_set_bottom_ui_mode("backpack")
+
+
+func _hide_bottom_ui() -> void:
+	_clear_choices()
+	if next_button != null:
+		next_button.visible = false
+	_set_bottom_ui_mode("")
 
 
 func _layout_battle_stage() -> void:

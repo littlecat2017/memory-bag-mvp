@@ -24,6 +24,15 @@ func _run() -> void:
 
 	main.debug_jump_to_event("F0004")
 	await _settle(12)
+	main.script_player.active_stop_event_id = ""
+	main.game_state.current_event_id = ""
+	main.active_script_node_id = ""
+	main.run_controller.start_chapter("forest")
+	main.run_controller.progress = 80.0
+	main.run_controller.debug_mark_nodes_before(80.0)
+	main.run_controller.resume()
+	main._show_backpack_ui()
+	await _settle(12)
 	await _capture_after("walk 0.4s", 12)
 	await _capture_after("walk 1.2s", 24)
 	await _capture_after("walk 2.0s", 24)

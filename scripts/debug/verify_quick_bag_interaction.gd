@@ -20,6 +20,7 @@ func _run() -> void:
 	_verify_pending_to_empty_slot(main)
 	_verify_pending_replaces_slot(main)
 	_verify_pending_requires_core_confirmation(main)
+	await _verify_pending_offer_uses_backpack_mode(main)
 
 	main.queue_free()
 	await process_frame
@@ -34,6 +35,9 @@ func _verify_quick_bar_exists(main: Control) -> void:
 	_expect(main.quick_bag_slots.size() == 4, "quick bag should have 4 visible MVP slots")
 	_expect(abs(main.quick_bag_bar.anchor_top - 0.690) < 0.001, "quick bag should sit in the lower operation area")
 	_expect(abs(main.quick_bag_bar.anchor_bottom - 0.965) < 0.001, "quick bag should be a large backpack tray")
+	main._show_backpack_ui()
+	_expect(main.quick_bag_bar.visible, "quick bag should be visible in backpack mode")
+	_expect(not main.dialogue_panel.visible, "dialogue panel should be hidden in backpack mode")
 
 
 func _verify_slot_reorder(main: Control) -> void:
@@ -129,6 +133,23 @@ func _verify_pending_requires_core_confirmation(main: Control) -> void:
 	_expect(main.game_state.has_memory("mem_someone_waits"), "confirmed core replacement should gain pending memory")
 	_expect(main.game_state.has_discarded("mem_reason_to_depart"), "confirmed core replacement should discard core memory")
 	_expect(not main.game_state.has_pending_memory(), "confirmed core replacement should clear pending memory")
+
+
+func _verify_pending_offer_uses_backpack_mode(main: Control) -> void:
+	_set_bag(main, [
+		"mem_mothers_soup",
+		"mem_wooden_sword",
+		"mem_reason_to_depart",
+		"mem_my_name",
+	])
+	main.debug_jump_to_event("F0010")
+	await _settle(4)
+	main._on_choice_pressed(0)
+	await _settle(4)
+	_expect(main.game_state.has_pending_memory(), "F0010 pickup should create pending memory when bag is full")
+	_expect(main.quick_bag_bar.visible, "pending memory should show backpack tray")
+	_expect(not main.dialogue_panel.visible, "pending memory should hide dialogue panel")
+	_expect(main.found_zone_card.memory_id == "mem_someone_waits", "found zone should show pending memory")
 
 
 func _set_bag(main: Control, memory_ids: Array[String]) -> void:

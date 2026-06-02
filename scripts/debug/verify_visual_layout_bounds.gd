@@ -16,14 +16,31 @@ func _run() -> void:
 
 	main.debug_jump_to_event("F0003")
 	await _wait_for_battle_identity(main)
+	_verify_bottom_ui_mode(main, "backpack")
 	_verify_quick_bag_does_not_block_battle_feet(main)
-	_verify_dialogue_sits_above_quick_bag(main)
 	_verify_battle_stage_uses_upper_half(main)
 
 	main.debug_jump_to_event("F0004")
 	await _settle(12)
+	_verify_bottom_ui_mode(main, "dialogue")
+	main.script_player.active_stop_event_id = ""
+	main.game_state.current_event_id = ""
+	main.active_script_node_id = ""
+	main.run_controller.start_chapter("forest")
+	main.run_controller.progress = 80.0
+	main.run_controller.debug_mark_nodes_before(80.0)
+	main.run_controller.resume()
+	main._show_backpack_ui()
+	await _settle(12)
+	_verify_bottom_ui_mode(main, "backpack")
+	_expect(main.travel_stage.visible, "travel stage should be visible while walking")
+	_expect(not main.battle_stage.visible, "battle stage should be hidden while walking")
 	_verify_travel_actor_clear_of_quick_bag(main)
 	_verify_travel_actor_centered(main)
+
+	main.debug_jump_to_event("P0034")
+	await _settle(8)
+	_verify_bottom_ui_mode(main, "dialogue")
 
 	main.queue_free()
 	await process_frame
@@ -42,10 +59,13 @@ func _verify_quick_bag_does_not_block_battle_feet(main: Control) -> void:
 	_expect(enemy_bottom < quick_top - 18.0, "battle enemy should stand above quick bag tray")
 
 
-func _verify_dialogue_sits_above_quick_bag(main: Control) -> void:
-	var quick_rect: Rect2 = main.quick_bag_bar.get_global_rect()
-	var dialogue_bottom: float = main.ui_root.size.y * 0.665
-	_expect(dialogue_bottom < quick_rect.position.y - 8.0, "dialogue panel should not overlap lower quick bag tray")
+func _verify_bottom_ui_mode(main: Control, mode: String) -> void:
+	if mode == "backpack":
+		_expect(main.quick_bag_bar.visible, "backpack mode should show the quick bag tray")
+		_expect(not main.dialogue_panel.visible, "backpack mode should hide the dialogue panel")
+	elif mode == "dialogue":
+		_expect(main.dialogue_panel.visible, "dialogue mode should show the dialogue panel")
+		_expect(not main.quick_bag_bar.visible, "dialogue mode should hide the quick bag tray")
 
 
 func _verify_travel_actor_clear_of_quick_bag(main: Control) -> void:
