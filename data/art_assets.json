@@ -137,6 +137,71 @@
       "prompt_summary": "忘名猎人 Boss 战斗单位，斗篷、弓、空白脸"
     },
     {
+      "id": "chibi_party_walk_sheet",
+      "type": "chibi_sheet",
+      "path": "res://assets/chibi/chibi_party_walk_sheet.png",
+      "source_doc": "CHIBI-01",
+      "expected_size": [1536, 1536],
+      "grid": [3, 3],
+      "aliases": [],
+      "prompt_summary": "Q版主角团行进九宫格，勇者带两个记忆回响沿路行走"
+    },
+    {
+      "id": "chibi_hero_attack_sheet",
+      "type": "chibi_sheet",
+      "path": "res://assets/chibi/chibi_hero_attack_sheet.png",
+      "source_doc": "CHIBI-02",
+      "expected_size": [1536, 1536],
+      "grid": [3, 3],
+      "aliases": [],
+      "prompt_summary": "Q版勇者攻击九宫格，前冲挥剑动作"
+    },
+    {
+      "id": "chibi_enemy_hollow_wolves",
+      "type": "chibi_unit",
+      "path": "res://assets/chibi/chibi_enemy_hollow_wolves.png",
+      "source_doc": "CHIBI-03",
+      "expected_size": [512, 512],
+      "aliases": ["enemy_hollow_wolves_chibi"],
+      "prompt_summary": "Q版空壳狼群战斗单位"
+    },
+    {
+      "id": "chibi_enemy_nameless_deer",
+      "type": "chibi_unit",
+      "path": "res://assets/chibi/chibi_enemy_nameless_deer.png",
+      "source_doc": "CHIBI-04",
+      "expected_size": [512, 512],
+      "aliases": ["enemy_nameless_deer_chibi"],
+      "prompt_summary": "Q版无名鹿战斗单位"
+    },
+    {
+      "id": "chibi_enemy_hollow_warden",
+      "type": "chibi_unit",
+      "path": "res://assets/chibi/chibi_enemy_hollow_warden.png",
+      "source_doc": "CHIBI-05",
+      "expected_size": [512, 512],
+      "aliases": ["enemy_hollow_warden_chibi"],
+      "prompt_summary": "Q版空壳巡林人战斗单位"
+    },
+    {
+      "id": "chibi_boss_nameless_hunter",
+      "type": "chibi_unit",
+      "path": "res://assets/chibi/chibi_boss_nameless_hunter.png",
+      "source_doc": "CHIBI-06",
+      "expected_size": [512, 512],
+      "aliases": ["boss_nameless_hunter_chibi"],
+      "prompt_summary": "Q版忘名猎人 Boss 战斗单位"
+    },
+    {
+      "id": "ui_travel_stage_panel",
+      "type": "ui",
+      "path": "res://assets/chibi/ui_travel_stage_panel.png",
+      "source_doc": "UI-05",
+      "expected_size": [1808, 1024],
+      "aliases": [],
+      "prompt_summary": "Q版行进小窗底图，道路与边框"
+    },
+    {
       "id": "icon_memory_mothers_soup",
       "type": "memory_icon",
       "memory_id": "mem_mothers_soup",

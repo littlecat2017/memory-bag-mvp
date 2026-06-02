@@ -40,11 +40,21 @@ var progress_label: Label
 var bg_label: Label
 var bg_texture_rect: TextureRect
 var portrait_texture_rect: TextureRect
+var travel_stage: Control
+var travel_panel_texture_rect: TextureRect
+var travel_chibi_texture_rect: TextureRect
+var travel_step_marker: ColorRect
+var travel_walk_sheet_texture: Texture2D
+var travel_frame_index := 0
+var travel_frame_timer := 0.0
 var battle_stage: Control
 var battle_pressure_rect: ColorRect
 var battle_hero_texture_rect: TextureRect
 var battle_enemy_panel: PanelContainer
 var battle_enemy_texture_rect: TextureRect
+var battle_chibi_hero_texture_rect: TextureRect
+var battle_chibi_enemy_texture_rect: TextureRect
+var chibi_hero_attack_sheet_texture: Texture2D
 var battle_enemy_name_label: Label
 var battle_enemy_type_label: Label
 var battle_enemy_symbol_label: Label
@@ -56,6 +66,8 @@ var battle_float_label: Label
 var slash_sheet_texture: Texture2D
 var battle_hero_home := Vector2.ZERO
 var battle_enemy_home := Vector2.ZERO
+var battle_chibi_hero_home := Vector2.ZERO
+var battle_chibi_enemy_home := Vector2.ZERO
 var battle_animation_generation := 0
 var dialogue_texture_rect: TextureRect
 var nameplate_texture_rect: TextureRect
@@ -100,6 +112,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	run_controller.tick(delta)
+	_update_travel_stage_animation(delta)
 
 
 func _build_ui() -> void:
@@ -135,6 +148,7 @@ func _build_ui() -> void:
 	portrait_texture_rect.visible = false
 	root.add_child(portrait_texture_rect)
 
+	_build_travel_stage(root)
 	_build_battle_stage(root)
 
 	var top_bar := HBoxContainer.new()
@@ -521,6 +535,40 @@ func _new_summary_label(font_size: int, color: Color) -> Label:
 	return label
 
 
+func _build_travel_stage(root: Control) -> void:
+	travel_stage = Control.new()
+	travel_stage.anchor_left = 0.08
+	travel_stage.anchor_top = 0.13
+	travel_stage.anchor_right = 0.55
+	travel_stage.anchor_bottom = 0.38
+	travel_stage.visible = false
+	travel_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(travel_stage)
+
+	travel_panel_texture_rect = TextureRect.new()
+	travel_panel_texture_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	travel_panel_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	travel_panel_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	travel_stage.add_child(travel_panel_texture_rect)
+
+	travel_step_marker = ColorRect.new()
+	travel_step_marker.anchor_left = 0.12
+	travel_step_marker.anchor_top = 0.68
+	travel_step_marker.anchor_right = 0.88
+	travel_step_marker.anchor_bottom = 0.71
+	travel_step_marker.color = Color(0.95, 0.82, 0.48, 0.26)
+	travel_stage.add_child(travel_step_marker)
+
+	travel_chibi_texture_rect = TextureRect.new()
+	travel_chibi_texture_rect.anchor_left = 0.18
+	travel_chibi_texture_rect.anchor_top = 0.25
+	travel_chibi_texture_rect.anchor_right = 0.48
+	travel_chibi_texture_rect.anchor_bottom = 0.86
+	travel_chibi_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	travel_chibi_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	travel_stage.add_child(travel_chibi_texture_rect)
+
+
 func _build_battle_stage(root: Control) -> void:
 	battle_stage = Control.new()
 	battle_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -539,6 +587,18 @@ func _build_battle_stage(root: Control) -> void:
 	battle_hero_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	battle_hero_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	battle_stage.add_child(battle_hero_texture_rect)
+
+	battle_chibi_hero_texture_rect = TextureRect.new()
+	battle_chibi_hero_texture_rect.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	battle_chibi_hero_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battle_chibi_hero_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	battle_stage.add_child(battle_chibi_hero_texture_rect)
+
+	battle_chibi_enemy_texture_rect = TextureRect.new()
+	battle_chibi_enemy_texture_rect.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	battle_chibi_enemy_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battle_chibi_enemy_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	battle_stage.add_child(battle_chibi_enemy_texture_rect)
 
 	battle_enemy_panel = PanelContainer.new()
 	battle_enemy_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -1151,7 +1211,12 @@ func _apply_static_ui_art() -> void:
 	_set_texture_rect(dialogue_texture_rect, registry.get_art_asset("ui_dialogue_box", "ui"))
 	_set_texture_rect(nameplate_texture_rect, registry.get_art_asset("ui_nameplate", "ui"))
 	_set_texture_rect(bag_panel_texture_rect, registry.get_art_asset("ui_bag_panel", "ui"))
+	_set_texture_rect(travel_panel_texture_rect, registry.get_art_asset("ui_travel_stage_panel", "ui"))
 	slash_sheet_texture = _texture_from_asset(registry.get_art_asset("fx_slash_basic_sheet", "effect_sheet"))
+	travel_walk_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_party_walk_sheet", "chibi_sheet"))
+	chibi_hero_attack_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_hero_attack_sheet", "chibi_sheet"))
+	if travel_walk_sheet_texture != null:
+		travel_chibi_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, 0)
 
 
 func _apply_button_texture_style(button: Button, _asset_id: String) -> void:
@@ -1220,15 +1285,19 @@ func _layout_battle_stage() -> void:
 	if battle_hero_texture_rect == null or battle_enemy_panel == null:
 		return
 	var size := _viewport_design_size()
-	battle_hero_texture_rect.position = Vector2(size.x * 0.07, size.y * 0.19)
-	battle_hero_texture_rect.size = Vector2(size.x * 0.23, size.y * 0.47)
-	battle_enemy_panel.position = Vector2(size.x * 0.60, size.y * 0.21)
-	battle_enemy_panel.size = Vector2(size.x * 0.29, size.y * 0.47)
-	battle_status_label.position = Vector2(size.x * 0.31, size.y * 0.19)
+	battle_hero_texture_rect.position = Vector2(size.x * 0.05, size.y * 0.16)
+	battle_hero_texture_rect.size = Vector2(size.x * 0.18, size.y * 0.38)
+	battle_chibi_hero_texture_rect.position = Vector2(size.x * 0.20, size.y * 0.43)
+	battle_chibi_hero_texture_rect.size = Vector2(size.x * 0.20, size.y * 0.24)
+	battle_chibi_enemy_texture_rect.position = Vector2(size.x * 0.61, size.y * 0.43)
+	battle_chibi_enemy_texture_rect.size = Vector2(size.x * 0.20, size.y * 0.24)
+	battle_enemy_panel.position = Vector2(size.x * 0.67, size.y * 0.13)
+	battle_enemy_panel.size = Vector2(size.x * 0.21, size.y * 0.20)
+	battle_status_label.position = Vector2(size.x * 0.31, size.y * 0.18)
 	battle_status_label.size = Vector2(size.x * 0.38, size.y * 0.08)
-	battle_fx_texture_rect.position = Vector2(size.x * 0.56, size.y * 0.22)
-	battle_fx_texture_rect.size = Vector2(size.x * 0.22, size.y * 0.36)
-	battle_float_label.position = Vector2(size.x * 0.56, size.y * 0.22)
+	battle_fx_texture_rect.position = Vector2(size.x * 0.51, size.y * 0.36)
+	battle_fx_texture_rect.size = Vector2(size.x * 0.22, size.y * 0.26)
+	battle_float_label.position = Vector2(size.x * 0.56, size.y * 0.31)
 	battle_float_label.size = Vector2(size.x * 0.29, size.y * 0.12)
 	_update_battle_home_positions()
 
@@ -1273,6 +1342,52 @@ func _texture_from_asset(art_asset: Dictionary) -> Texture2D:
 	return ImageTexture.create_from_image(image)
 
 
+func _sheet_frame_texture(texture: Texture2D, frame: int, columns := 3, rows := 3) -> AtlasTexture:
+	if texture == null:
+		return null
+	var frame_width := float(texture.get_width()) / float(columns)
+	var frame_height := float(texture.get_height()) / float(rows)
+	var atlas := AtlasTexture.new()
+	atlas.atlas = texture
+	atlas.region = Rect2((frame % columns) * frame_width, int(frame / columns) * frame_height, frame_width, frame_height)
+	return atlas
+
+
+func _update_travel_stage_animation(delta: float) -> void:
+	if travel_stage == null:
+		return
+	var should_show := _should_show_travel_stage()
+	travel_stage.visible = should_show
+	if not should_show:
+		return
+	if travel_walk_sheet_texture == null:
+		return
+	var speed_scale := 1.0 if run_controller.is_running else 0.35
+	travel_frame_timer += delta * speed_scale
+	if travel_frame_timer >= 0.12:
+		travel_frame_timer = 0.0
+		travel_frame_index = (travel_frame_index + 1) % 9
+		travel_chibi_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, travel_frame_index)
+	var progress_ratio := 0.0
+	if not run_controller.chapter_id.is_empty():
+		var distance := _chapter_distance_for(run_controller.chapter_id)
+		if distance > 0.0:
+			progress_ratio = clamp(run_controller.progress / distance, 0.0, 1.0)
+	var drift := sin(Time.get_ticks_msec() / 180.0) * 0.012
+	travel_chibi_texture_rect.anchor_left = 0.14 + progress_ratio * 0.18 + drift
+	travel_chibi_texture_rect.anchor_right = travel_chibi_texture_rect.anchor_left + 0.30
+
+
+func _should_show_travel_stage() -> bool:
+	if travel_stage == null or battle_stage == null:
+		return false
+	if battle_stage.visible or (ending_summary_layer != null and ending_summary_layer.visible):
+		return false
+	if not active_ending_lines.is_empty():
+		return false
+	return run_controller.chapter_id == "forest" and not run_controller.chapter_id.is_empty()
+
+
 func _start_battle_stage(event: Dictionary, result: Dictionary) -> void:
 	if battle_stage == null:
 		return
@@ -1283,6 +1398,10 @@ func _start_battle_stage(event: Dictionary, result: Dictionary) -> void:
 	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
 	battle_status_label.text = "战斗开始"
 	_set_texture_rect(battle_hero_texture_rect, registry.get_art_asset("hero_default", "portrait"))
+	battle_hero_texture_rect.modulate = Color(1.0, 1.0, 1.0, 0.40)
+	if travel_walk_sheet_texture != null:
+		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, 0)
+	battle_chibi_hero_texture_rect.visible = battle_chibi_hero_texture_rect.texture != null
 	var enemy_name := _battle_enemy_name(event, result)
 	battle_enemy_name_label.text = enemy_name
 	_apply_battle_enemy_identity(_battle_enemy_id(event, result), [])
@@ -1291,6 +1410,8 @@ func _start_battle_stage(event: Dictionary, result: Dictionary) -> void:
 	battle_fx_texture_rect.visible = false
 	_update_battle_home_positions()
 	battle_hero_texture_rect.position = battle_hero_home
+	battle_chibi_hero_texture_rect.position = battle_chibi_hero_home
+	battle_chibi_enemy_texture_rect.position = battle_chibi_enemy_home
 	battle_enemy_panel.position = battle_enemy_home
 
 
@@ -1360,12 +1481,13 @@ func _play_battle_step(event: Dictionary) -> void:
 
 func _animate_player_attack(event: Dictionary) -> void:
 	battle_status_label.text = "勇者挥剑"
-	var lunge_target := battle_hero_home + Vector2(96, -6)
+	var lunge_target := battle_chibi_hero_home + Vector2(96, -6)
 	var out := create_tween()
 	out.set_parallel(true)
-	out.tween_property(battle_hero_texture_rect, "position", lunge_target, 0.12)
-	out.tween_property(battle_hero_texture_rect, "scale", Vector2(1.04, 1.04), 0.12)
+	out.tween_property(battle_chibi_hero_texture_rect, "position", lunge_target, 0.12)
+	out.tween_property(battle_chibi_hero_texture_rect, "scale", Vector2(1.08, 1.08), 0.12)
 	await out.finished
+	await _play_chibi_attack_effect()
 	_show_damage_text("-%d%s" % [
 		int(event.get("damage", 0)),
 		" 暴击" if bool(event.get("crit", false)) else "",
@@ -1374,34 +1496,34 @@ func _animate_player_attack(event: Dictionary) -> void:
 	await _play_slash_effect()
 	var hit := create_tween()
 	hit.set_parallel(true)
-	hit.tween_property(battle_enemy_panel, "position", battle_enemy_home + Vector2(16, 0), 0.06)
-	hit.tween_property(battle_enemy_panel, "modulate", Color(1.0, 0.65, 0.58, 1.0), 0.06)
+	hit.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home + Vector2(16, 0), 0.06)
+	hit.tween_property(battle_chibi_enemy_texture_rect, "modulate", Color(1.0, 0.65, 0.58, 1.0), 0.06)
 	await hit.finished
 	var back := create_tween()
 	back.set_parallel(true)
-	back.tween_property(battle_hero_texture_rect, "position", battle_hero_home, 0.16)
-	back.tween_property(battle_hero_texture_rect, "scale", Vector2.ONE, 0.16)
-	back.tween_property(battle_enemy_panel, "position", battle_enemy_home, 0.10)
-	back.tween_property(battle_enemy_panel, "modulate", Color.WHITE, 0.10)
+	back.tween_property(battle_chibi_hero_texture_rect, "position", battle_chibi_hero_home, 0.16)
+	back.tween_property(battle_chibi_hero_texture_rect, "scale", Vector2.ONE, 0.16)
+	back.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home, 0.10)
+	back.tween_property(battle_chibi_enemy_texture_rect, "modulate", Color.WHITE, 0.10)
 	await back.finished
 
 
 func _animate_enemy_attack(event: Dictionary) -> void:
 	battle_status_label.text = "%s 反击" % str(event.get("enemy_name", "敌人"))
 	var out := create_tween()
-	out.tween_property(battle_enemy_panel, "position", battle_enemy_home + Vector2(-42, 0), 0.10)
+	out.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home + Vector2(-56, 0), 0.10)
 	await out.finished
 	_show_damage_text("勇者 -%d" % int(event.get("damage", 0)), Color(1.0, 0.48, 0.43), Vector2(0.10, 0.30))
 	var hit := create_tween()
 	hit.set_parallel(true)
-	hit.tween_property(battle_hero_texture_rect, "modulate", Color(1.0, 0.66, 0.62, 1.0), 0.06)
-	hit.tween_property(battle_hero_texture_rect, "position", battle_hero_home + Vector2(-14, 0), 0.06)
+	hit.tween_property(battle_chibi_hero_texture_rect, "modulate", Color(1.0, 0.66, 0.62, 1.0), 0.06)
+	hit.tween_property(battle_chibi_hero_texture_rect, "position", battle_chibi_hero_home + Vector2(-14, 0), 0.06)
 	await hit.finished
 	var back := create_tween()
 	back.set_parallel(true)
-	back.tween_property(battle_enemy_panel, "position", battle_enemy_home, 0.12)
-	back.tween_property(battle_hero_texture_rect, "modulate", Color.WHITE, 0.10)
-	back.tween_property(battle_hero_texture_rect, "position", battle_hero_home, 0.10)
+	back.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home, 0.12)
+	back.tween_property(battle_chibi_hero_texture_rect, "modulate", Color.WHITE, 0.10)
+	back.tween_property(battle_chibi_hero_texture_rect, "position", battle_chibi_hero_home, 0.10)
 	await back.finished
 
 
@@ -1413,9 +1535,12 @@ func _animate_boss_appear() -> void:
 	tween.set_parallel(true)
 	tween.tween_property(battle_pressure_rect, "color", Color(0.20, 0.02, 0.04, 0.28), 0.22)
 	tween.tween_property(battle_enemy_panel, "scale", Vector2(1.05, 1.05), 0.18)
+	tween.tween_property(battle_chibi_enemy_texture_rect, "scale", Vector2(1.08, 1.08), 0.18)
 	await tween.finished
 	var settle := create_tween()
+	settle.set_parallel(true)
 	settle.tween_property(battle_enemy_panel, "scale", Vector2.ONE, 0.12)
+	settle.tween_property(battle_chibi_enemy_texture_rect, "scale", Vector2.ONE, 0.12)
 	await settle.finished
 
 
@@ -1428,11 +1553,13 @@ func _animate_boss_pressure(message: String) -> void:
 	var shake := create_tween()
 	shake.set_parallel(true)
 	shake.tween_property(battle_enemy_panel, "position", battle_enemy_home + Vector2(-10, 0), 0.05)
+	shake.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home + Vector2(-14, 0), 0.05)
 	shake.tween_property(battle_pressure_rect, "color", Color(0.30, 0.02, 0.06, 0.34), 0.05)
 	await shake.finished
 	var back := create_tween()
 	back.set_parallel(true)
 	back.tween_property(battle_enemy_panel, "position", battle_enemy_home, 0.08)
+	back.tween_property(battle_chibi_enemy_texture_rect, "position", battle_chibi_enemy_home, 0.08)
 	back.tween_property(battle_pressure_rect, "color", Color(0.20, 0.02, 0.04, 0.24), 0.12)
 	await back.finished
 
@@ -1463,6 +1590,16 @@ func _play_slash_effect() -> void:
 		battle_fx_texture_rect.texture = atlas
 		await get_tree().create_timer(0.035).timeout
 	battle_fx_texture_rect.visible = false
+
+
+func _play_chibi_attack_effect() -> void:
+	if chibi_hero_attack_sheet_texture == null:
+		return
+	for frame in range(9):
+		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(chibi_hero_attack_sheet_texture, frame)
+		await get_tree().create_timer(0.035).timeout
+	if travel_walk_sheet_texture != null:
+		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, 0)
 
 
 func _show_damage_text(text: String, color: Color, anchor := Vector2(0.56, 0.22)) -> void:
@@ -1504,11 +1641,17 @@ func _finish_battle_stage() -> void:
 	battle_stage.modulate = Color.WHITE
 	battle_enemy_panel.modulate = Color.WHITE
 	battle_hero_texture_rect.modulate = Color.WHITE
+	battle_chibi_hero_texture_rect.modulate = Color.WHITE
+	battle_chibi_enemy_texture_rect.modulate = Color.WHITE
 	battle_pressure_rect.visible = false
 	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
 	battle_hero_texture_rect.position = battle_hero_home
+	battle_chibi_hero_texture_rect.position = battle_chibi_hero_home
+	battle_chibi_enemy_texture_rect.position = battle_chibi_enemy_home
 	battle_enemy_panel.position = battle_enemy_home
 	battle_hero_texture_rect.scale = Vector2.ONE
+	battle_chibi_hero_texture_rect.scale = Vector2.ONE
+	battle_chibi_enemy_texture_rect.scale = Vector2.ONE
 	battle_enemy_panel.scale = Vector2.ONE
 
 
@@ -1524,9 +1667,15 @@ func _cancel_battle_animation() -> void:
 	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
 	battle_enemy_panel.modulate = Color.WHITE
 	battle_hero_texture_rect.modulate = Color.WHITE
+	battle_chibi_hero_texture_rect.modulate = Color.WHITE
+	battle_chibi_enemy_texture_rect.modulate = Color.WHITE
 	battle_hero_texture_rect.position = battle_hero_home
+	battle_chibi_hero_texture_rect.position = battle_chibi_hero_home
+	battle_chibi_enemy_texture_rect.position = battle_chibi_enemy_home
 	battle_enemy_panel.position = battle_enemy_home
 	battle_hero_texture_rect.scale = Vector2.ONE
+	battle_chibi_hero_texture_rect.scale = Vector2.ONE
+	battle_chibi_enemy_texture_rect.scale = Vector2.ONE
 	battle_enemy_panel.scale = Vector2.ONE
 
 
@@ -1535,6 +1684,8 @@ func _update_battle_home_positions() -> void:
 		return
 	battle_hero_home = battle_hero_texture_rect.position
 	battle_enemy_home = battle_enemy_panel.position
+	battle_chibi_hero_home = battle_chibi_hero_texture_rect.position
+	battle_chibi_enemy_home = battle_chibi_enemy_texture_rect.position
 
 
 func _battle_enemy_name(event: Dictionary, result: Dictionary) -> String:
@@ -1563,15 +1714,25 @@ func _apply_battle_enemy_identity(enemy_id: String, tags: Array[String]) -> void
 		tags = _string_array_from_variant(enemy.get("tags", []))
 	var profile := _battle_enemy_profile(enemy_id, tags)
 	var enemy_texture := _texture_from_asset(registry.get_art_asset(enemy_id, "enemy"))
+	var chibi_enemy_texture := _chibi_enemy_texture(enemy_id)
+	battle_chibi_enemy_texture_rect.texture = chibi_enemy_texture
+	battle_chibi_enemy_texture_rect.visible = chibi_enemy_texture != null
 	battle_enemy_texture_rect.texture = enemy_texture
-	battle_enemy_texture_rect.visible = enemy_texture != null
+	battle_enemy_texture_rect.visible = false
 	battle_enemy_symbol_label.text = str(profile.get("symbol", "◇"))
-	battle_enemy_symbol_label.visible = enemy_texture == null
+	battle_enemy_symbol_label.visible = chibi_enemy_texture == null
 	battle_enemy_symbol_label.add_theme_font_size_override("font_size", int(profile.get("symbol_size", 74)))
 	battle_enemy_symbol_label.add_theme_color_override("font_color", profile.get("symbol_color", Color(0.18, 0.18, 0.18, 0.92)))
 	battle_enemy_type_label.text = str(profile.get("type_text", "空壳"))
 	battle_enemy_type_label.add_theme_color_override("font_color", profile.get("type_color", Color(0.67, 0.62, 0.50)))
 	_apply_battle_enemy_style(battle_enemy_panel, profile.get("panel_bg", Color(0.06, 0.055, 0.045, 0.74)), profile.get("panel_border", Color(0.60, 0.48, 0.26, 0.90)))
+
+
+func _chibi_enemy_texture(enemy_id: String) -> Texture2D:
+	var asset_id := "chibi_%s" % enemy_id
+	if enemy_id == "boss_nameless_hunter":
+		asset_id = "chibi_boss_nameless_hunter"
+	return _texture_from_asset(registry.get_art_asset(asset_id, "chibi_unit"))
 
 
 func _battle_enemy_profile(enemy_id: String, tags: Array[String]) -> Dictionary:

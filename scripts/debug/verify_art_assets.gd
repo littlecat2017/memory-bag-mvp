@@ -39,6 +39,13 @@ func _verify_registry(registry) -> void:
 		"enemy_nameless_deer",
 		"enemy_hollow_warden",
 		"boss_nameless_hunter",
+		"chibi_party_walk_sheet",
+		"chibi_hero_attack_sheet",
+		"chibi_enemy_hollow_wolves",
+		"chibi_enemy_nameless_deer",
+		"chibi_enemy_hollow_warden",
+		"chibi_boss_nameless_hunter",
+		"ui_travel_stage_panel",
 		"icon_memory_mothers_soup",
 		"fx_slash_basic_sheet",
 	]
@@ -63,6 +70,12 @@ func _verify_registry(registry) -> void:
 		return
 	if registry.get_art_asset("boss_nameless_hunter", "enemy").is_empty():
 		_fail("enemy art should resolve boss_nameless_hunter")
+		return
+	if registry.get_art_asset("chibi_party_walk_sheet", "chibi_sheet").is_empty():
+		_fail("chibi walk sheet should resolve")
+		return
+	if registry.get_art_asset("chibi_enemy_hollow_wolves", "chibi_unit").is_empty():
+		_fail("chibi enemy should resolve chibi_enemy_hollow_wolves")
 		return
 	if registry.get_art_asset_for_memory("mem_mothers_soup").is_empty():
 		_fail("memory icon should resolve mem_mothers_soup")
@@ -142,12 +155,31 @@ func _verify_main_art_preview() -> void:
 		main.queue_free()
 		_fail("main scene should resolve master_old as its own portrait")
 		return
+	main.debug_jump_to_event("F0004")
+	for _index in range(3):
+		await process_frame
+	if not main.travel_panel_texture_rect.visible or main.travel_panel_texture_rect.texture == null:
+		main.queue_free()
+		_fail("main scene should load travel stage panel art")
+		return
+	if not main.travel_stage.visible or main.travel_chibi_texture_rect.texture == null:
+		main.queue_free()
+		_fail("forest travel should show chibi walking stage")
+		return
 	main.debug_jump_to_event("F0003")
 	for _index in range(3):
 		await process_frame
-	if not main.battle_enemy_texture_rect.visible or main.battle_enemy_texture_rect.texture == null:
+	if main.battle_enemy_texture_rect.texture == null:
 		main.queue_free()
 		_fail("battle stage should show enemy art texture")
+		return
+	if not main.battle_chibi_hero_texture_rect.visible or main.battle_chibi_hero_texture_rect.texture == null:
+		main.queue_free()
+		_fail("battle stage should show chibi hero texture")
+		return
+	if not main.battle_chibi_enemy_texture_rect.visible or main.battle_chibi_enemy_texture_rect.texture == null:
+		main.queue_free()
+		_fail("battle stage should show chibi enemy texture")
 		return
 	main.queue_free()
 	await process_frame
