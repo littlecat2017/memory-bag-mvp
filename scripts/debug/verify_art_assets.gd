@@ -16,6 +16,7 @@ func _run() -> void:
 		return
 	_verify_registry(registry)
 	_verify_png_files(registry)
+	_verify_hero_walk_sheet_has_no_green_echo(registry)
 	_verify_memory_card_icon(registry)
 	await _verify_main_art_preview()
 	print("verify_art_assets: ok; checked=%d" % registry.art_assets.size())
@@ -40,6 +41,7 @@ func _verify_registry(registry) -> void:
 		"enemy_hollow_warden",
 		"boss_nameless_hunter",
 		"chibi_party_walk_sheet",
+		"chibi_hero_walk_sheet",
 		"chibi_hero_attack_sheet",
 		"chibi_enemy_hollow_wolves",
 		"chibi_enemy_nameless_deer",
@@ -74,6 +76,9 @@ func _verify_registry(registry) -> void:
 	if registry.get_art_asset("chibi_party_walk_sheet", "chibi_sheet").is_empty():
 		_fail("chibi walk sheet should resolve")
 		return
+	if registry.get_art_asset("chibi_hero_walk_sheet", "chibi_sheet").is_empty():
+		_fail("chibi hero walk sheet should resolve")
+		return
 	if registry.get_art_asset("chibi_enemy_hollow_wolves", "chibi_unit").is_empty():
 		_fail("chibi enemy should resolve chibi_enemy_hollow_wolves")
 		return
@@ -107,6 +112,29 @@ func _verify_aspect(asset_id: String, asset: Dictionary, image: Image) -> void:
 	if abs(expected_ratio - actual_ratio) > 0.08:
 		_fail("image aspect mismatch for %s expected %.2f got %.2f" % [asset_id, expected_ratio, actual_ratio])
 		return
+
+
+func _verify_hero_walk_sheet_has_no_green_echo(registry) -> void:
+	var asset: Dictionary = registry.get_art_asset("chibi_hero_walk_sheet", "chibi_sheet")
+	var image := Image.new()
+	if image.load(str(asset.get("path", ""))) != OK:
+		_fail("hero walk sheet should load")
+		return
+	var frame_width := int(image.get_width() / 3)
+	var frame_height := int(image.get_height() / 3)
+	for frame in range(9):
+		var origin := Vector2i((frame % 3) * frame_width, int(frame / 3) * frame_height)
+		var suspicious_pixels := 0
+		for y in range(origin.y, origin.y + frame_height):
+			for x in range(origin.x, origin.x + int(frame_width * 0.25)):
+				var color := image.get_pixel(x, y)
+				if color.a < 0.05:
+					continue
+				if color.g > 0.34 and color.g > color.r + 0.07 and color.g > color.b + 0.02 and color.r < 0.75:
+					suspicious_pixels += 1
+		if suspicious_pixels > 40:
+			_fail("hero walk sheet frame %d still has green echo residue: %d" % [frame, suspicious_pixels])
+			return
 
 
 func _verify_memory_card_icon(registry) -> void:

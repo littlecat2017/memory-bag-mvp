@@ -1405,10 +1405,10 @@ func _apply_static_ui_art() -> void:
 	_set_texture_rect(nameplate_texture_rect, registry.get_art_asset("ui_nameplate", "ui"))
 	_set_texture_rect(bag_panel_texture_rect, registry.get_art_asset("ui_bag_panel", "ui"))
 	_set_texture_rect(travel_panel_texture_rect, registry.get_art_asset("ui_travel_stage_panel", "ui"))
-	travel_walk_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_party_walk_sheet", "chibi_sheet"))
+	travel_walk_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_hero_walk_sheet", "chibi_sheet"))
 	chibi_hero_attack_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_hero_attack_sheet", "chibi_sheet"))
 	if travel_walk_sheet_texture != null:
-		travel_chibi_texture_rect.texture = _hero_only_frame_texture(travel_walk_sheet_texture, 0)
+		travel_chibi_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, 0)
 	if chibi_hero_attack_sheet_texture != null:
 		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(chibi_hero_attack_sheet_texture, 0)
 
@@ -1559,17 +1559,6 @@ func _sheet_frame_texture(texture: Texture2D, frame: int, columns := 3, rows := 
 	return atlas
 
 
-func _hero_only_frame_texture(texture: Texture2D, frame: int) -> AtlasTexture:
-	var atlas := _sheet_frame_texture(texture, frame)
-	if atlas == null:
-		return null
-	var region := atlas.region
-	region.position.x += region.size.x * 0.46
-	region.size.x *= 0.44
-	atlas.region = region
-	return atlas
-
-
 func _layout_shadow_for(shadow: Control, sprite: Control, center: Vector2, scale: Vector2) -> void:
 	if shadow == null or sprite == null:
 		return
@@ -1608,7 +1597,7 @@ func _update_travel_stage_animation(delta: float) -> void:
 	if travel_frame_timer >= 0.12:
 		travel_frame_timer = 0.0
 		travel_frame_index = (travel_frame_index + 1) % 9
-		travel_chibi_texture_rect.texture = _hero_only_frame_texture(travel_walk_sheet_texture, travel_frame_index)
+		travel_chibi_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, travel_frame_index)
 	var progress_ratio := 0.0
 	if not run_controller.chapter_id.is_empty():
 		var distance := _chapter_distance_for(run_controller.chapter_id)

@@ -141,17 +141,27 @@
       "type": "chibi_sheet",
       "path": "res://assets/chibi/chibi_party_walk_sheet.png",
       "source_doc": "CHIBI-01",
-      "expected_size": [1536, 1536],
+      "expected_size": [1440, 1440],
       "grid": [3, 3],
       "aliases": [],
       "prompt_summary": "Q版主角团行进九宫格，勇者带两个记忆回响沿路行走"
+    },
+    {
+      "id": "chibi_hero_walk_sheet",
+      "type": "chibi_sheet",
+      "path": "res://assets/chibi/chibi_hero_walk_sheet.png",
+      "source_doc": "CHIBI-01-LOCAL-CROP",
+      "expected_size": [1440, 1440],
+      "grid": [3, 3],
+      "aliases": [],
+      "prompt_summary": "从 Q版主角团行进九宫格本地裁出的单主角行走表，不含绿色记忆回响"
     },
     {
       "id": "chibi_hero_attack_sheet",
       "type": "chibi_sheet",
       "path": "res://assets/chibi/chibi_hero_attack_sheet.png",
       "source_doc": "CHIBI-02",
-      "expected_size": [1536, 1536],
+      "expected_size": [1440, 1440],
       "grid": [3, 3],
       "aliases": [],
       "prompt_summary": "Q版勇者攻击九宫格，前冲挥剑动作"
