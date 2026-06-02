@@ -636,12 +636,10 @@ func _build_battle_stage(root: Control) -> void:
 	enemy_box.add_child(battle_enemy_symbol_label)
 
 	battle_enemy_texture_rect = TextureRect.new()
-	battle_enemy_texture_rect.custom_minimum_size = Vector2(190, 190)
+	battle_enemy_texture_rect.custom_minimum_size = Vector2(138, 96)
 	battle_enemy_texture_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	battle_enemy_texture_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	battle_enemy_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	battle_enemy_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	battle_enemy_texture_rect.visible = false
 	enemy_box.add_child(battle_enemy_texture_rect)
 
 	battle_enemy_hp_bar = ProgressBar.new()
@@ -1713,12 +1711,11 @@ func _apply_battle_enemy_identity(enemy_id: String, tags: Array[String]) -> void
 		var enemy: Dictionary = registry.enemies.get(enemy_id, {})
 		tags = _string_array_from_variant(enemy.get("tags", []))
 	var profile := _battle_enemy_profile(enemy_id, tags)
-	var enemy_texture := _texture_from_asset(registry.get_art_asset(enemy_id, "enemy"))
 	var chibi_enemy_texture := _chibi_enemy_texture(enemy_id)
 	battle_chibi_enemy_texture_rect.texture = chibi_enemy_texture
 	battle_chibi_enemy_texture_rect.visible = chibi_enemy_texture != null
-	battle_enemy_texture_rect.texture = enemy_texture
-	battle_enemy_texture_rect.visible = false
+	battle_enemy_texture_rect.texture = chibi_enemy_texture
+	battle_enemy_texture_rect.visible = chibi_enemy_texture != null
 	battle_enemy_symbol_label.text = str(profile.get("symbol", "◇"))
 	battle_enemy_symbol_label.visible = chibi_enemy_texture == null
 	battle_enemy_symbol_label.add_theme_font_size_override("font_size", int(profile.get("symbol_size", 74)))
