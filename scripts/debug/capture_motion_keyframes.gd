@@ -66,7 +66,7 @@ func _capture_after(label: String, frames: int) -> void:
 
 func _wait_for_battle_identity(main: Control) -> void:
 	for _index in range(120):
-		if main.battle_stage.visible and main.battle_enemy_panel.modulate.a > 0.85 and main.battle_enemy_texture_rect.visible:
+		if main.battle_stage.visible and main.battle_enemy_panel.modulate.a > 0.85 and main.battle_chibi_enemy_texture_rect.visible:
 			await _settle(6)
 			return
 		await process_frame

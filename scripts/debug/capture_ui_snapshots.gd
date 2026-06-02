@@ -64,7 +64,7 @@ func _settle() -> void:
 
 func _wait_for_battle_identity(main: Control) -> void:
 	for _index in range(90):
-		if main.battle_stage.visible and main.battle_enemy_panel.modulate.a > 0.85 and main.battle_enemy_texture_rect.visible:
+		if main.battle_stage.visible and main.battle_enemy_panel.modulate.a > 0.85 and main.battle_chibi_enemy_texture_rect.visible:
 			await _settle()
 			return
 		await process_frame

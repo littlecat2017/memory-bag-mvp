@@ -197,10 +197,6 @@ func _verify_main_art_preview() -> void:
 	main.debug_jump_to_event("F0003")
 	for _index in range(3):
 		await process_frame
-	if not main.battle_enemy_texture_rect.visible or main.battle_enemy_texture_rect.texture == null:
-		main.queue_free()
-		_fail("battle enemy panel should show chibi enemy portrait")
-		return
 	if not main.battle_chibi_hero_texture_rect.visible or main.battle_chibi_hero_texture_rect.texture == null:
 		main.queue_free()
 		_fail("battle stage should show chibi hero texture")
@@ -208,6 +204,10 @@ func _verify_main_art_preview() -> void:
 	if not main.battle_chibi_enemy_texture_rect.visible or main.battle_chibi_enemy_texture_rect.texture == null:
 		main.queue_free()
 		_fail("battle stage should show chibi enemy texture")
+		return
+	if main.battle_enemy_texture_rect.visible:
+		main.queue_free()
+		_fail("battle enemy info panel should not duplicate the stage enemy portrait")
 		return
 	main.queue_free()
 	await process_frame

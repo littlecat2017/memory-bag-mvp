@@ -210,9 +210,9 @@ func _build_ui() -> void:
 
 	var dialogue_panel := Control.new()
 	dialogue_panel.anchor_left = 0.04
-	dialogue_panel.anchor_top = 0.67
+	dialogue_panel.anchor_top = 0.50
 	dialogue_panel.anchor_right = 0.96
-	dialogue_panel.anchor_bottom = 0.96
+	dialogue_panel.anchor_bottom = 0.665
 	dialogue_panel.offset_left = 0
 	dialogue_panel.offset_top = 0
 	dialogue_panel.offset_right = 0
@@ -229,9 +229,9 @@ func _build_ui() -> void:
 	var dialogue_margin := MarginContainer.new()
 	dialogue_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dialogue_margin.add_theme_constant_override("margin_left", 44)
-	dialogue_margin.add_theme_constant_override("margin_top", 48)
+	dialogue_margin.add_theme_constant_override("margin_top", 36)
 	dialogue_margin.add_theme_constant_override("margin_right", 44)
-	dialogue_margin.add_theme_constant_override("margin_bottom", 24)
+	dialogue_margin.add_theme_constant_override("margin_bottom", 18)
 	dialogue_panel.add_child(dialogue_margin)
 
 	var dialogue_box := VBoxContainer.new()
@@ -239,7 +239,7 @@ func _build_ui() -> void:
 	dialogue_margin.add_child(dialogue_box)
 
 	var speaker_row := Control.new()
-	speaker_row.custom_minimum_size = Vector2(0, 42)
+	speaker_row.custom_minimum_size = Vector2(0, 34)
 	dialogue_box.add_child(speaker_row)
 
 	nameplate_texture_rect = TextureRect.new()
@@ -250,7 +250,7 @@ func _build_ui() -> void:
 	nameplate_texture_rect.offset_left = -18
 	nameplate_texture_rect.offset_top = -16
 	nameplate_texture_rect.offset_right = 250
-	nameplate_texture_rect.offset_bottom = 48
+	nameplate_texture_rect.offset_bottom = 42
 	nameplate_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	nameplate_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	speaker_row.add_child(nameplate_texture_rect)
@@ -260,22 +260,22 @@ func _build_ui() -> void:
 	speaker_label.offset_top = -2
 	speaker_label.offset_right = 235
 	speaker_label.offset_bottom = 40
-	speaker_label.add_theme_font_size_override("font_size", 23)
+	speaker_label.add_theme_font_size_override("font_size", 20)
 	speaker_label.add_theme_color_override("font_color", Color(0.16, 0.10, 0.06))
 	speaker_row.add_child(speaker_label)
 
 	text_label = Label.new()
 	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	text_label.add_theme_font_size_override("font_size", 25)
+	text_label.add_theme_font_size_override("font_size", 20)
 	text_label.add_theme_color_override("font_color", Color(0.93, 0.89, 0.78))
 	dialogue_box.add_child(text_label)
 
 	choices_box = VBoxContainer.new()
 	choices_box.anchor_left = 0.15
-	choices_box.anchor_top = 0.34
+	choices_box.anchor_top = 0.29
 	choices_box.anchor_right = 0.85
-	choices_box.anchor_bottom = 0.54
+	choices_box.anchor_bottom = 0.49
 	choices_box.add_theme_constant_override("separation", 10)
 	root.add_child(choices_box)
 
@@ -389,9 +389,9 @@ func _build_ui() -> void:
 	next_button = Button.new()
 	next_button.text = "继续"
 	next_button.anchor_left = 0.84
-	next_button.anchor_top = 0.90
+	next_button.anchor_top = 0.590
 	next_button.anchor_right = 0.94
-	next_button.anchor_bottom = 0.96
+	next_button.anchor_bottom = 0.650
 	next_button.add_theme_font_size_override("font_size", 18)
 	next_button.add_theme_color_override("font_color", Color(0.94, 0.90, 0.78))
 	next_button.pressed.connect(_on_next_pressed)
@@ -546,55 +546,100 @@ func _new_summary_label(font_size: int, color: Color) -> Label:
 
 func _build_quick_bag_bar(root: Control) -> void:
 	quick_bag_bar = PanelContainer.new()
-	quick_bag_bar.anchor_left = 0.15
-	quick_bag_bar.anchor_top = 0.600
-	quick_bag_bar.anchor_right = 0.85
-	quick_bag_bar.anchor_bottom = 0.655
+	quick_bag_bar.anchor_left = 0.05
+	quick_bag_bar.anchor_top = 0.69
+	quick_bag_bar.anchor_right = 0.95
+	quick_bag_bar.anchor_bottom = 0.965
 	quick_bag_bar.mouse_filter = Control.MOUSE_FILTER_PASS
-	_apply_battle_enemy_style(quick_bag_bar, Color(0.035, 0.031, 0.027, 0.66), Color(0.55, 0.43, 0.22, 0.86), 6)
+	_apply_battle_enemy_style(quick_bag_bar, Color(0.070, 0.052, 0.034, 0.94), Color(0.70, 0.49, 0.22, 0.98), 8)
 	root.add_child(quick_bag_bar)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_top", 5)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_bottom", 5)
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_bottom", 12)
 	quick_bag_bar.add_child(margin)
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", 16)
 	margin.add_child(row)
+
+	var trash_section := VBoxContainer.new()
+	trash_section.custom_minimum_size = Vector2(170, 0)
+	trash_section.add_theme_constant_override("separation", 8)
+	row.add_child(trash_section)
+
+	var trash_label := _new_tray_label("弃牌堆")
+	trash_section.add_child(trash_label)
 
 	trash_zone_card = MemoryCardViewScript.new()
 	trash_zone_card.set_compact(true)
-	trash_zone_card.set_zone("垃圾堆", "拖入丢弃", "trash")
+	trash_zone_card.custom_minimum_size = Vector2(160, 130)
+	trash_zone_card.set_zone("弃牌堆", "拖入丢弃", "trash")
 	trash_zone_card.configure_drop_target("trash")
 	trash_zone_card.memory_dropped.connect(_on_memory_card_dropped)
-	row.add_child(trash_zone_card)
+	trash_section.add_child(trash_zone_card)
+
+	var bag_section := VBoxContainer.new()
+	bag_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bag_section.add_theme_constant_override("separation", 8)
+	row.add_child(bag_section)
+
+	var bag_label := _new_tray_label("记忆背包")
+	bag_section.add_child(bag_label)
+
+	var quick_bag_grid := GridContainer.new()
+	quick_bag_grid.columns = 2
+	quick_bag_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	quick_bag_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	quick_bag_grid.add_theme_constant_override("h_separation", 10)
+	quick_bag_grid.add_theme_constant_override("v_separation", 10)
+	bag_section.add_child(quick_bag_grid)
 
 	for index in range(4):
 		var slot = MemoryCardViewScript.new()
 		slot.set_compact(true)
+		slot.custom_minimum_size = Vector2(170, 72)
+		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slot.configure_drop_target("bag", index)
 		slot.memory_dropped.connect(_on_memory_card_dropped)
 		quick_bag_slots.append(slot)
-		row.add_child(slot)
+		quick_bag_grid.add_child(slot)
+
+	var found_section := VBoxContainer.new()
+	found_section.custom_minimum_size = Vector2(190, 0)
+	found_section.add_theme_constant_override("separation", 8)
+	row.add_child(found_section)
+
+	var found_label := _new_tray_label("新记忆")
+	found_section.add_child(found_label)
 
 	found_zone_card = MemoryCardViewScript.new()
 	found_zone_card.set_compact(true)
+	found_zone_card.custom_minimum_size = Vector2(180, 130)
 	found_zone_card.set_zone("新发现", "等待拾取", "found")
 	found_zone_card.configure_drop_target("found")
 	found_zone_card.memory_dropped.connect(_on_memory_card_dropped)
-	row.add_child(found_zone_card)
+	found_section.add_child(found_zone_card)
+
+
+func _new_tray_label(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 17)
+	label.add_theme_color_override("font_color", Color(0.95, 0.84, 0.56))
+	return label
 
 
 func _build_travel_stage(root: Control) -> void:
 	travel_stage = Control.new()
-	travel_stage.anchor_left = 0.08
-	travel_stage.anchor_top = 0.13
-	travel_stage.anchor_right = 0.55
-	travel_stage.anchor_bottom = 0.38
+	travel_stage.anchor_left = 0.15
+	travel_stage.anchor_top = 0.12
+	travel_stage.anchor_right = 0.85
+	travel_stage.anchor_bottom = 0.47
 	travel_stage.visible = false
 	travel_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(travel_stage)
@@ -614,18 +659,18 @@ func _build_travel_stage(root: Control) -> void:
 	travel_stage.add_child(travel_step_marker)
 
 	travel_chibi_shadow = PanelContainer.new()
-	travel_chibi_shadow.anchor_left = 0.24
+	travel_chibi_shadow.anchor_left = 0.45
 	travel_chibi_shadow.anchor_top = 0.80
-	travel_chibi_shadow.anchor_right = 0.40
+	travel_chibi_shadow.anchor_right = 0.55
 	travel_chibi_shadow.anchor_bottom = 0.86
 	_apply_chibi_shadow_style(travel_chibi_shadow)
 	travel_chibi_shadow.modulate = Color(1.0, 1.0, 1.0, 0.20)
 	travel_stage.add_child(travel_chibi_shadow)
 
 	travel_chibi_texture_rect = TextureRect.new()
-	travel_chibi_texture_rect.anchor_left = 0.18
+	travel_chibi_texture_rect.anchor_left = 0.40
 	travel_chibi_texture_rect.anchor_top = 0.25
-	travel_chibi_texture_rect.anchor_right = 0.48
+	travel_chibi_texture_rect.anchor_right = 0.60
 	travel_chibi_texture_rect.anchor_bottom = 0.86
 	travel_chibi_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	travel_chibi_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -681,25 +726,25 @@ func _build_battle_stage(root: Control) -> void:
 	battle_stage.add_child(battle_enemy_panel)
 
 	var enemy_margin := MarginContainer.new()
-	enemy_margin.add_theme_constant_override("margin_left", 18)
-	enemy_margin.add_theme_constant_override("margin_top", 16)
-	enemy_margin.add_theme_constant_override("margin_right", 18)
-	enemy_margin.add_theme_constant_override("margin_bottom", 16)
+	enemy_margin.add_theme_constant_override("margin_left", 12)
+	enemy_margin.add_theme_constant_override("margin_top", 10)
+	enemy_margin.add_theme_constant_override("margin_right", 12)
+	enemy_margin.add_theme_constant_override("margin_bottom", 10)
 	battle_enemy_panel.add_child(enemy_margin)
 
 	var enemy_box := VBoxContainer.new()
-	enemy_box.add_theme_constant_override("separation", 8)
+	enemy_box.add_theme_constant_override("separation", 5)
 	enemy_margin.add_child(enemy_box)
 
 	battle_enemy_name_label = Label.new()
 	battle_enemy_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	battle_enemy_name_label.add_theme_font_size_override("font_size", 26)
+	battle_enemy_name_label.add_theme_font_size_override("font_size", 18)
 	battle_enemy_name_label.add_theme_color_override("font_color", Color(0.94, 0.88, 0.70))
 	enemy_box.add_child(battle_enemy_name_label)
 
 	battle_enemy_type_label = Label.new()
 	battle_enemy_type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	battle_enemy_type_label.add_theme_font_size_override("font_size", 14)
+	battle_enemy_type_label.add_theme_font_size_override("font_size", 12)
 	battle_enemy_type_label.add_theme_color_override("font_color", Color(0.67, 0.62, 0.50))
 	enemy_box.add_child(battle_enemy_type_label)
 
@@ -708,6 +753,7 @@ func _build_battle_stage(root: Control) -> void:
 	battle_enemy_symbol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	battle_enemy_symbol_label.add_theme_font_size_override("font_size", 74)
 	battle_enemy_symbol_label.add_theme_color_override("font_color", Color(0.18, 0.18, 0.18, 0.92))
+	battle_enemy_symbol_label.visible = false
 	enemy_box.add_child(battle_enemy_symbol_label)
 
 	battle_enemy_texture_rect = TextureRect.new()
@@ -715,6 +761,7 @@ func _build_battle_stage(root: Control) -> void:
 	battle_enemy_texture_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	battle_enemy_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	battle_enemy_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	battle_enemy_texture_rect.visible = false
 	enemy_box.add_child(battle_enemy_texture_rect)
 
 	battle_enemy_hp_bar = ProgressBar.new()
@@ -726,7 +773,7 @@ func _build_battle_stage(root: Control) -> void:
 
 	battle_enemy_hp_label = Label.new()
 	battle_enemy_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	battle_enemy_hp_label.add_theme_font_size_override("font_size", 15)
+	battle_enemy_hp_label.add_theme_font_size_override("font_size", 13)
 	battle_enemy_hp_label.add_theme_color_override("font_color", Color(0.86, 0.82, 0.72))
 	enemy_box.add_child(battle_enemy_hp_label)
 
@@ -1479,21 +1526,21 @@ func _layout_battle_stage() -> void:
 	if battle_hero_texture_rect == null or battle_enemy_panel == null:
 		return
 	var size := _viewport_design_size()
-	battle_hero_texture_rect.position = Vector2(size.x * 0.05, size.y * 0.16)
+	battle_hero_texture_rect.position = Vector2(size.x * 0.03, size.y * 0.10)
 	battle_hero_texture_rect.size = Vector2(size.x * 0.18, size.y * 0.38)
-	battle_chibi_hero_texture_rect.position = Vector2(size.x * 0.21, size.y * 0.34)
-	battle_chibi_hero_texture_rect.size = Vector2(size.x * 0.16, size.y * 0.19)
-	battle_chibi_enemy_texture_rect.position = Vector2(size.x * 0.61, size.y * 0.33)
-	battle_chibi_enemy_texture_rect.size = Vector2(size.x * 0.16, size.y * 0.20)
+	battle_chibi_hero_texture_rect.position = Vector2(size.x * 0.24, size.y * 0.27)
+	battle_chibi_hero_texture_rect.size = Vector2(size.x * 0.18, size.y * 0.23)
+	battle_chibi_enemy_texture_rect.position = Vector2(size.x * 0.61, size.y * 0.26)
+	battle_chibi_enemy_texture_rect.size = Vector2(size.x * 0.18, size.y * 0.24)
 	_layout_shadow_for(battle_chibi_hero_shadow, battle_chibi_hero_texture_rect, Vector2(0.52, 0.88), Vector2(0.38, 0.075))
 	_layout_shadow_for(battle_chibi_enemy_shadow, battle_chibi_enemy_texture_rect, Vector2(0.50, 0.88), Vector2(0.48, 0.075))
-	battle_enemy_panel.position = Vector2(size.x * 0.74, size.y * 0.11)
-	battle_enemy_panel.size = Vector2(size.x * 0.19, size.y * 0.24)
-	battle_status_label.position = Vector2(size.x * 0.31, size.y * 0.18)
+	battle_enemy_panel.position = Vector2(size.x * 0.77, size.y * 0.08)
+	battle_enemy_panel.size = Vector2(size.x * 0.18, size.y * 0.14)
+	battle_status_label.position = Vector2(size.x * 0.31, size.y * 0.12)
 	battle_status_label.size = Vector2(size.x * 0.38, size.y * 0.08)
-	battle_slash_layer.position = Vector2(size.x * 0.50, size.y * 0.34)
+	battle_slash_layer.position = Vector2(size.x * 0.48, size.y * 0.28)
 	battle_slash_layer.size = Vector2(size.x * 0.24, size.y * 0.24)
-	battle_float_label.position = Vector2(size.x * 0.56, size.y * 0.31)
+	battle_float_label.position = Vector2(size.x * 0.56, size.y * 0.25)
 	battle_float_label.size = Vector2(size.x * 0.29, size.y * 0.12)
 	_update_battle_home_positions()
 
@@ -1606,7 +1653,8 @@ func _update_travel_stage_animation(delta: float) -> void:
 	var time := Time.get_ticks_msec() / 1000.0
 	var drift := sin(time * 5.5) * 0.010
 	var bob := sin(time * 12.0) * 0.010
-	travel_chibi_texture_rect.anchor_left = 0.22 + progress_ratio * 0.22 + drift
+	var path_offset := (progress_ratio - 0.5) * 0.16
+	travel_chibi_texture_rect.anchor_left = 0.40 + path_offset + drift
 	travel_chibi_texture_rect.anchor_right = travel_chibi_texture_rect.anchor_left + 0.20
 	travel_chibi_texture_rect.anchor_top = travel_chibi_base_top + bob
 	travel_chibi_texture_rect.anchor_bottom = 0.86 + bob
@@ -2000,8 +2048,8 @@ func _apply_battle_enemy_identity(enemy_id: String, tags: Array[String]) -> void
 	battle_chibi_enemy_texture_rect.texture = chibi_enemy_texture
 	battle_chibi_enemy_texture_rect.visible = chibi_enemy_texture != null
 	battle_chibi_enemy_shadow.visible = chibi_enemy_texture != null
-	battle_enemy_texture_rect.texture = chibi_enemy_texture
-	battle_enemy_texture_rect.visible = chibi_enemy_texture != null
+	battle_enemy_texture_rect.texture = null
+	battle_enemy_texture_rect.visible = false
 	battle_enemy_symbol_label.text = str(profile.get("symbol", "◇"))
 	battle_enemy_symbol_label.visible = chibi_enemy_texture == null
 	battle_enemy_symbol_label.add_theme_font_size_override("font_size", int(profile.get("symbol_size", 74)))

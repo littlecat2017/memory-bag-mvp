@@ -17,11 +17,13 @@ func _run() -> void:
 	main.debug_jump_to_event("F0003")
 	await _wait_for_battle_identity(main)
 	_verify_quick_bag_does_not_block_battle_feet(main)
-	_verify_quick_bag_sits_above_dialogue(main)
+	_verify_dialogue_sits_above_quick_bag(main)
+	_verify_battle_stage_uses_upper_half(main)
 
 	main.debug_jump_to_event("F0004")
 	await _settle(12)
 	_verify_travel_actor_clear_of_quick_bag(main)
+	_verify_travel_actor_centered(main)
 
 	main.queue_free()
 	await process_frame
@@ -36,15 +38,14 @@ func _verify_quick_bag_does_not_block_battle_feet(main: Control) -> void:
 	var quick_top: float = quick_rect.position.y
 	var hero_bottom: float = hero_rect.end.y
 	var enemy_bottom: float = enemy_rect.end.y
-	_expect(hero_bottom < quick_top - 4.0, "battle hero should stand above quick bag strip")
-	_expect(enemy_bottom < quick_top - 4.0, "battle enemy should stand above quick bag strip")
+	_expect(hero_bottom < quick_top - 18.0, "battle hero should stand above quick bag tray")
+	_expect(enemy_bottom < quick_top - 18.0, "battle enemy should stand above quick bag tray")
 
 
-func _verify_quick_bag_sits_above_dialogue(main: Control) -> void:
+func _verify_dialogue_sits_above_quick_bag(main: Control) -> void:
 	var quick_rect: Rect2 = main.quick_bag_bar.get_global_rect()
-	var dialogue_top: float = main.ui_root.size.y * 0.67
-	var quick_bottom: float = quick_rect.end.y
-	_expect(quick_bottom < dialogue_top - 4.0, "quick bag should not overlap dialogue panel")
+	var dialogue_bottom: float = main.ui_root.size.y * 0.665
+	_expect(dialogue_bottom < quick_rect.position.y - 8.0, "dialogue panel should not overlap lower quick bag tray")
 
 
 func _verify_travel_actor_clear_of_quick_bag(main: Control) -> void:
@@ -52,12 +53,29 @@ func _verify_travel_actor_clear_of_quick_bag(main: Control) -> void:
 	var travel_rect: Rect2 = main.travel_stage.get_global_rect()
 	var quick_top: float = quick_rect.position.y
 	var travel_bottom: float = travel_rect.end.y
-	_expect(travel_bottom < quick_top - 8.0, "travel inset should not collide with quick bag")
+	_expect(travel_bottom < quick_top - 24.0, "travel stage should not collide with lower quick bag tray")
+
+
+func _verify_travel_actor_centered(main: Control) -> void:
+	var actor_rect: Rect2 = main.travel_chibi_texture_rect.get_global_rect()
+	var actor_center_x: float = actor_rect.get_center().x
+	var screen_width: float = main.ui_root.size.x
+	_expect(actor_center_x > screen_width * 0.38, "travel actor should not sit on the far left")
+	_expect(actor_center_x < screen_width * 0.62, "travel actor should remain near the center")
+
+
+func _verify_battle_stage_uses_upper_half(main: Control) -> void:
+	var quick_rect: Rect2 = main.quick_bag_bar.get_global_rect()
+	var hero_center_x: float = main.battle_chibi_hero_texture_rect.get_global_rect().get_center().x
+	var enemy_center_x: float = main.battle_chibi_enemy_texture_rect.get_global_rect().get_center().x
+	_expect(hero_center_x < enemy_center_x, "battle hero should stand on the left of the enemy")
+	_expect(enemy_center_x - hero_center_x > main.ui_root.size.x * 0.22, "battle sides should be visually separated")
+	_expect(main.battle_chibi_hero_texture_rect.get_global_rect().end.y < quick_rect.position.y - 18.0, "battle should stay above operation tray")
 
 
 func _wait_for_battle_identity(main: Control) -> void:
 	for _index in range(120):
-		if main.battle_stage.visible and main.battle_enemy_panel.modulate.a > 0.85 and main.battle_enemy_texture_rect.visible:
+		if main.battle_stage.visible and main.battle_enemy_panel.modulate.a > 0.85 and main.battle_chibi_enemy_texture_rect.visible:
 			await _settle(6)
 			return
 		await process_frame

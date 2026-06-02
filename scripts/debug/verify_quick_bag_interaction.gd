@@ -32,8 +32,8 @@ func _verify_quick_bar_exists(main: Control) -> void:
 	_expect(main.trash_zone_card != null, "trash zone should exist")
 	_expect(main.found_zone_card != null, "found zone should exist")
 	_expect(main.quick_bag_slots.size() == 4, "quick bag should have 4 visible MVP slots")
-	_expect(abs(main.quick_bag_bar.anchor_top - 0.600) < 0.001, "quick bag should sit above dialogue without overlapping it")
-	_expect(abs(main.quick_bag_bar.anchor_bottom - 0.655) < 0.001, "quick bag should remain a compact strip")
+	_expect(abs(main.quick_bag_bar.anchor_top - 0.690) < 0.001, "quick bag should sit in the lower operation area")
+	_expect(abs(main.quick_bag_bar.anchor_bottom - 0.965) < 0.001, "quick bag should be a large backpack tray")
 
 
 func _verify_slot_reorder(main: Control) -> void:

@@ -38,6 +38,7 @@ func set_empty(slot_index: int) -> void:
 	obligation_label.text = "承诺：-"
 	loss_hint_label.text = "丢弃提示：-"
 	_apply_compact_visibility()
+	_apply_panel_style()
 
 
 func set_memory(memory: Dictionary, art_asset: Dictionary = {}, id := "") -> void:
@@ -54,6 +55,7 @@ func set_memory(memory: Dictionary, art_asset: Dictionary = {}, id := "") -> voi
 	obligation_label.text = "承诺：%s" % memory.get("obligation", "")
 	loss_hint_label.text = "丢弃提示：%s" % memory.get("ui_loss_hint", "")
 	_apply_compact_visibility()
+	_apply_panel_style()
 
 
 func set_zone(title: String, subtitle: String, kind: String) -> void:
@@ -69,12 +71,14 @@ func set_zone(title: String, subtitle: String, kind: String) -> void:
 	obligation_label.text = ""
 	loss_hint_label.text = ""
 	_apply_compact_visibility()
+	_apply_panel_style()
 
 
 func set_compact(enabled: bool) -> void:
 	compact_mode = enabled
-	custom_minimum_size = Vector2(104, 46) if compact_mode else Vector2(260, 132)
+	custom_minimum_size = Vector2(138, 86) if compact_mode else Vector2(260, 132)
 	_apply_compact_visibility()
+	_apply_panel_style()
 
 
 func configure_drop_target(kind: String, index := -1) -> void:
@@ -151,6 +155,7 @@ func _build() -> void:
 
 	loss_hint_label = _new_label(11)
 	content_box.add_child(loss_hint_label)
+	_apply_panel_style()
 
 
 func _new_label(font_size: int) -> Label:
@@ -164,20 +169,20 @@ func _apply_compact_visibility() -> void:
 	if title_label == null:
 		return
 	var padding := 3 if compact_mode else 10
-	var separation := 0 if compact_mode else 5
+	var separation := 3 if compact_mode else 5
 	margin_container.add_theme_constant_override("margin_left", padding)
 	margin_container.add_theme_constant_override("margin_top", padding)
 	margin_container.add_theme_constant_override("margin_right", padding)
 	margin_container.add_theme_constant_override("margin_bottom", padding)
 	content_box.add_theme_constant_override("separation", separation)
-	icon_texture_rect.custom_minimum_size = Vector2(22, 22) if compact_mode else Vector2(46, 46)
+	icon_texture_rect.custom_minimum_size = Vector2(34, 34) if compact_mode else Vector2(46, 46)
 	effect_label.visible = not compact_mode
 	relation_label.visible = not compact_mode
 	obligation_label.visible = not compact_mode
 	loss_hint_label.visible = not compact_mode
 	tags_label.visible = not compact_mode or not zone_kind.is_empty() or memory_id.is_empty()
-	title_label.add_theme_font_size_override("font_size", 12 if compact_mode else 18)
-	tags_label.add_theme_font_size_override("font_size", 9 if compact_mode else 13)
+	title_label.add_theme_font_size_override("font_size", 13 if compact_mode else 18)
+	tags_label.add_theme_font_size_override("font_size", 10 if compact_mode else 13)
 	if compact_mode:
 		title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tags_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -197,6 +202,35 @@ func _apply_compact_visibility() -> void:
 		icon_texture_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		title_label.add_theme_color_override("font_color", Color.WHITE)
 		tags_label.add_theme_color_override("font_color", Color.WHITE)
+
+
+func _apply_panel_style() -> void:
+	var style := StyleBoxFlat.new()
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 7
+	style.corner_radius_top_right = 7
+	style.corner_radius_bottom_left = 7
+	style.corner_radius_bottom_right = 7
+	if compact_mode:
+		if zone_kind == "trash":
+			style.bg_color = Color(0.13, 0.055, 0.045, 0.94)
+			style.border_color = Color(0.68, 0.23, 0.18, 0.95)
+		elif zone_kind == "found":
+			style.bg_color = Color(0.045, 0.105, 0.13, 0.94)
+			style.border_color = Color(0.28, 0.62, 0.72, 0.96)
+		elif memory_id.is_empty():
+			style.bg_color = Color(0.11, 0.095, 0.070, 0.90)
+			style.border_color = Color(0.40, 0.32, 0.19, 0.92)
+		else:
+			style.bg_color = Color(0.20, 0.155, 0.090, 0.96)
+			style.border_color = Color(0.78, 0.58, 0.26, 0.98)
+	else:
+		style.bg_color = Color(0.10, 0.08, 0.06, 0.86)
+		style.border_color = Color(0.48, 0.36, 0.20, 0.92)
+	add_theme_stylebox_override("panel", style)
 
 
 func _join_tags(tags) -> String:
