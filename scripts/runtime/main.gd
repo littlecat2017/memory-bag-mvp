@@ -41,9 +41,12 @@ var bg_label: Label
 var bg_texture_rect: TextureRect
 var portrait_texture_rect: TextureRect
 var battle_stage: Control
+var battle_pressure_rect: ColorRect
 var battle_hero_texture_rect: TextureRect
 var battle_enemy_panel: PanelContainer
 var battle_enemy_name_label: Label
+var battle_enemy_type_label: Label
+var battle_enemy_symbol_label: Label
 var battle_enemy_hp_bar: ProgressBar
 var battle_enemy_hp_label: Label
 var battle_status_label: Label
@@ -524,20 +527,20 @@ func _build_battle_stage(root: Control) -> void:
 	battle_stage.visible = false
 	root.add_child(battle_stage)
 
+	battle_pressure_rect = ColorRect.new()
+	battle_pressure_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
+	battle_pressure_rect.visible = false
+	battle_stage.add_child(battle_pressure_rect)
+
 	battle_hero_texture_rect = TextureRect.new()
-	battle_hero_texture_rect.anchor_left = 0.06
-	battle_hero_texture_rect.anchor_top = 0.20
-	battle_hero_texture_rect.anchor_right = 0.32
-	battle_hero_texture_rect.anchor_bottom = 0.71
+	battle_hero_texture_rect.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	battle_hero_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	battle_hero_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	battle_stage.add_child(battle_hero_texture_rect)
 
 	battle_enemy_panel = PanelContainer.new()
-	battle_enemy_panel.anchor_left = 0.64
-	battle_enemy_panel.anchor_top = 0.28
-	battle_enemy_panel.anchor_right = 0.88
-	battle_enemy_panel.anchor_bottom = 0.61
+	battle_enemy_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_apply_battle_enemy_style(battle_enemy_panel)
 	battle_stage.add_child(battle_enemy_panel)
 
@@ -558,12 +561,18 @@ func _build_battle_stage(root: Control) -> void:
 	battle_enemy_name_label.add_theme_color_override("font_color", Color(0.94, 0.88, 0.70))
 	enemy_box.add_child(battle_enemy_name_label)
 
-	var silhouette := Label.new()
-	silhouette.text = "◇"
-	silhouette.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	silhouette.add_theme_font_size_override("font_size", 74)
-	silhouette.add_theme_color_override("font_color", Color(0.18, 0.18, 0.18, 0.92))
-	enemy_box.add_child(silhouette)
+	battle_enemy_type_label = Label.new()
+	battle_enemy_type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	battle_enemy_type_label.add_theme_font_size_override("font_size", 14)
+	battle_enemy_type_label.add_theme_color_override("font_color", Color(0.67, 0.62, 0.50))
+	enemy_box.add_child(battle_enemy_type_label)
+
+	battle_enemy_symbol_label = Label.new()
+	battle_enemy_symbol_label.text = "◇"
+	battle_enemy_symbol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	battle_enemy_symbol_label.add_theme_font_size_override("font_size", 74)
+	battle_enemy_symbol_label.add_theme_color_override("font_color", Color(0.18, 0.18, 0.18, 0.92))
+	enemy_box.add_child(battle_enemy_symbol_label)
 
 	battle_enemy_hp_bar = ProgressBar.new()
 	battle_enemy_hp_bar.min_value = 0
@@ -579,10 +588,7 @@ func _build_battle_stage(root: Control) -> void:
 	enemy_box.add_child(battle_enemy_hp_label)
 
 	battle_status_label = Label.new()
-	battle_status_label.anchor_left = 0.28
-	battle_status_label.anchor_top = 0.19
-	battle_status_label.anchor_right = 0.72
-	battle_status_label.anchor_bottom = 0.27
+	battle_status_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	battle_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	battle_status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	battle_status_label.add_theme_font_size_override("font_size", 22)
@@ -590,25 +596,20 @@ func _build_battle_stage(root: Control) -> void:
 	battle_stage.add_child(battle_status_label)
 
 	battle_fx_texture_rect = TextureRect.new()
-	battle_fx_texture_rect.anchor_left = 0.58
-	battle_fx_texture_rect.anchor_top = 0.22
-	battle_fx_texture_rect.anchor_right = 0.78
-	battle_fx_texture_rect.anchor_bottom = 0.58
+	battle_fx_texture_rect.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	battle_fx_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	battle_fx_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	battle_fx_texture_rect.visible = false
 	battle_stage.add_child(battle_fx_texture_rect)
 
 	battle_float_label = Label.new()
-	battle_float_label.anchor_left = 0.56
-	battle_float_label.anchor_top = 0.22
-	battle_float_label.anchor_right = 0.85
-	battle_float_label.anchor_bottom = 0.34
+	battle_float_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	battle_float_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	battle_float_label.add_theme_font_size_override("font_size", 31)
 	battle_float_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.46))
 	battle_float_label.visible = false
 	battle_stage.add_child(battle_float_label)
+	_layout_battle_stage()
 
 
 func _show_load_error() -> void:
@@ -1182,6 +1183,7 @@ func _new_button_style(bg_color: Color, border_color: Color) -> StyleBoxFlat:
 func _on_viewport_size_changed() -> void:
 	if ui_root != null:
 		ui_root.size = _viewport_design_size()
+	_layout_battle_stage()
 
 
 func _viewport_design_size() -> Vector2:
@@ -1204,6 +1206,23 @@ func _update_header_status() -> void:
 	]
 
 
+func _layout_battle_stage() -> void:
+	if battle_hero_texture_rect == null or battle_enemy_panel == null:
+		return
+	var size := _viewport_design_size()
+	battle_hero_texture_rect.position = Vector2(size.x * 0.07, size.y * 0.19)
+	battle_hero_texture_rect.size = Vector2(size.x * 0.23, size.y * 0.47)
+	battle_enemy_panel.position = Vector2(size.x * 0.64, size.y * 0.28)
+	battle_enemy_panel.size = Vector2(size.x * 0.24, size.y * 0.33)
+	battle_status_label.position = Vector2(size.x * 0.31, size.y * 0.19)
+	battle_status_label.size = Vector2(size.x * 0.38, size.y * 0.08)
+	battle_fx_texture_rect.position = Vector2(size.x * 0.56, size.y * 0.22)
+	battle_fx_texture_rect.size = Vector2(size.x * 0.22, size.y * 0.36)
+	battle_float_label.position = Vector2(size.x * 0.56, size.y * 0.22)
+	battle_float_label.size = Vector2(size.x * 0.29, size.y * 0.12)
+	_update_battle_home_positions()
+
+
 func _apply_modal_panel_style(panel: PanelContainer) -> void:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.07, 0.055, 0.045, 0.88)
@@ -1219,10 +1238,10 @@ func _apply_modal_panel_style(panel: PanelContainer) -> void:
 	panel.add_theme_stylebox_override("panel", style)
 
 
-func _apply_battle_enemy_style(panel: PanelContainer) -> void:
+func _apply_battle_enemy_style(panel: PanelContainer, bg_color := Color(0.06, 0.055, 0.045, 0.74), border_color := Color(0.60, 0.48, 0.26, 0.90)) -> void:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.055, 0.045, 0.74)
-	style.border_color = Color(0.60, 0.48, 0.26, 0.90)
+	style.bg_color = bg_color
+	style.border_color = border_color
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2
@@ -1248,11 +1267,15 @@ func _start_battle_stage(event: Dictionary, result: Dictionary) -> void:
 	if battle_stage == null:
 		return
 	battle_animation_generation += 1
+	_layout_battle_stage()
 	battle_stage.visible = true
+	battle_pressure_rect.visible = false
+	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
 	battle_status_label.text = "战斗开始"
 	_set_texture_rect(battle_hero_texture_rect, registry.get_art_asset("hero_default", "portrait"))
 	var enemy_name := _battle_enemy_name(event, result)
 	battle_enemy_name_label.text = enemy_name
+	_apply_battle_enemy_identity(_battle_enemy_id(event, result), [])
 	_update_enemy_hp_display(1, 1)
 	battle_float_label.visible = false
 	battle_fx_texture_rect.visible = false
@@ -1294,9 +1317,12 @@ func _play_battle_step(event: Dictionary) -> void:
 	var event_type := str(event.get("type", ""))
 	if event_type == "enemy_appear":
 		battle_enemy_name_label.text = str(event.get("enemy_name", "敌人"))
+		_apply_battle_enemy_identity(str(event.get("enemy_id", "")), _string_array_from_variant(event.get("enemy_tags", [])))
 		_update_enemy_hp_display(int(event.get("enemy_hp", 1)), int(event.get("enemy_max_hp", 1)))
 		battle_status_label.text = "遭遇：%s" % battle_enemy_name_label.text
 		battle_enemy_panel.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		if _tags_have(event.get("enemy_tags", []), "boss"):
+			await _animate_boss_appear()
 		var tween := create_tween()
 		tween.tween_property(battle_enemy_panel, "modulate", Color.WHITE, 0.18)
 		await tween.finished
@@ -1312,7 +1338,10 @@ func _play_battle_step(event: Dictionary) -> void:
 	elif event_type == "memory_heal":
 		await _animate_battle_notice("恢复 +%d" % int(event.get("amount", 0)), Color(0.55, 1.0, 0.68))
 	elif event_type == "enemy_charge" or event_type == "enemy_guard" or event_type == "boss_pressure":
-		await _animate_battle_notice(str(event.get("message", "")), Color(0.98, 0.82, 0.48))
+		if event_type == "boss_pressure":
+			await _animate_boss_pressure(str(event.get("message", "")))
+		else:
+			await _animate_battle_notice(str(event.get("message", "")), Color(0.98, 0.82, 0.48))
 	elif event_type == "player_near_death" or event_type == "revive":
 		await _animate_battle_notice("濒死回退", Color(1.0, 0.45, 0.42))
 	else:
@@ -1366,6 +1395,38 @@ func _animate_enemy_attack(event: Dictionary) -> void:
 	await back.finished
 
 
+func _animate_boss_appear() -> void:
+	battle_pressure_rect.visible = true
+	battle_pressure_rect.color = Color(0.20, 0.02, 0.04, 0.0)
+	battle_status_label.text = "名字被拉向弓弦"
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(battle_pressure_rect, "color", Color(0.20, 0.02, 0.04, 0.28), 0.22)
+	tween.tween_property(battle_enemy_panel, "scale", Vector2(1.05, 1.05), 0.18)
+	await tween.finished
+	var settle := create_tween()
+	settle.tween_property(battle_enemy_panel, "scale", Vector2.ONE, 0.12)
+	await settle.finished
+
+
+func _animate_boss_pressure(message: String) -> void:
+	if message.strip_edges().is_empty():
+		message = "忘名猎人的弓弦正在寻找一个名字。"
+	battle_pressure_rect.visible = true
+	battle_pressure_rect.color = Color(0.30, 0.02, 0.06, 0.20)
+	await _animate_battle_notice(message, Color(1.0, 0.55, 0.58))
+	var shake := create_tween()
+	shake.set_parallel(true)
+	shake.tween_property(battle_enemy_panel, "position", battle_enemy_home + Vector2(-10, 0), 0.05)
+	shake.tween_property(battle_pressure_rect, "color", Color(0.30, 0.02, 0.06, 0.34), 0.05)
+	await shake.finished
+	var back := create_tween()
+	back.set_parallel(true)
+	back.tween_property(battle_enemy_panel, "position", battle_enemy_home, 0.08)
+	back.tween_property(battle_pressure_rect, "color", Color(0.20, 0.02, 0.04, 0.24), 0.12)
+	await back.finished
+
+
 func _animate_battle_notice(message: String, color: Color) -> void:
 	if message.strip_edges().is_empty():
 		await get_tree().create_timer(0.08).timeout
@@ -1395,18 +1456,17 @@ func _play_slash_effect() -> void:
 
 
 func _show_damage_text(text: String, color: Color, anchor := Vector2(0.56, 0.22)) -> void:
-	battle_float_label.anchor_left = anchor.x
-	battle_float_label.anchor_top = anchor.y
-	battle_float_label.anchor_right = anchor.x + 0.28
-	battle_float_label.anchor_bottom = anchor.y + 0.12
+	var size := _viewport_design_size()
+	battle_float_label.position = Vector2(size.x * anchor.x, size.y * anchor.y)
+	battle_float_label.size = Vector2(size.x * 0.29, size.y * 0.12)
 	battle_float_label.text = text
 	battle_float_label.add_theme_color_override("font_color", color)
 	battle_float_label.visible = true
 	battle_float_label.modulate = Color.WHITE
-	battle_float_label.position = Vector2.ZERO
+	var start_position := battle_float_label.position
 	var tween := create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(battle_float_label, "position", Vector2(0, -26), 0.28)
+	tween.tween_property(battle_float_label, "position", start_position + Vector2(0, -26), 0.28)
 	tween.tween_property(battle_float_label, "modulate", Color(1, 1, 1, 0), 0.28)
 	tween.finished.connect(func(): battle_float_label.visible = false)
 
@@ -1425,6 +1485,8 @@ func _finish_battle_stage() -> void:
 	battle_status_label.text = "战斗结束"
 	battle_fx_texture_rect.visible = false
 	battle_float_label.visible = false
+	battle_pressure_rect.visible = false
+	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
 	var tween := create_tween()
 	tween.tween_property(battle_stage, "modulate", Color(1, 1, 1, 0), 0.18)
 	await tween.finished
@@ -1432,6 +1494,8 @@ func _finish_battle_stage() -> void:
 	battle_stage.modulate = Color.WHITE
 	battle_enemy_panel.modulate = Color.WHITE
 	battle_hero_texture_rect.modulate = Color.WHITE
+	battle_pressure_rect.visible = false
+	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
 	battle_hero_texture_rect.position = battle_hero_home
 	battle_enemy_panel.position = battle_enemy_home
 	battle_hero_texture_rect.scale = Vector2.ONE
@@ -1446,6 +1510,8 @@ func _cancel_battle_animation() -> void:
 	battle_stage.modulate = Color.WHITE
 	battle_fx_texture_rect.visible = false
 	battle_float_label.visible = false
+	battle_pressure_rect.visible = false
+	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
 	battle_enemy_panel.modulate = Color.WHITE
 	battle_hero_texture_rect.modulate = Color.WHITE
 	battle_hero_texture_rect.position = battle_hero_home
@@ -1469,6 +1535,84 @@ func _battle_enemy_name(event: Dictionary, result: Dictionary) -> String:
 	var enemy_id := str(event.get("enemy_id", ""))
 	var enemy: Dictionary = registry.enemies.get(enemy_id, {})
 	return str(enemy.get("log_name", enemy.get("name", enemy_id)))
+
+
+func _battle_enemy_id(event: Dictionary, result: Dictionary) -> String:
+	var ids = result.get("enemy_ids", [])
+	if typeof(ids) == TYPE_ARRAY and not ids.is_empty():
+		return str(ids[0])
+	var raw := str(event.get("enemy_id", ""))
+	if raw.contains(","):
+		return raw.split(",", false, 1)[0].strip_edges()
+	return raw
+
+
+func _apply_battle_enemy_identity(enemy_id: String, tags: Array[String]) -> void:
+	if tags.is_empty() and not enemy_id.is_empty():
+		var enemy: Dictionary = registry.enemies.get(enemy_id, {})
+		tags = _string_array_from_variant(enemy.get("tags", []))
+	var profile := _battle_enemy_profile(enemy_id, tags)
+	battle_enemy_symbol_label.text = str(profile.get("symbol", "◇"))
+	battle_enemy_symbol_label.add_theme_font_size_override("font_size", int(profile.get("symbol_size", 74)))
+	battle_enemy_symbol_label.add_theme_color_override("font_color", profile.get("symbol_color", Color(0.18, 0.18, 0.18, 0.92)))
+	battle_enemy_type_label.text = str(profile.get("type_text", "空壳"))
+	battle_enemy_type_label.add_theme_color_override("font_color", profile.get("type_color", Color(0.67, 0.62, 0.50)))
+	_apply_battle_enemy_style(battle_enemy_panel, profile.get("panel_bg", Color(0.06, 0.055, 0.045, 0.74)), profile.get("panel_border", Color(0.60, 0.48, 0.26, 0.90)))
+
+
+func _battle_enemy_profile(enemy_id: String, tags: Array[String]) -> Dictionary:
+	if tags.has("boss"):
+		return {
+			"symbol": "弓",
+			"symbol_size": 72,
+			"symbol_color": Color(0.78, 0.12, 0.18, 0.96),
+			"type_text": "Boss / 无名 / 空壳",
+			"type_color": Color(1.0, 0.52, 0.50),
+			"panel_bg": Color(0.10, 0.035, 0.035, 0.82),
+			"panel_border": Color(0.86, 0.28, 0.25, 0.96),
+		}
+	if enemy_id == "enemy_nameless_deer" or tags.has("nameless"):
+		return {
+			"symbol": "鹿",
+			"symbol_size": 70,
+			"symbol_color": Color(0.54, 0.58, 0.63, 0.94),
+			"type_text": "无名",
+			"type_color": Color(0.78, 0.82, 0.90),
+			"panel_bg": Color(0.045, 0.055, 0.065, 0.76),
+			"panel_border": Color(0.52, 0.60, 0.74, 0.92),
+		}
+	if enemy_id == "enemy_hollow_warden" or tags.has("silent"):
+		return {
+			"symbol": "守",
+			"symbol_size": 70,
+			"symbol_color": Color(0.38, 0.42, 0.36, 0.96),
+			"type_text": "空壳 / 沉默",
+			"type_color": Color(0.70, 0.72, 0.62),
+			"panel_bg": Color(0.045, 0.060, 0.048, 0.78),
+			"panel_border": Color(0.50, 0.58, 0.40, 0.92),
+		}
+	return {
+		"symbol": "狼",
+		"symbol_size": 70,
+		"symbol_color": Color(0.22, 0.22, 0.20, 0.96),
+		"type_text": "空壳",
+		"type_color": Color(0.72, 0.66, 0.54),
+		"panel_bg": Color(0.06, 0.055, 0.045, 0.74),
+		"panel_border": Color(0.60, 0.48, 0.26, 0.90),
+	}
+
+
+func _string_array_from_variant(values) -> Array[String]:
+	var result: Array[String] = []
+	if typeof(values) != TYPE_ARRAY:
+		return result
+	for value in values:
+		result.append(str(value))
+	return result
+
+
+func _tags_have(values, tag: String) -> bool:
+	return _string_array_from_variant(values).has(tag)
 
 
 func _compact_battle_log(values) -> String:

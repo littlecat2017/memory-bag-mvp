@@ -17,6 +17,7 @@ func _init() -> void:
 	_verify_silent_damage_reduction(registry)
 	_verify_battle_rewards(registry)
 	_verify_battle_timeline(registry)
+	_verify_boss_timeline_tags(registry)
 	print("verify_battle: ok")
 	quit(0)
 
@@ -148,6 +149,24 @@ func _verify_battle_timeline(registry) -> void:
 		return
 
 
+func _verify_boss_timeline_tags(registry) -> void:
+	var state = _new_state(registry)
+	for memory_id in ["mem_wooden_sword", "mem_reason_to_depart", "mem_my_name", "mem_empty_nameplate"]:
+		state.gain_memory(memory_id)
+	var runner = _new_runner(registry, state)
+	var event: Dictionary = registry.script_events.get("F0036", {})
+	var result: Dictionary = runner.run_event(event)
+	var timeline = result.get("timeline", [])
+	if not _timeline_has(timeline, "enemy_appear"):
+		_fail("boss timeline should include enemy appear")
+		return
+	var first_enemy = _timeline_first(timeline, "enemy_appear")
+	var tags = first_enemy.get("enemy_tags", [])
+	if typeof(tags) != TYPE_ARRAY or not tags.has("boss") or not tags.has("nameless"):
+		_fail("boss timeline should include boss and nameless tags")
+		return
+
+
 func _logs_contain(values, needle: String) -> bool:
 	for value in values:
 		if str(value).contains(needle):
@@ -160,6 +179,13 @@ func _timeline_has(values, event_type: String) -> bool:
 		if typeof(value) == TYPE_DICTIONARY and str(value.get("type", "")) == event_type:
 			return true
 	return false
+
+
+func _timeline_first(values, event_type: String) -> Dictionary:
+	for value in values:
+		if typeof(value) == TYPE_DICTIONARY and str(value.get("type", "")) == event_type:
+			return value
+	return {}
 
 
 func _fail(message: String) -> void:

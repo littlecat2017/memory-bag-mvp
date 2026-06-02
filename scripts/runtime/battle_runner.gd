@@ -67,6 +67,7 @@ func run_enemy(enemy_id: String) -> Dictionary:
 		"enemy_name": _enemy_name(enemy),
 		"enemy_hp": int(enemy.current_hp),
 		"enemy_max_hp": int(enemy.get("max_hp", enemy.current_hp)),
+		"enemy_tags": _string_array(enemy.get("tags", [])),
 	})
 
 	var stats: Dictionary = state.derived_stats(registry)
@@ -106,6 +107,7 @@ func run_enemy(enemy_id: String) -> Dictionary:
 				"crit": bool(attack.crit),
 				"enemy_hp": int(enemy.current_hp),
 				"enemy_max_hp": int(enemy.get("max_hp", 1)),
+				"enemy_tags": _string_array(enemy.get("tags", [])),
 			})
 			_check_enemy_hp_mechanics(enemy)
 			if int(enemy.current_hp) <= 0:
@@ -122,6 +124,7 @@ func run_enemy(enemy_id: String) -> Dictionary:
 				"enemy_name": _enemy_name(enemy),
 				"damage": damage,
 				"player_hp": state.hp,
+				"enemy_tags": _string_array(enemy.get("tags", [])),
 			})
 
 	var victory: bool = int(enemy.current_hp) <= 0 and state.hp > 0
@@ -131,6 +134,7 @@ func run_enemy(enemy_id: String) -> Dictionary:
 			"type": "enemy_defeated",
 			"enemy_id": enemy_id,
 			"enemy_name": _enemy_name(enemy),
+			"enemy_tags": _string_array(enemy.get("tags", [])),
 		})
 	else:
 		_log("勇者在 %s 面前濒死。" % _enemy_name(enemy))
@@ -139,6 +143,7 @@ func run_enemy(enemy_id: String) -> Dictionary:
 			"enemy_id": enemy_id,
 			"enemy_name": _enemy_name(enemy),
 			"player_hp": state.hp,
+			"enemy_tags": _string_array(enemy.get("tags", [])),
 		})
 	return {
 		"enemy_id": enemy_id,
@@ -299,6 +304,7 @@ func _tick_enemy_intervals(enemy: Dictionary, timers: Array[Dictionary], delta: 
 				"type": "enemy_charge",
 				"enemy_name": _enemy_name(enemy),
 				"message": str(mechanic.get("log", "")),
+				"enemy_tags": _string_array(enemy.get("tags", [])),
 			})
 		elif effect_type == "try_fade_non_core_memory":
 			_log("%s（MVP 暂记录为战斗压力，不实际淡化记忆。）" % str(mechanic.get("log", "")))
@@ -306,6 +312,7 @@ func _tick_enemy_intervals(enemy: Dictionary, timers: Array[Dictionary], delta: 
 				"type": "boss_pressure",
 				"enemy_name": _enemy_name(enemy),
 				"message": str(mechanic.get("log", "")),
+				"enemy_tags": _string_array(enemy.get("tags", [])),
 			})
 
 
@@ -334,6 +341,7 @@ func _check_enemy_hp_mechanics(enemy: Dictionary) -> void:
 			"type": "enemy_guard",
 			"enemy_name": _enemy_name(enemy),
 			"message": str(mechanic.get("log", "")),
+			"enemy_tags": _string_array(enemy.get("tags", [])),
 		})
 
 
@@ -420,6 +428,15 @@ func _enemy_name(enemy: Dictionary) -> String:
 
 func _has_tag(enemy: Dictionary, tag: String) -> bool:
 	return _tag_list_has(enemy.get("tags", []), tag)
+
+
+func _string_array(values) -> Array[String]:
+	var result: Array[String] = []
+	if typeof(values) != TYPE_ARRAY:
+		return result
+	for value in values:
+		result.append(str(value))
+	return result
 
 
 func _tag_list_has(tags, tag: String) -> bool:
