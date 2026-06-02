@@ -32,6 +32,18 @@ var progress_label: Label
 var bg_label: Label
 var bg_texture_rect: TextureRect
 var portrait_texture_rect: TextureRect
+var battle_stage: Control
+var battle_hero_texture_rect: TextureRect
+var battle_enemy_panel: PanelContainer
+var battle_enemy_name_label: Label
+var battle_enemy_hp_bar: ProgressBar
+var battle_enemy_hp_label: Label
+var battle_status_label: Label
+var battle_fx_texture_rect: TextureRect
+var battle_float_label: Label
+var slash_sheet_texture: Texture2D
+var battle_hero_home := Vector2.ZERO
+var battle_enemy_home := Vector2.ZERO
 var dialogue_texture_rect: TextureRect
 var nameplate_texture_rect: TextureRect
 var bag_panel_texture_rect: TextureRect
@@ -109,6 +121,8 @@ func _build_ui() -> void:
 	portrait_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait_texture_rect.visible = false
 	root.add_child(portrait_texture_rect)
+
+	_build_battle_stage(root)
 
 	var top_bar := HBoxContainer.new()
 	top_bar.anchor_left = 0.0
@@ -408,6 +422,100 @@ func _build_ui() -> void:
 	_apply_button_texture_style(next_button, "ui_choice_button")
 
 
+func _build_battle_stage(root: Control) -> void:
+	battle_stage = Control.new()
+	battle_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
+	battle_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	battle_stage.visible = false
+	root.add_child(battle_stage)
+
+	battle_hero_texture_rect = TextureRect.new()
+	battle_hero_texture_rect.anchor_left = 0.06
+	battle_hero_texture_rect.anchor_top = 0.20
+	battle_hero_texture_rect.anchor_right = 0.32
+	battle_hero_texture_rect.anchor_bottom = 0.71
+	battle_hero_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battle_hero_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	battle_stage.add_child(battle_hero_texture_rect)
+
+	battle_enemy_panel = PanelContainer.new()
+	battle_enemy_panel.anchor_left = 0.64
+	battle_enemy_panel.anchor_top = 0.28
+	battle_enemy_panel.anchor_right = 0.88
+	battle_enemy_panel.anchor_bottom = 0.61
+	_apply_battle_enemy_style(battle_enemy_panel)
+	battle_stage.add_child(battle_enemy_panel)
+
+	var enemy_margin := MarginContainer.new()
+	enemy_margin.add_theme_constant_override("margin_left", 18)
+	enemy_margin.add_theme_constant_override("margin_top", 16)
+	enemy_margin.add_theme_constant_override("margin_right", 18)
+	enemy_margin.add_theme_constant_override("margin_bottom", 16)
+	battle_enemy_panel.add_child(enemy_margin)
+
+	var enemy_box := VBoxContainer.new()
+	enemy_box.add_theme_constant_override("separation", 8)
+	enemy_margin.add_child(enemy_box)
+
+	battle_enemy_name_label = Label.new()
+	battle_enemy_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	battle_enemy_name_label.add_theme_font_size_override("font_size", 26)
+	battle_enemy_name_label.add_theme_color_override("font_color", Color(0.94, 0.88, 0.70))
+	enemy_box.add_child(battle_enemy_name_label)
+
+	var silhouette := Label.new()
+	silhouette.text = "◇"
+	silhouette.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	silhouette.add_theme_font_size_override("font_size", 74)
+	silhouette.add_theme_color_override("font_color", Color(0.18, 0.18, 0.18, 0.92))
+	enemy_box.add_child(silhouette)
+
+	battle_enemy_hp_bar = ProgressBar.new()
+	battle_enemy_hp_bar.min_value = 0
+	battle_enemy_hp_bar.max_value = 1
+	battle_enemy_hp_bar.value = 1
+	battle_enemy_hp_bar.show_percentage = false
+	enemy_box.add_child(battle_enemy_hp_bar)
+
+	battle_enemy_hp_label = Label.new()
+	battle_enemy_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	battle_enemy_hp_label.add_theme_font_size_override("font_size", 15)
+	battle_enemy_hp_label.add_theme_color_override("font_color", Color(0.86, 0.82, 0.72))
+	enemy_box.add_child(battle_enemy_hp_label)
+
+	battle_status_label = Label.new()
+	battle_status_label.anchor_left = 0.28
+	battle_status_label.anchor_top = 0.19
+	battle_status_label.anchor_right = 0.72
+	battle_status_label.anchor_bottom = 0.27
+	battle_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	battle_status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	battle_status_label.add_theme_font_size_override("font_size", 22)
+	battle_status_label.add_theme_color_override("font_color", Color(0.98, 0.88, 0.62))
+	battle_stage.add_child(battle_status_label)
+
+	battle_fx_texture_rect = TextureRect.new()
+	battle_fx_texture_rect.anchor_left = 0.58
+	battle_fx_texture_rect.anchor_top = 0.22
+	battle_fx_texture_rect.anchor_right = 0.78
+	battle_fx_texture_rect.anchor_bottom = 0.58
+	battle_fx_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battle_fx_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	battle_fx_texture_rect.visible = false
+	battle_stage.add_child(battle_fx_texture_rect)
+
+	battle_float_label = Label.new()
+	battle_float_label.anchor_left = 0.56
+	battle_float_label.anchor_top = 0.22
+	battle_float_label.anchor_right = 0.85
+	battle_float_label.anchor_bottom = 0.34
+	battle_float_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	battle_float_label.add_theme_font_size_override("font_size", 31)
+	battle_float_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.46))
+	battle_float_label.visible = false
+	battle_stage.add_child(battle_float_label)
+
+
 func _show_load_error() -> void:
 	name_label.text = "记忆背包"
 	status_label.text = "数据校验失败"
@@ -542,7 +650,7 @@ func _run_battle_event(event: Dictionary) -> void:
 	next_button.visible = false
 	var result := battle_runner.run_event(event)
 	_update_battle_labels(event, result)
-	run_controller.resume()
+	call_deferred("_play_battle_result_then_resume", result)
 
 
 func _on_memory_replacement_requested(memory_id: String, _next_event_id: String) -> void:
@@ -834,8 +942,9 @@ func _update_battle_labels(event: Dictionary, result: Dictionary) -> void:
 	bg_label.text = "背景：%s / 敌人：%s" % [event.get("bg", ""), event.get("enemy_id", "")]
 	_apply_event_art(event)
 	speaker_label.text = "胜利" if bool(result.get("victory", false)) else "濒死"
-	text_label.text = "\n".join(result.get("logs", []))
+	text_label.text = _compact_battle_log(result.get("logs", []))
 	_update_bag_cards()
+	_start_battle_stage(event, result)
 
 
 func _apply_event_art(event: Dictionary) -> void:
@@ -867,6 +976,7 @@ func _apply_static_ui_art() -> void:
 	_set_texture_rect(dialogue_texture_rect, registry.get_art_asset("ui_dialogue_box", "ui"))
 	_set_texture_rect(nameplate_texture_rect, registry.get_art_asset("ui_nameplate", "ui"))
 	_set_texture_rect(bag_panel_texture_rect, registry.get_art_asset("ui_bag_panel", "ui"))
+	slash_sheet_texture = _texture_from_asset(registry.get_art_asset("fx_slash_basic_sheet", "effect_sheet"))
 
 
 func _apply_button_texture_style(button: Button, _asset_id: String) -> void:
@@ -943,3 +1053,253 @@ func _apply_modal_panel_style(panel: PanelContainer) -> void:
 	style.corner_radius_bottom_left = 8
 	style.corner_radius_bottom_right = 8
 	panel.add_theme_stylebox_override("panel", style)
+
+
+func _apply_battle_enemy_style(panel: PanelContainer) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.055, 0.045, 0.74)
+	style.border_color = Color(0.60, 0.48, 0.26, 0.90)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	panel.add_theme_stylebox_override("panel", style)
+
+
+func _texture_from_asset(art_asset: Dictionary) -> Texture2D:
+	var path := str(art_asset.get("path", ""))
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return null
+	var image := Image.new()
+	if image.load(path) != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+
+func _start_battle_stage(event: Dictionary, result: Dictionary) -> void:
+	if battle_stage == null:
+		return
+	battle_stage.visible = true
+	battle_status_label.text = "战斗开始"
+	_set_texture_rect(battle_hero_texture_rect, registry.get_art_asset("hero_default", "portrait"))
+	var enemy_name := _battle_enemy_name(event, result)
+	battle_enemy_name_label.text = enemy_name
+	_update_enemy_hp_display(1, 1)
+	battle_float_label.visible = false
+	battle_fx_texture_rect.visible = false
+	_update_battle_home_positions()
+	battle_hero_texture_rect.position = battle_hero_home
+	battle_enemy_panel.position = battle_enemy_home
+
+
+func _play_battle_result_then_resume(result: Dictionary) -> void:
+	await _play_battle_timeline(result.get("timeline", []))
+	run_controller.resume()
+
+
+func _play_battle_timeline(events) -> void:
+	if typeof(events) != TYPE_ARRAY or events.is_empty():
+		await get_tree().create_timer(0.45).timeout
+		await _finish_battle_stage()
+		return
+	var played := 0
+	for event in events:
+		if typeof(event) != TYPE_DICTIONARY:
+			continue
+		await _play_battle_step(event)
+		played += 1
+		if played >= 16:
+			break
+	await get_tree().create_timer(0.28).timeout
+	await _finish_battle_stage()
+
+
+func _play_battle_step(event: Dictionary) -> void:
+	var event_type := str(event.get("type", ""))
+	if event_type == "enemy_appear":
+		battle_enemy_name_label.text = str(event.get("enemy_name", "敌人"))
+		_update_enemy_hp_display(int(event.get("enemy_hp", 1)), int(event.get("enemy_max_hp", 1)))
+		battle_status_label.text = "遭遇：%s" % battle_enemy_name_label.text
+		battle_enemy_panel.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		var tween := create_tween()
+		tween.tween_property(battle_enemy_panel, "modulate", Color.WHITE, 0.18)
+		await tween.finished
+	elif event_type == "player_attack":
+		await _animate_player_attack(event)
+	elif event_type == "enemy_attack":
+		await _animate_enemy_attack(event)
+	elif event_type == "enemy_defeated":
+		battle_status_label.text = "%s 被击败" % str(event.get("enemy_name", "敌人"))
+		var tween := create_tween()
+		tween.tween_property(battle_enemy_panel, "modulate", Color(1.0, 1.0, 1.0, 0.25), 0.22)
+		await tween.finished
+	elif event_type == "memory_heal":
+		await _animate_battle_notice("恢复 +%d" % int(event.get("amount", 0)), Color(0.55, 1.0, 0.68))
+	elif event_type == "enemy_charge" or event_type == "enemy_guard" or event_type == "boss_pressure":
+		await _animate_battle_notice(str(event.get("message", "")), Color(0.98, 0.82, 0.48))
+	elif event_type == "player_near_death" or event_type == "revive":
+		await _animate_battle_notice("濒死回退", Color(1.0, 0.45, 0.42))
+	else:
+		await get_tree().create_timer(0.1).timeout
+
+
+func _animate_player_attack(event: Dictionary) -> void:
+	battle_status_label.text = "勇者挥剑"
+	var lunge_target := battle_hero_home + Vector2(96, -6)
+	var out := create_tween()
+	out.set_parallel(true)
+	out.tween_property(battle_hero_texture_rect, "position", lunge_target, 0.12)
+	out.tween_property(battle_hero_texture_rect, "scale", Vector2(1.04, 1.04), 0.12)
+	await out.finished
+	_show_damage_text("-%d%s" % [
+		int(event.get("damage", 0)),
+		" 暴击" if bool(event.get("crit", false)) else "",
+	], Color(1.0, 0.70, 0.36))
+	_update_enemy_hp_display(int(event.get("enemy_hp", 0)), int(event.get("enemy_max_hp", 1)))
+	await _play_slash_effect()
+	var hit := create_tween()
+	hit.set_parallel(true)
+	hit.tween_property(battle_enemy_panel, "position", battle_enemy_home + Vector2(16, 0), 0.06)
+	hit.tween_property(battle_enemy_panel, "modulate", Color(1.0, 0.65, 0.58, 1.0), 0.06)
+	await hit.finished
+	var back := create_tween()
+	back.set_parallel(true)
+	back.tween_property(battle_hero_texture_rect, "position", battle_hero_home, 0.16)
+	back.tween_property(battle_hero_texture_rect, "scale", Vector2.ONE, 0.16)
+	back.tween_property(battle_enemy_panel, "position", battle_enemy_home, 0.10)
+	back.tween_property(battle_enemy_panel, "modulate", Color.WHITE, 0.10)
+	await back.finished
+
+
+func _animate_enemy_attack(event: Dictionary) -> void:
+	battle_status_label.text = "%s 反击" % str(event.get("enemy_name", "敌人"))
+	var out := create_tween()
+	out.tween_property(battle_enemy_panel, "position", battle_enemy_home + Vector2(-42, 0), 0.10)
+	await out.finished
+	_show_damage_text("勇者 -%d" % int(event.get("damage", 0)), Color(1.0, 0.48, 0.43), Vector2(0.10, 0.30))
+	var hit := create_tween()
+	hit.set_parallel(true)
+	hit.tween_property(battle_hero_texture_rect, "modulate", Color(1.0, 0.66, 0.62, 1.0), 0.06)
+	hit.tween_property(battle_hero_texture_rect, "position", battle_hero_home + Vector2(-14, 0), 0.06)
+	await hit.finished
+	var back := create_tween()
+	back.set_parallel(true)
+	back.tween_property(battle_enemy_panel, "position", battle_enemy_home, 0.12)
+	back.tween_property(battle_hero_texture_rect, "modulate", Color.WHITE, 0.10)
+	back.tween_property(battle_hero_texture_rect, "position", battle_hero_home, 0.10)
+	await back.finished
+
+
+func _animate_battle_notice(message: String, color: Color) -> void:
+	if message.strip_edges().is_empty():
+		await get_tree().create_timer(0.08).timeout
+		return
+	battle_status_label.text = message
+	battle_status_label.modulate = color
+	var tween := create_tween()
+	tween.tween_property(battle_status_label, "scale", Vector2(1.08, 1.08), 0.08)
+	tween.tween_property(battle_status_label, "scale", Vector2.ONE, 0.12)
+	await tween.finished
+	battle_status_label.modulate = Color.WHITE
+
+
+func _play_slash_effect() -> void:
+	if slash_sheet_texture == null:
+		return
+	battle_fx_texture_rect.visible = true
+	battle_fx_texture_rect.modulate = Color(1.0, 1.0, 1.0, 0.95)
+	battle_fx_texture_rect.scale = Vector2(1.0, 1.0)
+	for frame in range(9):
+		var atlas := AtlasTexture.new()
+		atlas.atlas = slash_sheet_texture
+		atlas.region = Rect2((frame % 3) * 512, int(frame / 3) * 512, 512, 512)
+		battle_fx_texture_rect.texture = atlas
+		await get_tree().create_timer(0.035).timeout
+	battle_fx_texture_rect.visible = false
+
+
+func _show_damage_text(text: String, color: Color, anchor := Vector2(0.56, 0.22)) -> void:
+	battle_float_label.anchor_left = anchor.x
+	battle_float_label.anchor_top = anchor.y
+	battle_float_label.anchor_right = anchor.x + 0.28
+	battle_float_label.anchor_bottom = anchor.y + 0.12
+	battle_float_label.text = text
+	battle_float_label.add_theme_color_override("font_color", color)
+	battle_float_label.visible = true
+	battle_float_label.modulate = Color.WHITE
+	battle_float_label.position = Vector2.ZERO
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(battle_float_label, "position", Vector2(0, -26), 0.28)
+	tween.tween_property(battle_float_label, "modulate", Color(1, 1, 1, 0), 0.28)
+	tween.finished.connect(func(): battle_float_label.visible = false)
+
+
+func _update_enemy_hp_display(current_hp: int, max_hp: int) -> void:
+	max_hp = max(1, max_hp)
+	current_hp = clampi(current_hp, 0, max_hp)
+	battle_enemy_hp_bar.max_value = max_hp
+	battle_enemy_hp_bar.value = current_hp
+	battle_enemy_hp_label.text = "HP %d / %d" % [current_hp, max_hp]
+
+
+func _finish_battle_stage() -> void:
+	if battle_stage == null:
+		return
+	battle_status_label.text = "战斗结束"
+	battle_fx_texture_rect.visible = false
+	battle_float_label.visible = false
+	var tween := create_tween()
+	tween.tween_property(battle_stage, "modulate", Color(1, 1, 1, 0), 0.18)
+	await tween.finished
+	battle_stage.visible = false
+	battle_stage.modulate = Color.WHITE
+	battle_enemy_panel.modulate = Color.WHITE
+	battle_hero_texture_rect.modulate = Color.WHITE
+	battle_hero_texture_rect.position = battle_hero_home
+	battle_enemy_panel.position = battle_enemy_home
+	battle_hero_texture_rect.scale = Vector2.ONE
+	battle_enemy_panel.scale = Vector2.ONE
+
+
+func _update_battle_home_positions() -> void:
+	if battle_hero_texture_rect == null or battle_enemy_panel == null:
+		return
+	battle_hero_home = battle_hero_texture_rect.position
+	battle_enemy_home = battle_enemy_panel.position
+
+
+func _battle_enemy_name(event: Dictionary, result: Dictionary) -> String:
+	var ids = result.get("enemy_ids", [])
+	if typeof(ids) == TYPE_ARRAY and not ids.is_empty():
+		var enemy: Dictionary = registry.enemies.get(str(ids[0]), {})
+		return str(enemy.get("log_name", enemy.get("name", ids[0])))
+	var enemy_id := str(event.get("enemy_id", ""))
+	var enemy: Dictionary = registry.enemies.get(enemy_id, {})
+	return str(enemy.get("log_name", enemy.get("name", enemy_id)))
+
+
+func _compact_battle_log(values) -> String:
+	if typeof(values) != TYPE_ARRAY:
+		return ""
+	var lines: Array[String] = []
+	for value in values:
+		lines.append(str(value))
+	if lines.size() <= 2:
+		return "\n".join(lines)
+	var summary: Array[String] = []
+	for line in lines:
+		if line.contains("被击败") or line.contains("濒死"):
+			summary.append(line)
+			break
+	for line in lines:
+		if line.contains("战斗奖励"):
+			summary.append(line)
+			break
+	if summary.size() >= 2:
+		return "\n".join(summary.slice(0, 2))
+	return "\n".join(lines.slice(max(0, lines.size() - 2), lines.size()))

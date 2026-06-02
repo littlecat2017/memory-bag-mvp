@@ -33,6 +33,10 @@ func _run() -> void:
 	main._on_bag_toggle_pressed()
 	await _settle()
 	_save_snapshot("03_bag_panel.png")
+	main._on_bag_toggle_pressed()
+	main.debug_jump_to_event("F0003")
+	await _settle()
+	_save_snapshot("04_battle_stage.png")
 	main.queue_free()
 	viewport.queue_free()
 	await process_frame

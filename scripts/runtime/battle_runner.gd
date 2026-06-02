@@ -4,6 +4,7 @@ var registry
 var state
 var rng := RandomNumberGenerator.new()
 var logs: Array[String] = []
+var timeline: Array[Dictionary] = []
 
 
 func setup(data_registry, game_state) -> void:
@@ -15,6 +16,7 @@ func run_event(event: Dictionary) -> Dictionary:
 	var event_id := str(event.get("id", ""))
 	var enemy_ids := _parse_enemy_ids(str(event.get("enemy_id", "")))
 	logs.clear()
+	timeline.clear()
 	rng.seed = hash("%s:%s" % [event_id, ",".join(enemy_ids)])
 	if not event_id.is_empty():
 		state.remember_event(event_id)
@@ -40,6 +42,7 @@ func run_event(event: Dictionary) -> Dictionary:
 		"player_hp": state.hp,
 		"rewards": rewards,
 		"logs": logs.duplicate(),
+		"timeline": timeline.duplicate(true),
 	}
 	state.last_battle_log = logs.duplicate()
 	state.last_battle_result = result.duplicate(true)
@@ -58,6 +61,13 @@ func run_enemy(enemy_id: String) -> Dictionary:
 	enemy["triggered_mechanics"] = {}
 	_apply_enemy_battle_start_mechanics(enemy)
 	_log("遭遇：%s（HP %d）" % [_enemy_name(enemy), int(enemy.current_hp)])
+	_stage({
+		"type": "enemy_appear",
+		"enemy_id": enemy_id,
+		"enemy_name": _enemy_name(enemy),
+		"enemy_hp": int(enemy.current_hp),
+		"enemy_max_hp": int(enemy.get("max_hp", enemy.current_hp)),
+	})
 
 	var stats: Dictionary = state.derived_stats(registry)
 	var combat: Dictionary = registry.balance.get("combat", {})
@@ -88,6 +98,15 @@ func run_enemy(enemy_id: String) -> Dictionary:
 				int(attack.damage),
 				"（暴击）" if bool(attack.crit) else "",
 			])
+			_stage({
+				"type": "player_attack",
+				"enemy_id": enemy_id,
+				"enemy_name": _enemy_name(enemy),
+				"damage": int(attack.damage),
+				"crit": bool(attack.crit),
+				"enemy_hp": int(enemy.current_hp),
+				"enemy_max_hp": int(enemy.get("max_hp", 1)),
+			})
 			_check_enemy_hp_mechanics(enemy)
 			if int(enemy.current_hp) <= 0:
 				break
@@ -97,12 +116,30 @@ func run_enemy(enemy_id: String) -> Dictionary:
 			var damage := _enemy_attack_damage(enemy, stats)
 			state.take_damage(damage)
 			_log("%s 攻击勇者，造成 %d 点伤害。" % [_enemy_name(enemy), damage])
+			_stage({
+				"type": "enemy_attack",
+				"enemy_id": enemy_id,
+				"enemy_name": _enemy_name(enemy),
+				"damage": damage,
+				"player_hp": state.hp,
+			})
 
 	var victory: bool = int(enemy.current_hp) <= 0 and state.hp > 0
 	if victory:
 		_log("%s 被击败。" % _enemy_name(enemy))
+		_stage({
+			"type": "enemy_defeated",
+			"enemy_id": enemy_id,
+			"enemy_name": _enemy_name(enemy),
+		})
 	else:
 		_log("勇者在 %s 面前濒死。" % _enemy_name(enemy))
+		_stage({
+			"type": "player_near_death",
+			"enemy_id": enemy_id,
+			"enemy_name": _enemy_name(enemy),
+			"player_hp": state.hp,
+		})
 	return {
 		"enemy_id": enemy_id,
 		"victory": victory,
@@ -237,6 +274,12 @@ func _tick_memory_intervals(timers: Array[Dictionary], delta: float, stats: Dict
 			var healed: int = state.heal_flat(int(effect.get("value", 0)), stats)
 			if healed > 0:
 				_log(str(trigger.get("log", "恢复 %d 点生命。" % healed)))
+				_stage({
+					"type": "memory_heal",
+					"memory_id": str(timer.memory_id),
+					"amount": healed,
+					"player_hp": state.hp,
+				})
 
 
 func _tick_enemy_intervals(enemy: Dictionary, timers: Array[Dictionary], delta: float) -> void:
@@ -252,8 +295,18 @@ func _tick_enemy_intervals(enemy: Dictionary, timers: Array[Dictionary], delta: 
 		if effect_type == "next_attack_damage_multiplier":
 			enemy.next_attack_multiplier = float(effect.get("value", 1.0))
 			_log(str(mechanic.get("log", "")))
+			_stage({
+				"type": "enemy_charge",
+				"enemy_name": _enemy_name(enemy),
+				"message": str(mechanic.get("log", "")),
+			})
 		elif effect_type == "try_fade_non_core_memory":
 			_log("%s（MVP 暂记录为战斗压力，不实际淡化记忆。）" % str(mechanic.get("log", "")))
+			_stage({
+				"type": "boss_pressure",
+				"enemy_name": _enemy_name(enemy),
+				"message": str(mechanic.get("log", "")),
+			})
 
 
 func _check_enemy_hp_mechanics(enemy: Dictionary) -> void:
@@ -277,6 +330,11 @@ func _check_enemy_hp_mechanics(enemy: Dictionary) -> void:
 		triggered[mechanic_id] = true
 		enemy.triggered_mechanics = triggered
 		_log(str(mechanic.get("log", "")))
+		_stage({
+			"type": "enemy_guard",
+			"enemy_name": _enemy_name(enemy),
+			"message": str(mechanic.get("log", "")),
+		})
 
 
 func _apply_post_battle_triggers() -> void:
@@ -293,6 +351,12 @@ func _apply_post_battle_triggers() -> void:
 				var healed: int = state.heal_flat(int(effect.get("value", 0)), stats)
 				if healed > 0:
 					_log(str(trigger.get("log", "战后恢复 %d 点生命。" % healed)))
+					_stage({
+						"type": "memory_heal",
+						"memory_id": memory_id,
+						"amount": healed,
+						"player_hp": state.hp,
+					})
 
 
 func _apply_defeat_recovery() -> void:
@@ -303,6 +367,10 @@ func _apply_defeat_recovery() -> void:
 	var max_hp := int(round(float(stats.get("max_hp", 120))))
 	state.hp = max(1, int(round(float(max_hp) * revive_percent)))
 	_log("勇者重新站起，生命恢复到 %d。" % state.hp)
+	_stage({
+		"type": "revive",
+		"player_hp": state.hp,
+	})
 
 
 func _mechanic_condition_passes(mechanic: Dictionary) -> bool:
@@ -367,3 +435,9 @@ func _log(message: String) -> void:
 	if message.strip_edges().is_empty():
 		return
 	logs.append(message)
+
+
+func _stage(event: Dictionary) -> void:
+	if timeline.size() >= 48:
+		return
+	timeline.append(event)

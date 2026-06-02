@@ -16,6 +16,7 @@ func _init() -> void:
 	_verify_empty_nameplate_boss_damage(registry)
 	_verify_silent_damage_reduction(registry)
 	_verify_battle_rewards(registry)
+	_verify_battle_timeline(registry)
 	print("verify_battle: ok")
 	quit(0)
 
@@ -125,9 +126,38 @@ func _verify_battle_rewards(registry) -> void:
 		_fail("exp reward should be 18 after F0003")
 
 
+func _verify_battle_timeline(registry) -> void:
+	var state = _new_state(registry)
+	for memory_id in ["mem_mothers_soup", "mem_wooden_sword", "mem_reason_to_depart", "mem_my_name"]:
+		state.gain_memory(memory_id)
+	var runner = _new_runner(registry, state)
+	var event: Dictionary = registry.script_events.get("F0003", {})
+	var result: Dictionary = runner.run_event(event)
+	var timeline = result.get("timeline", [])
+	if typeof(timeline) != TYPE_ARRAY or timeline.is_empty():
+		_fail("battle result should include animation timeline")
+		return
+	if not _timeline_has(timeline, "enemy_appear"):
+		_fail("timeline should include enemy appear event")
+		return
+	if not _timeline_has(timeline, "player_attack"):
+		_fail("timeline should include player attack event")
+		return
+	if not _timeline_has(timeline, "enemy_defeated"):
+		_fail("timeline should include enemy defeated event")
+		return
+
+
 func _logs_contain(values, needle: String) -> bool:
 	for value in values:
 		if str(value).contains(needle):
+			return true
+	return false
+
+
+func _timeline_has(values, event_type: String) -> bool:
+	for value in values:
+		if typeof(value) == TYPE_DICTIONARY and str(value.get("type", "")) == event_type:
 			return true
 	return false
 
