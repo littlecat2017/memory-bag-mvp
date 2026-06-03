@@ -1,0 +1,45 @@
+{
+  "schema_version": "0.1",
+  "design_canvas": [1280, 720],
+  "concept_reference": "res://assets/reference/concept_memory_backpack.png",
+  "screens": {
+    "dialogue": {
+      "background": [0, 0, 1280, 720],
+      "portrait": [770, 95, 360, 430],
+      "dialogue_panel": [70, 520, 1140, 150],
+      "speaker_name": [110, 535, 250, 34],
+      "dialogue_text": [110, 575, 1000, 70]
+    },
+    "travel": {
+      "stage": [150, 60, 980, 300],
+      "hero": [560, 188, 160, 150],
+      "floor_baseline": [190, 338, 900, 4],
+      "operation_tray": [52, 386, 1176, 322],
+      "trash_zone": [72, 430, 210, 230],
+      "inventory_board": [404, 424, 556, 224],
+      "found_zone": [1000, 430, 205, 230]
+    },
+    "battle": {
+      "stage": [150, 60, 980, 300],
+      "hero": [330, 184, 170, 155],
+      "enemy": [780, 172, 205, 168],
+      "floor_baseline": [190, 340, 900, 4],
+      "status": [1000, 78, 205, 112],
+      "operation_tray": [52, 386, 1176, 322],
+      "trash_zone": [72, 430, 210, 230],
+      "inventory_board": [404, 424, 556, 224],
+      "found_zone": [1000, 430, 205, 230]
+    }
+  },
+  "inventory": {
+    "grid": [7, 4],
+    "initial_unlocked_slots": 4,
+    "locked_slots_visible": true,
+    "gap": [8, 8]
+  },
+  "rules": {
+    "dialogue_and_operation_tray_mutually_exclusive": true,
+    "hero_enemy_above_operation_tray": true,
+    "no_runtime_dependency_on_previous_prototype": true
+  }
+}
