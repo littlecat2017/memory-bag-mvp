@@ -331,6 +331,54 @@
       "source_doc": "UI-04",
       "expected_size": [785, 1212],
       "prompt_summary": "记忆背包侧栏面板"
+    },
+    {
+      "id": "ui_enemy_status_panel",
+      "type": "ui",
+      "path": "res://assets/ui/ui_enemy_status_panel.png",
+      "source_doc": "UI-06",
+      "expected_size": [640, 360],
+      "prompt_summary": "战斗敌人状态牌贴图"
+    },
+    {
+      "id": "ui_modal_panel",
+      "type": "ui",
+      "path": "res://assets/ui/ui_modal_panel.png",
+      "source_doc": "UI-07",
+      "expected_size": [1024, 768],
+      "prompt_summary": "确认弹窗与结尾回顾面板贴图"
+    },
+    {
+      "id": "ui_hint_panel",
+      "type": "ui",
+      "path": "res://assets/ui/ui_hint_panel.png",
+      "source_doc": "UI-08",
+      "expected_size": [640, 360],
+      "prompt_summary": "玩法提示与世界回响面板贴图"
+    },
+    {
+      "id": "ui_chibi_shadow",
+      "type": "ui",
+      "path": "res://assets/ui/ui_chibi_shadow.png",
+      "source_doc": "UI-09",
+      "expected_size": [512, 192],
+      "prompt_summary": "Q版角色脚底阴影贴图"
+    },
+    {
+      "id": "ui_hp_background",
+      "type": "ui",
+      "path": "res://assets/ui/ui_hp_background.png",
+      "source_doc": "UI-10",
+      "expected_size": [512, 64],
+      "prompt_summary": "敌人生命条底槽贴图"
+    },
+    {
+      "id": "ui_hp_fill",
+      "type": "ui",
+      "path": "res://assets/ui/ui_hp_fill.png",
+      "source_doc": "UI-11",
+      "expected_size": [512, 64],
+      "prompt_summary": "敌人生命条填充贴图"
     }
   ]
 }

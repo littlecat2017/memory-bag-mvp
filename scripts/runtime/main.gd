@@ -9,6 +9,9 @@ const EndingRunnerScript := preload("res://scripts/runtime/ending_runner.gd")
 const SaveManagerScript := preload("res://scripts/runtime/save_manager.gd")
 const MemoryCardViewScript := preload("res://scripts/ui/memory_card_view.gd")
 const SHOW_DEBUG_TOOLS := false
+const PAPER_TEXT := Color(0.22, 0.15, 0.08)
+const PAPER_TEXT_MUTED := Color(0.42, 0.33, 0.21)
+const PAPER_TEXT_ACCENT := Color(0.56, 0.36, 0.12)
 
 var registry = DataRegistryScript.new()
 var game_state = GameStateScript.new()
@@ -50,8 +53,7 @@ var portrait_texture_rect: TextureRect
 var travel_stage: Control
 var travel_panel_texture_rect: TextureRect
 var travel_chibi_texture_rect: TextureRect
-var travel_chibi_shadow: PanelContainer
-var travel_step_marker: ColorRect
+var travel_chibi_shadow: TextureRect
 var travel_walk_sheet_texture: Texture2D
 var travel_frame_index := 0
 var travel_frame_timer := 0.0
@@ -61,11 +63,12 @@ var battle_pressure_rect: ColorRect
 var battle_hero_texture_rect: TextureRect
 var battle_enemy_panel: PanelContainer
 var battle_enemy_texture_rect: TextureRect
-var battle_chibi_hero_shadow: PanelContainer
+var battle_chibi_hero_shadow: TextureRect
 var battle_chibi_hero_texture_rect: TextureRect
-var battle_chibi_enemy_shadow: PanelContainer
+var battle_chibi_enemy_shadow: TextureRect
 var battle_chibi_enemy_texture_rect: TextureRect
 var chibi_hero_attack_sheet_texture: Texture2D
+var slash_sheet_texture: Texture2D
 var battle_enemy_name_label: Label
 var battle_enemy_type_label: Label
 var battle_enemy_symbol_label: Label
@@ -198,22 +201,26 @@ func _build_ui() -> void:
 	bag_toggle_button = Button.new()
 	bag_toggle_button.text = "背包"
 	bag_toggle_button.pressed.connect(_on_bag_toggle_pressed)
+	_apply_button_texture_style(bag_toggle_button, "ui_choice_button")
 	top_bar.add_child(bag_toggle_button)
 
 	var save_button := Button.new()
 	save_button.text = "保存"
 	save_button.pressed.connect(_on_save_pressed)
+	_apply_button_texture_style(save_button, "ui_choice_button")
 	top_bar.add_child(save_button)
 
 	var load_button := Button.new()
 	load_button.text = "读取"
 	load_button.pressed.connect(_on_load_pressed)
+	_apply_button_texture_style(load_button, "ui_choice_button")
 	top_bar.add_child(load_button)
 
 	debug_toggle_button = Button.new()
 	debug_toggle_button.text = "调试"
 	debug_toggle_button.visible = SHOW_DEBUG_TOOLS
 	debug_toggle_button.pressed.connect(_on_debug_toggle_pressed)
+	_apply_button_texture_style(debug_toggle_button, "ui_choice_button")
 	top_bar.add_child(debug_toggle_button)
 
 	bg_label = Label.new()
@@ -282,7 +289,7 @@ func _build_ui() -> void:
 	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	text_label.add_theme_font_size_override("font_size", 20)
-	text_label.add_theme_color_override("font_color", Color(0.93, 0.89, 0.78))
+	text_label.add_theme_color_override("font_color", PAPER_TEXT)
 	dialogue_box.add_child(text_label)
 
 	choices_box = VBoxContainer.new()
@@ -317,7 +324,7 @@ func _build_ui() -> void:
 	replacement_title.text = "背包已满，选择一段旧记忆留下，或放弃新记忆。"
 	replacement_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	replacement_title.add_theme_font_size_override("font_size", 22)
-	replacement_title.add_theme_color_override("font_color", Color(0.95, 0.88, 0.68))
+	replacement_title.add_theme_color_override("font_color", PAPER_TEXT)
 	replacement_box.add_child(replacement_title)
 
 	replacement_new_card = MemoryCardViewScript.new()
@@ -343,11 +350,13 @@ func _build_ui() -> void:
 	var confirm_button := Button.new()
 	confirm_button.text = "确认丢弃"
 	confirm_button.pressed.connect(_on_confirm_core_discard_pressed)
+	_apply_button_texture_style(confirm_button, "ui_choice_button")
 	confirm_buttons.add_child(confirm_button)
 
 	var cancel_button := Button.new()
 	cancel_button.text = "取消"
 	cancel_button.pressed.connect(_on_cancel_core_discard_pressed)
+	_apply_button_texture_style(cancel_button, "ui_choice_button")
 	confirm_buttons.add_child(cancel_button)
 
 	bag_panel = Control.new()
@@ -379,7 +388,7 @@ func _build_ui() -> void:
 	var bag_title := Label.new()
 	bag_title.text = "记忆背包"
 	bag_title.add_theme_font_size_override("font_size", 22)
-	bag_title.add_theme_color_override("font_color", Color(0.91, 0.82, 0.64))
+	bag_title.add_theme_color_override("font_color", PAPER_TEXT_ACCENT)
 	bag_box.add_child(bag_title)
 
 	var bag_scroll := ScrollContainer.new()
@@ -498,13 +507,13 @@ func _build_system_hint_panel(root: Control) -> void:
 	system_hint_title_label = Label.new()
 	system_hint_title_label.text = "玩法提示"
 	system_hint_title_label.add_theme_font_size_override("font_size", 18)
-	system_hint_title_label.add_theme_color_override("font_color", Color(0.98, 0.88, 0.62))
+	system_hint_title_label.add_theme_color_override("font_color", PAPER_TEXT_ACCENT)
 	box.add_child(system_hint_title_label)
 
 	system_hint_body_label = Label.new()
 	system_hint_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	system_hint_body_label.add_theme_font_size_override("font_size", 15)
-	system_hint_body_label.add_theme_color_override("font_color", Color(0.88, 0.84, 0.74))
+	system_hint_body_label.add_theme_color_override("font_color", PAPER_TEXT)
 	box.add_child(system_hint_body_label)
 
 
@@ -528,7 +537,7 @@ func _build_world_feedback_panel(root: Control) -> void:
 	world_feedback_label = Label.new()
 	world_feedback_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	world_feedback_label.add_theme_font_size_override("font_size", 15)
-	world_feedback_label.add_theme_color_override("font_color", Color(0.88, 0.82, 0.68))
+	world_feedback_label.add_theme_color_override("font_color", PAPER_TEXT)
 	margin.add_child(world_feedback_label)
 
 
@@ -565,32 +574,33 @@ func _build_ending_summary_layer(root: Control) -> void:
 	ending_summary_title_label = Label.new()
 	ending_summary_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ending_summary_title_label.add_theme_font_size_override("font_size", 31)
-	ending_summary_title_label.add_theme_color_override("font_color", Color(0.98, 0.88, 0.62))
+	ending_summary_title_label.add_theme_color_override("font_color", PAPER_TEXT_ACCENT)
 	box.add_child(ending_summary_title_label)
 
 	ending_summary_subtitle_label = Label.new()
 	ending_summary_subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ending_summary_subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ending_summary_subtitle_label.add_theme_font_size_override("font_size", 18)
-	ending_summary_subtitle_label.add_theme_color_override("font_color", Color(0.86, 0.82, 0.72))
+	ending_summary_subtitle_label.add_theme_color_override("font_color", PAPER_TEXT_MUTED)
 	box.add_child(ending_summary_subtitle_label)
 
-	var divider := HSeparator.new()
+	var divider := Control.new()
+	divider.custom_minimum_size = Vector2(0, 4)
 	box.add_child(divider)
 
-	ending_summary_name_label = _new_summary_label(21, Color(0.93, 0.89, 0.78))
+	ending_summary_name_label = _new_summary_label(21, PAPER_TEXT)
 	box.add_child(ending_summary_name_label)
 
-	ending_summary_reason_label = _new_summary_label(21, Color(0.93, 0.89, 0.78))
+	ending_summary_reason_label = _new_summary_label(21, PAPER_TEXT)
 	box.add_child(ending_summary_reason_label)
 
-	ending_summary_bag_label = _new_summary_label(18, Color(0.82, 0.78, 0.67))
+	ending_summary_bag_label = _new_summary_label(18, PAPER_TEXT_MUTED)
 	box.add_child(ending_summary_bag_label)
 
-	ending_summary_lost_label = _new_summary_label(18, Color(0.82, 0.78, 0.67))
+	ending_summary_lost_label = _new_summary_label(18, PAPER_TEXT_MUTED)
 	box.add_child(ending_summary_lost_label)
 
-	ending_summary_stats_label = _new_summary_label(17, Color(0.76, 0.72, 0.63))
+	ending_summary_stats_label = _new_summary_label(17, PAPER_TEXT_MUTED)
 	box.add_child(ending_summary_stats_label)
 
 	var button_row := HBoxContainer.new()
@@ -604,7 +614,7 @@ func _build_ending_summary_layer(root: Control) -> void:
 	close_button.add_theme_font_size_override("font_size", 18)
 	close_button.add_theme_color_override("font_color", Color(0.94, 0.90, 0.78))
 	close_button.pressed.connect(func(): ending_summary_layer.visible = false)
-	_apply_flat_button_style(close_button)
+	_apply_button_texture_style(close_button, "ui_choice_button")
 	button_row.add_child(close_button)
 
 
@@ -713,7 +723,7 @@ func _new_tray_label(text: String) -> Label:
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 17)
-	label.add_theme_color_override("font_color", Color(0.95, 0.84, 0.56))
+	label.add_theme_color_override("font_color", PAPER_TEXT_ACCENT)
 	return label
 
 
@@ -733,20 +743,13 @@ func _build_travel_stage(root: Control) -> void:
 	travel_panel_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	travel_stage.add_child(travel_panel_texture_rect)
 
-	travel_step_marker = ColorRect.new()
-	travel_step_marker.anchor_left = 0.12
-	travel_step_marker.anchor_top = 0.68
-	travel_step_marker.anchor_right = 0.88
-	travel_step_marker.anchor_bottom = 0.71
-	travel_step_marker.color = Color(0.95, 0.82, 0.48, 0.26)
-	travel_stage.add_child(travel_step_marker)
-
-	travel_chibi_shadow = PanelContainer.new()
+	travel_chibi_shadow = TextureRect.new()
 	travel_chibi_shadow.anchor_left = 0.45
 	travel_chibi_shadow.anchor_top = 0.80
 	travel_chibi_shadow.anchor_right = 0.55
 	travel_chibi_shadow.anchor_bottom = 0.86
-	_apply_chibi_shadow_style(travel_chibi_shadow)
+	travel_chibi_shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	travel_chibi_shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	travel_chibi_shadow.modulate = Color(1.0, 1.0, 1.0, 0.20)
 	travel_stage.add_child(travel_chibi_shadow)
 
@@ -777,11 +780,13 @@ func _build_battle_stage(root: Control) -> void:
 	battle_hero_texture_rect.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	battle_hero_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	battle_hero_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	battle_hero_texture_rect.visible = false
 	battle_stage.add_child(battle_hero_texture_rect)
 
-	battle_chibi_hero_shadow = PanelContainer.new()
+	battle_chibi_hero_shadow = TextureRect.new()
 	battle_chibi_hero_shadow.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_apply_chibi_shadow_style(battle_chibi_hero_shadow)
+	battle_chibi_hero_shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battle_chibi_hero_shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	battle_chibi_hero_shadow.modulate = Color(1.0, 1.0, 1.0, 0.22)
 	battle_stage.add_child(battle_chibi_hero_shadow)
 
@@ -791,9 +796,10 @@ func _build_battle_stage(root: Control) -> void:
 	battle_chibi_hero_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	battle_stage.add_child(battle_chibi_hero_texture_rect)
 
-	battle_chibi_enemy_shadow = PanelContainer.new()
+	battle_chibi_enemy_shadow = TextureRect.new()
 	battle_chibi_enemy_shadow.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_apply_chibi_shadow_style(battle_chibi_enemy_shadow)
+	battle_chibi_enemy_shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battle_chibi_enemy_shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	battle_chibi_enemy_shadow.modulate = Color(1.0, 1.0, 1.0, 0.20)
 	battle_stage.add_child(battle_chibi_enemy_shadow)
 
@@ -822,13 +828,13 @@ func _build_battle_stage(root: Control) -> void:
 	battle_enemy_name_label = Label.new()
 	battle_enemy_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	battle_enemy_name_label.add_theme_font_size_override("font_size", 18)
-	battle_enemy_name_label.add_theme_color_override("font_color", Color(0.94, 0.88, 0.70))
+	battle_enemy_name_label.add_theme_color_override("font_color", PAPER_TEXT)
 	enemy_box.add_child(battle_enemy_name_label)
 
 	battle_enemy_type_label = Label.new()
 	battle_enemy_type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	battle_enemy_type_label.add_theme_font_size_override("font_size", 12)
-	battle_enemy_type_label.add_theme_color_override("font_color", Color(0.67, 0.62, 0.50))
+	battle_enemy_type_label.add_theme_color_override("font_color", PAPER_TEXT_MUTED)
 	enemy_box.add_child(battle_enemy_type_label)
 
 	battle_enemy_symbol_label = Label.new()
@@ -857,7 +863,7 @@ func _build_battle_stage(root: Control) -> void:
 	battle_enemy_hp_label = Label.new()
 	battle_enemy_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	battle_enemy_hp_label.add_theme_font_size_override("font_size", 13)
-	battle_enemy_hp_label.add_theme_color_override("font_color", Color(0.86, 0.82, 0.72))
+	battle_enemy_hp_label.add_theme_color_override("font_color", PAPER_TEXT_MUTED)
 	enemy_box.add_child(battle_enemy_hp_label)
 
 	battle_status_label = Label.new()
@@ -865,7 +871,7 @@ func _build_battle_stage(root: Control) -> void:
 	battle_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	battle_status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	battle_status_label.add_theme_font_size_override("font_size", 22)
-	battle_status_label.add_theme_color_override("font_color", Color(0.98, 0.88, 0.62))
+	battle_status_label.add_theme_color_override("font_color", PAPER_TEXT_ACCENT)
 	battle_stage.add_child(battle_status_label)
 
 	battle_slash_layer = Control.new()
@@ -1575,48 +1581,80 @@ func _apply_static_ui_art() -> void:
 	_set_texture_rect(bag_panel_texture_rect, registry.get_art_asset("ui_bag_panel", "ui"))
 	_set_texture_rect(quick_bag_texture_rect, registry.get_art_asset("ui_quick_bag_tray", "ui"))
 	_set_texture_rect(travel_panel_texture_rect, registry.get_art_asset("ui_travel_stage_panel", "ui"))
+	_set_texture_rect(travel_chibi_shadow, registry.get_art_asset("ui_chibi_shadow", "ui"))
+	_set_texture_rect(battle_chibi_hero_shadow, registry.get_art_asset("ui_chibi_shadow", "ui"))
+	_set_texture_rect(battle_chibi_enemy_shadow, registry.get_art_asset("ui_chibi_shadow", "ui"))
 	travel_walk_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_hero_walk_sheet", "chibi_sheet"))
 	chibi_hero_attack_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_hero_attack_sheet", "chibi_sheet"))
+	slash_sheet_texture = _texture_from_asset(registry.get_art_asset("fx_slash_basic_sheet", "effect_sheet"))
 	if travel_walk_sheet_texture != null:
 		travel_chibi_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, 0)
 	if chibi_hero_attack_sheet_texture != null:
 		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(chibi_hero_attack_sheet_texture, 0)
+	_apply_textured_panel_style(replacement_panel, "ui_modal_panel")
+	_apply_textured_panel_style(debug_panel, "ui_modal_panel")
+	_apply_textured_panel_style(system_hint_panel, "ui_hint_panel")
+	_apply_textured_panel_style(world_feedback_panel, "ui_hint_panel")
+	_apply_textured_panel_style(battle_enemy_panel, "ui_enemy_status_panel")
+	_apply_hp_bar_style()
 
 
-func _apply_button_texture_style(button: Button, _asset_id: String) -> void:
-	# Generated choice art has uneven transparent edges when sliced. Keep the
-	# asset registered, but use a clean themed button until UI art is redrawn.
-	_apply_flat_button_style(button)
-
-
-func _apply_flat_button_style(button: Button) -> void:
-	var normal := _new_button_style(Color(0.08, 0.10, 0.10, 0.76), Color(0.63, 0.54, 0.32, 0.92))
+func _apply_button_texture_style(button: Button, asset_id: String) -> void:
+	var texture := _texture_from_asset(registry.get_art_asset(asset_id, "ui"))
+	if texture == null:
+		var empty := StyleBoxEmpty.new()
+		button.add_theme_stylebox_override("normal", empty)
+		button.add_theme_stylebox_override("hover", empty)
+		button.add_theme_stylebox_override("pressed", empty)
+		button.add_theme_stylebox_override("focus", empty)
+		return
+	var normal := _new_texture_style(texture, Rect2(0, 0, texture.get_width(), texture.get_height()), 24, 8)
 	var hover := normal.duplicate()
-	hover.bg_color = Color(0.13, 0.15, 0.14, 0.86)
+	hover.modulate_color = Color(1.08, 1.05, 0.96, 1.0)
 	var pressed := normal.duplicate()
-	pressed.bg_color = Color(0.04, 0.05, 0.05, 0.9)
+	pressed.modulate_color = Color(0.86, 0.86, 0.82, 1.0)
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
 	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 
-func _new_button_style(bg_color: Color, border_color: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = bg_color
-	style.border_color = border_color
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	style.corner_radius_bottom_left = 4
-	style.corner_radius_bottom_right = 4
-	style.content_margin_left = 18
-	style.content_margin_top = 8
-	style.content_margin_right = 18
-	style.content_margin_bottom = 8
+func _new_texture_style(texture: Texture2D, region: Rect2 = Rect2(), margin := 24, content := 10) -> StyleBoxTexture:
+	var style := StyleBoxTexture.new()
+	style.texture = texture
+	if region.size.x > 0 and region.size.y > 0:
+		style.region_rect = region
+	style.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	style.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	style.texture_margin_left = margin
+	style.texture_margin_top = margin
+	style.texture_margin_right = margin
+	style.texture_margin_bottom = margin
+	style.content_margin_left = content
+	style.content_margin_top = content
+	style.content_margin_right = content
+	style.content_margin_bottom = content
 	return style
+
+
+func _apply_textured_panel_style(panel: PanelContainer, asset_id: String) -> void:
+	if panel == null:
+		return
+	var texture := _texture_from_asset(registry.get_art_asset(asset_id, "ui"))
+	if texture == null:
+		return
+	panel.add_theme_stylebox_override("panel", _new_texture_style(texture, Rect2(0, 0, texture.get_width(), texture.get_height()), 32, 14))
+
+
+func _apply_hp_bar_style() -> void:
+	if battle_enemy_hp_bar == null:
+		return
+	var bg_texture := _texture_from_asset(registry.get_art_asset("ui_hp_background", "ui"))
+	var fill_texture := _texture_from_asset(registry.get_art_asset("ui_hp_fill", "ui"))
+	if bg_texture != null:
+		battle_enemy_hp_bar.add_theme_stylebox_override("background", _new_texture_style(bg_texture, Rect2(0, 0, bg_texture.get_width(), bg_texture.get_height()), 18, 2))
+	if fill_texture != null:
+		battle_enemy_hp_bar.add_theme_stylebox_override("fill", _new_texture_style(fill_texture, Rect2(0, 0, fill_texture.get_width(), fill_texture.get_height()), 18, 2))
 
 
 func _on_viewport_size_changed() -> void:
@@ -1771,42 +1809,16 @@ func _layout_battle_stage() -> void:
 
 
 func _apply_modal_panel_style(panel: PanelContainer) -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.07, 0.055, 0.045, 0.88)
-	style.border_color = Color(0.63, 0.48, 0.26, 0.95)
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	panel.add_theme_stylebox_override("panel", style)
+	_apply_textured_panel_style(panel, "ui_modal_panel")
 
 
 func _apply_battle_enemy_style(panel: PanelContainer, bg_color := Color(0.06, 0.055, 0.045, 0.74), border_color := Color(0.60, 0.48, 0.26, 0.90), radius := 8) -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = bg_color
-	style.border_color = border_color
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.corner_radius_top_left = radius
-	style.corner_radius_top_right = radius
-	style.corner_radius_bottom_left = radius
-	style.corner_radius_bottom_right = radius
-	panel.add_theme_stylebox_override("panel", style)
-
-
-func _apply_chibi_shadow_style(panel: PanelContainer) -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.0, 0.0, 0.0, 1.0)
-	style.corner_radius_top_left = 24
-	style.corner_radius_top_right = 24
-	style.corner_radius_bottom_left = 24
-	style.corner_radius_bottom_right = 24
+	var style := StyleBoxEmpty.new()
+	if bg_color.a > 0.0 or border_color.a > 0.0 or radius > 0:
+		var texture := _texture_from_asset(registry.get_art_asset("ui_enemy_status_panel", "ui"))
+		if texture != null:
+			panel.add_theme_stylebox_override("panel", _new_texture_style(texture, Rect2(0, 0, texture.get_width(), texture.get_height()), 30, 12))
+			return
 	panel.add_theme_stylebox_override("panel", style)
 
 
@@ -1909,8 +1921,9 @@ func _start_battle_stage(event: Dictionary, result: Dictionary) -> void:
 	battle_pressure_rect.visible = false
 	battle_pressure_rect.color = Color(0.12, 0.02, 0.03, 0.0)
 	battle_status_label.text = "战斗开始"
-	_set_texture_rect(battle_hero_texture_rect, registry.get_art_asset("hero_default", "portrait"))
-	battle_hero_texture_rect.modulate = Color(1.0, 1.0, 1.0, 0.40)
+	battle_hero_texture_rect.visible = false
+	battle_hero_texture_rect.texture = null
+	battle_hero_texture_rect.modulate = Color.WHITE
 	if chibi_hero_attack_sheet_texture != null:
 		battle_chibi_hero_texture_rect.texture = _sheet_frame_texture(chibi_hero_attack_sheet_texture, 0)
 	battle_chibi_hero_texture_rect.visible = battle_chibi_hero_texture_rect.texture != null
@@ -2110,36 +2123,28 @@ func _play_slash_effect() -> void:
 		return
 	for child in battle_slash_layer.get_children():
 		child.queue_free()
+	if slash_sheet_texture == null:
+		await get_tree().create_timer(0.12).timeout
+		return
 	battle_slash_layer.visible = true
 	battle_slash_layer.modulate = Color.WHITE
-	var main_slash := _new_slash_line(7.0, Color(1.0, 1.0, 1.0, 0.96))
-	var glow_slash := _new_slash_line(18.0, Color(0.78, 0.88, 1.0, 0.24))
-	var spark := _new_slash_line(3.0, Color(1.0, 0.92, 0.70, 0.78), Vector2(0.26, 0.72), Vector2(0.92, 0.18))
-	battle_slash_layer.add_child(glow_slash)
-	battle_slash_layer.add_child(main_slash)
-	battle_slash_layer.add_child(spark)
+	var slash_rect := TextureRect.new()
+	slash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slash_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	slash_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	slash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	battle_slash_layer.add_child(slash_rect)
 	battle_slash_layer.scale = Vector2(0.74, 0.74)
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(battle_slash_layer, "scale", Vector2(1.08, 1.08), 0.11)
 	tween.tween_property(battle_slash_layer, "modulate", Color(1, 1, 1, 0), 0.18).set_delay(0.06)
+	for frame in range(9):
+		slash_rect.texture = _sheet_frame_texture(slash_sheet_texture, frame)
+		await get_tree().create_timer(0.018).timeout
 	await tween.finished
 	battle_slash_layer.visible = false
-
-
-func _new_slash_line(width: float, color: Color, from := Vector2(0.14, 0.82), to := Vector2(0.86, 0.12)) -> Line2D:
-	var line := Line2D.new()
-	var size := battle_slash_layer.size
-	line.points = PackedVector2Array([
-		Vector2(size.x * from.x, size.y * from.y),
-		Vector2(size.x * to.x, size.y * to.y),
-	])
-	line.width = width
-	line.default_color = color
-	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
-	line.end_cap_mode = Line2D.LINE_CAP_ROUND
-	line.joint_mode = Line2D.LINE_JOINT_ROUND
-	return line
+	slash_rect.queue_free()
 
 
 func _play_chibi_attack_effect() -> void:
@@ -2280,7 +2285,7 @@ func _apply_battle_enemy_identity(enemy_id: String, tags: Array[String]) -> void
 	battle_enemy_symbol_label.add_theme_font_size_override("font_size", int(profile.get("symbol_size", 74)))
 	battle_enemy_symbol_label.add_theme_color_override("font_color", profile.get("symbol_color", Color(0.18, 0.18, 0.18, 0.92)))
 	battle_enemy_type_label.text = str(profile.get("type_text", "空壳"))
-	battle_enemy_type_label.add_theme_color_override("font_color", profile.get("type_color", Color(0.67, 0.62, 0.50)))
+	battle_enemy_type_label.add_theme_color_override("font_color", profile.get("type_color", PAPER_TEXT_MUTED))
 	_apply_battle_enemy_style(battle_enemy_panel, profile.get("panel_bg", Color(0.06, 0.055, 0.045, 0.74)), profile.get("panel_border", Color(0.60, 0.48, 0.26, 0.90)))
 
 
@@ -2308,7 +2313,7 @@ func _battle_enemy_profile(enemy_id: String, tags: Array[String]) -> Dictionary:
 			"symbol_size": 70,
 			"symbol_color": Color(0.54, 0.58, 0.63, 0.94),
 			"type_text": "无名",
-			"type_color": Color(0.78, 0.82, 0.90),
+			"type_color": PAPER_TEXT_MUTED,
 			"panel_bg": Color(0.045, 0.055, 0.065, 0.76),
 			"panel_border": Color(0.52, 0.60, 0.74, 0.92),
 		}
@@ -2318,7 +2323,7 @@ func _battle_enemy_profile(enemy_id: String, tags: Array[String]) -> Dictionary:
 			"symbol_size": 70,
 			"symbol_color": Color(0.38, 0.42, 0.36, 0.96),
 			"type_text": "空壳 / 沉默",
-			"type_color": Color(0.70, 0.72, 0.62),
+			"type_color": PAPER_TEXT_MUTED,
 			"panel_bg": Color(0.045, 0.060, 0.048, 0.78),
 			"panel_border": Color(0.50, 0.58, 0.40, 0.92),
 		}
@@ -2327,7 +2332,7 @@ func _battle_enemy_profile(enemy_id: String, tags: Array[String]) -> Dictionary:
 		"symbol_size": 70,
 		"symbol_color": Color(0.22, 0.22, 0.20, 0.96),
 		"type_text": "空壳",
-		"type_color": Color(0.72, 0.66, 0.54),
+		"type_color": PAPER_TEXT_MUTED,
 		"panel_bg": Color(0.06, 0.055, 0.045, 0.74),
 		"panel_border": Color(0.60, 0.48, 0.26, 0.90),
 	}

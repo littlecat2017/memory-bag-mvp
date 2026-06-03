@@ -1,6 +1,6 @@
 # 《记忆背包》MVP 开发规划与完成度
 
-更新时间：2026-06-02
+更新时间：2026-06-03
 
 本文档用于跟踪 MVP-1 开发进度。每完成一轮开发，都要更新本文件中的模块状态、总完成度、已完成内容、下一步任务，然后提交并推送。
 
@@ -499,6 +499,28 @@ MVP-1 暂不做：
   - `verify_memory_cards.gd` 要求每张记忆卡都能显示图标并保留关系、承诺、丢弃提示文本。
 - 本轮使用 Codex 内置 image2 生成 7 张图，并全部写入 `logs/image_generation.jsonl`；未调用桌面 PHP 脚本，未使用或记录任何密钥。
 - 2026-06-03 本日图片生成统计：Codex 内置 image2 8 / 50（含今日早些时候 1 张 4x5 动作试验图），桌面 PHP image2 0 / 50。
+- 按最终版本 A 方向完成一轮全套美术资源重做与替换：
+  - 重做并替换村庄/森林背景、主要立绘、敌人大图、Q 版敌人、Q 版主角行走与攻击 3x3 序列帧、8 张记忆图标、对话框、名牌、选择按钮、侧边背包、底部背包操作台、行走舞台和斩击特效。
+  - 新增并接入 `ui_enemy_status_panel`、`ui_modal_panel`、`ui_hint_panel`、`ui_chibi_shadow`、`ui_hp_background`、`ui_hp_fill`，让敌人状态牌、提示面板、弹窗、脚底阴影和 HP 条都走贴图皮肤。
+  - 本地完成切图、缩放、色键抠图、白边/底色透明化和派生 UI 小件处理；项目正式引用的资源均已复制到 `assets/`，不会依赖 Codex 默认生成目录。
+  - 运行时代码移除主要可见的 `StyleBoxFlat` 边框、`Line2D` 斩击、行走路径色块和代码画出的脚底阴影，改用正式贴图资产承载视觉。
+  - 战斗画面隐藏旧半透明大立绘，只保留上半区 Q 版主角在左、Q 版敌人在右的站位；底部背包区与对话框继续互斥显示。
+  - 根据截图复查修正纸面 UI 的文字颜色，浅羊皮纸区域用深色文字，右侧深色“新记忆”区保留浅色文字。
+- 本轮使用 Codex 内置 image2 生成 17 张源图，均写入 `logs/image_generation.jsonl`；未调用桌面 PHP image2，未使用或记录任何密钥。
+- 2026-06-03 本日图片生成统计更新为：Codex 内置 image2 25 / 50，桌面 PHP image2 0 / 50。
+- 验收通过：
+  - `tools/validate_json_data.py`
+  - `verify_art_assets.gd`
+  - `verify_visual_layout_bounds.gd`
+  - `verify_memory_cards.gd`
+  - `verify_quick_bag_interaction.gd`
+  - `verify_battle.gd`
+  - `verify_full_game_flow.gd`
+  - `verify_mvp_completion.gd`
+  - `verify_ending_summary_ui.gd`
+  - `verify_run_battle_flow.gd`
+  - `capture_ui_snapshots.gd`
+- 视觉复查 `01_opening.png`、`03_bag_panel.png`、`04_travel_stage.png`、`05_battle_stage.png`、`06_boss_battle_stage.png`、`07_ending_summary.png`：没有发现阻断流程的遮挡、白边、乱码或敌我站位错误；Godot 退出时仍有既有 RID/Texture leak 警告，但命令退出码为 0。
 
 ## 5. 近期开发顺序
 
@@ -520,11 +542,11 @@ MVP-1 暂不做：
 
 ## 6. 图片生成计划
 
-当前累计已登记图片：36 张。
+当前累计已登记图片：53 张。
 
-2026-06-03 本日图片生成消耗：Codex 内置 image2 8 / 50 张；桌面 PHP image2 0 / 50 张。
+2026-06-03 本日图片生成消耗：Codex 内置 image2 25 / 50 张；桌面 PHP image2 0 / 50 张。
 
-已生成并登记的 36 张图片：
+已生成并登记的 53 张图片：
 
 1. `bg_village_dawn`
 2. `bg_forest_path`
@@ -562,14 +584,31 @@ MVP-1 暂不做：
 34. `icon_memory_abandoned_afternoon`
 35. `icon_memory_no_more_explaining`
 36. `icon_memory_empty_nameplate`
+37. `art_rework_bg_village_dawn`
+38. `art_rework_bg_forest_path`
+39. `art_rework_portraits_sheet`
+40. `art_rework_enemy_cutouts_sheet`
+41. `art_rework_chibi_enemies_sheet`
+42. `art_rework_chibi_hero_walk_sheet_source`
+43. `art_rework_chibi_hero_attack_sheet_source`
+44. `art_rework_chibi_party_walk_sheet_source`
+45. `art_rework_memory_icons_sheet`
+46. `art_rework_ui_quick_bag_tray_source`
+47. `art_rework_ui_dialogue_box_source`
+48. `art_rework_ui_nameplate_source`
+49. `art_rework_ui_choice_button_source`
+50. `art_rework_ui_bag_panel_source`
+51. `art_rework_ui_travel_stage_panel_source`
+52. `art_rework_fx_slash_sheet_source`
+53. `art_rework_ui_utility_sheet`
 
 后续生成规则：
 
 - 每生成一张，必须写入 `logs/image_generation.jsonl`。
 - 不记录密钥、账号密码、token 或临时敏感 URL。
 - 单日最多 50 张。
-- 未确认风格前，不进入 36 张第一批美术批量生成。
-- 本日剩余可用额度：Codex 内置 image2 42 张；桌面 PHP image2 50 张。下一轮优先做体验验收和打包收口，不主动扩大生成量。
+- 风格已按版本 A 收口，后续生成前仍要先确认是否属于 MVP 必需资产，避免为了试错消耗额度。
+- 本日剩余可用额度：Codex 内置 image2 25 张；桌面 PHP image2 50 张。下一轮优先做体验验收和打包收口，不主动扩大生成量。
 
 ## 7. 每轮更新规则
 
@@ -592,7 +631,7 @@ MVP-1 暂不做：
 - 濒死回退与 faded 状态尚未完整实现，失败惩罚目前只做复活记录。
 - Boss 后 MVP 结尾已接入通关回顾层；Boss 本体已有首批正式战斗图片和基础压迫表现，但仍缺少更完整的名字主题演出。
 - 调试面板功能可用且默认隐藏，但视觉仍偏工具化，后续应随正式 UI 一起整理。
-- 首批真实美术资源、敌人战斗图、Q 版行进/战斗图和视觉小说 UI 皮肤已接入，立绘与敌人图已做本地透明化初版；边缘精度后续仍可继续抠图或重生透明背景版本。
+- 全套 MVP 美术已按版本 A 重做并接入，立绘、敌人、Q 版单位、背景、记忆图标、UI 面板和特效已统一到同一批风格；后续风险主要是继续降低 AI 味、提高角色动作帧连贯性和边缘精修。
 - 8 张 MVP 记忆已全部拥有物件图标，但图标仍是方形完整插画，后续如果背包改成多格占位物品，需要再拆成 1x1、1x2、2x1、2x2 等真实占格素材。
 - `fx_slash_basic_sheet` 已清理为真实透明背景并接入战斗演出播放；后续可根据实际观感重新生成更有冲击力的透明特效表。
 - Q 版行走和攻击动效已经通过视频回归排除遮挡与透明错误，但脚步节奏和挥剑关键姿势仍偏 MVP 初版，后续可用新九宫格资源继续提升。

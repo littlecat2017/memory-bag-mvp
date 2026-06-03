@@ -2,6 +2,13 @@ extends PanelContainer
 
 signal memory_dropped(data: Dictionary, target_kind: String, target_index: int)
 
+const CARD_TEXT := Color(0.30, 0.20, 0.10)
+const CARD_TEXT_MUTED := Color(0.48, 0.36, 0.22)
+const CARD_TEXT_DANGER := Color(0.68, 0.20, 0.16)
+const CARD_TEXT_DANGER_MUTED := Color(0.56, 0.32, 0.22)
+const CARD_TEXT_FOUND := Color(0.72, 0.92, 0.94)
+const CARD_TEXT_FOUND_MUTED := Color(0.58, 0.78, 0.78)
+
 var title_label: Label
 var tags_label: Label
 var effect_label: Label
@@ -99,7 +106,7 @@ func _get_drag_data(_at_position: Vector2):
 	var preview := Label.new()
 	preview.text = title_label.text
 	preview.add_theme_font_size_override("font_size", 16)
-	preview.add_theme_color_override("font_color", Color(0.96, 0.90, 0.72))
+	preview.add_theme_color_override("font_color", CARD_TEXT)
 	set_drag_preview(preview)
 	return {
 		"memory_id": memory_id,
@@ -188,39 +195,35 @@ func _apply_compact_visibility() -> void:
 		tags_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		icon_texture_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		if zone_kind == "trash":
-			title_label.add_theme_color_override("font_color", Color(1.0, 0.56, 0.48))
-			tags_label.add_theme_color_override("font_color", Color(0.95, 0.74, 0.64))
+			title_label.add_theme_color_override("font_color", CARD_TEXT_DANGER)
+			tags_label.add_theme_color_override("font_color", CARD_TEXT_DANGER_MUTED)
 		elif zone_kind == "found":
-			title_label.add_theme_color_override("font_color", Color(0.76, 0.94, 1.0))
-			tags_label.add_theme_color_override("font_color", Color(0.70, 0.84, 0.90))
+			title_label.add_theme_color_override("font_color", CARD_TEXT_FOUND)
+			tags_label.add_theme_color_override("font_color", CARD_TEXT_FOUND_MUTED)
 		else:
-			title_label.add_theme_color_override("font_color", Color(0.96, 0.88, 0.66))
-			tags_label.add_theme_color_override("font_color", Color(0.72, 0.66, 0.52))
+			title_label.add_theme_color_override("font_color", CARD_TEXT)
+			tags_label.add_theme_color_override("font_color", CARD_TEXT_MUTED)
 	else:
 		title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		tags_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		icon_texture_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		title_label.add_theme_color_override("font_color", Color.WHITE)
-		tags_label.add_theme_color_override("font_color", Color.WHITE)
+		title_label.add_theme_color_override("font_color", CARD_TEXT)
+		tags_label.add_theme_color_override("font_color", CARD_TEXT_MUTED)
+	effect_label.add_theme_color_override("font_color", CARD_TEXT_MUTED)
+	relation_label.add_theme_color_override("font_color", CARD_TEXT_MUTED)
+	obligation_label.add_theme_color_override("font_color", CARD_TEXT_MUTED)
+	loss_hint_label.add_theme_color_override("font_color", CARD_TEXT_MUTED)
 
 
 func _apply_panel_style() -> void:
-	var style := StyleBoxFlat.new()
-	var border_width := 0 if compact_mode else 2
-	style.border_width_left = border_width
-	style.border_width_top = border_width
-	style.border_width_right = border_width
-	style.border_width_bottom = border_width
-	style.corner_radius_top_left = 7
-	style.corner_radius_top_right = 7
-	style.corner_radius_bottom_left = 7
-	style.corner_radius_bottom_right = 7
+	var style := StyleBoxEmpty.new()
 	if compact_mode:
-		style.bg_color = Color(0, 0, 0, 0)
-		style.border_color = Color(0, 0, 0, 0)
+		pass
 	else:
-		style.bg_color = Color(0.10, 0.08, 0.06, 0.86)
-		style.border_color = Color(0.48, 0.36, 0.20, 0.92)
+		style.content_margin_left = 8
+		style.content_margin_top = 8
+		style.content_margin_right = 8
+		style.content_margin_bottom = 8
 	add_theme_stylebox_override("panel", style)
 
 
