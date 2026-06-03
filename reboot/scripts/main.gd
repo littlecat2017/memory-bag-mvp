@@ -38,6 +38,21 @@ var speaker_label: Label
 var text_label: Label
 var source_label: Label
 var concept_reference: TextureRect
+var title_layer: Control
+var title_text_label: Label
+var title_subtitle_label: Label
+var title_concept_preview: TextureRect
+var title_start_button: PanelContainer
+var title_quit_button: PanelContainer
+var title_note_panel: PanelContainer
+var bag_detail_layer: Control
+var bag_memory_list: PanelContainer
+var bag_detail_panel: PanelContainer
+var bag_detail_inventory: GridContainer
+var bag_detail_cells: Array[PanelContainer] = []
+var ending_layer: Control
+var ending_summary_panel: PanelContainer
+var ending_memory_panel: PanelContainer
 
 
 func _ready() -> void:
@@ -45,7 +60,7 @@ func _ready() -> void:
 	_load_layout()
 	_load_source_script()
 	_build_ui()
-	_apply_event(_first_event_id("T0001"))
+	show_mode("title")
 
 
 func show_mode(mode: String) -> void:
@@ -191,6 +206,128 @@ func _build_ui() -> void:
 	source_label.size = Vector2(760, 28)
 	add_child(source_label)
 
+	_build_title_layer()
+	_build_bag_detail_layer()
+	_build_ending_layer()
+
+
+func _build_title_layer() -> void:
+	title_layer = Control.new()
+	title_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(title_layer)
+
+	title_text_label = _new_label(44, Color(0.16, 0.10, 0.05))
+	title_text_label.text = "记忆背包"
+	title_text_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_layer.add_child(title_text_label)
+
+	title_subtitle_label = _new_label(22, Color(0.24, 0.17, 0.10))
+	title_subtitle_label.text = "重启灰盒：先锁定结构，再接入美术"
+	title_subtitle_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_layer.add_child(title_subtitle_label)
+
+	title_concept_preview = TextureRect.new()
+	title_concept_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	title_concept_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	title_concept_preview.modulate = Color(1, 1, 1, 0.78)
+	_load_texture_rect(title_concept_preview, "res://assets/reference/concept_memory_backpack.png")
+	title_layer.add_child(title_concept_preview)
+
+	title_start_button = _new_panel("button")
+	title_start_button.add_child(_center_label("开始灰盒验证"))
+	title_layer.add_child(title_start_button)
+
+	title_quit_button = _new_panel("button")
+	title_quit_button.add_child(_center_label("退出占位"))
+	title_layer.add_child(title_quit_button)
+
+	title_note_panel = _new_panel("note")
+	var note := _center_label("R1 规则：本页不是最终美术，只验证标题页布局不会遮挡。")
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title_note_panel.add_child(note)
+	title_layer.add_child(title_note_panel)
+
+
+func _build_bag_detail_layer() -> void:
+	bag_detail_layer = Control.new()
+	bag_detail_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(bag_detail_layer)
+
+	var title := _new_label(32, Color(0.16, 0.10, 0.05))
+	title.name = "BagDetailTitle"
+	title.text = "背包详情灰盒"
+	bag_detail_layer.add_child(title)
+
+	var close_button := _new_panel("button")
+	close_button.name = "BagDetailClose"
+	close_button.add_child(_center_label("返回"))
+	bag_detail_layer.add_child(close_button)
+
+	bag_memory_list = _new_panel("note")
+	bag_memory_list.add_child(_center_label("记忆列表\n来自原始脚本的 8 段 MVP 记忆"))
+	bag_detail_layer.add_child(bag_memory_list)
+
+	bag_detail_panel = _new_panel("dialogue")
+	bag_detail_panel.add_child(_center_label("记忆详情\n关系对象 / 承诺 / 丢弃后世界回应"))
+	bag_detail_layer.add_child(bag_detail_panel)
+
+	bag_detail_inventory = GridContainer.new()
+	bag_detail_layer.add_child(bag_detail_inventory)
+	_build_detail_inventory_cells()
+
+
+func _build_detail_inventory_cells() -> void:
+	var inventory: Dictionary = layout.get("inventory", {})
+	var grid = inventory.get("grid", [7, 4])
+	var gap = inventory.get("gap", [8, 8])
+	var columns := int(grid[0])
+	var rows := int(grid[1])
+	var unlocked := int(inventory.get("initial_unlocked_slots", 4))
+	bag_detail_inventory.columns = columns
+	bag_detail_inventory.add_theme_constant_override("h_separation", int(gap[0]))
+	bag_detail_inventory.add_theme_constant_override("v_separation", int(gap[1]))
+	var board_rect := _screen_rect("bag_detail", "inventory_board")
+	var cell_size := _inventory_cell_size(board_rect, Vector2i(columns, rows), Vector2(float(gap[0]), float(gap[1])))
+	for index in range(columns * rows):
+		var cell := _new_panel("cell_unlocked" if index < unlocked else "cell_locked")
+		cell.custom_minimum_size = cell_size
+		cell.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var label := _center_label(str(index + 1) if index < unlocked else "锁")
+		label.add_theme_font_size_override("font_size", 16 if index < unlocked else 13)
+		cell.add_child(label)
+		bag_detail_cells.append(cell)
+		bag_detail_inventory.add_child(cell)
+
+
+func _build_ending_layer() -> void:
+	ending_layer = Control.new()
+	ending_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(ending_layer)
+
+	var title := _new_label(38, Color(0.16, 0.10, 0.05))
+	title.name = "EndingTitle"
+	title.text = "MVP 回顾灰盒"
+	ending_layer.add_child(title)
+
+	ending_summary_panel = _new_panel("dialogue")
+	ending_summary_panel.add_child(_center_label("结局摘要\n名字是否保留\n出发理由是否保留\n世界如何回应"))
+	ending_layer.add_child(ending_summary_panel)
+
+	ending_memory_panel = _new_panel("note")
+	ending_memory_panel.add_child(_center_label("最终背包\n保留记忆 / 丢弃记忆 / 核心记忆状态"))
+	ending_layer.add_child(ending_memory_panel)
+
+	var restart_button := _new_panel("button")
+	restart_button.name = "EndingRestart"
+	restart_button.add_child(_center_label("重新开始"))
+	ending_layer.add_child(restart_button)
+
+	var title_button := _new_panel("button")
+	title_button.name = "EndingTitleButton"
+	title_button.add_child(_center_label("回标题"))
+	ending_layer.add_child(title_button)
+
 
 func _build_inventory_cells() -> void:
 	var inventory: Dictionary = layout.get("inventory", {})
@@ -233,15 +370,25 @@ func _apply_event(event_id: String) -> void:
 
 
 func _apply_mode() -> void:
-	stage_panel.visible = current_mode != "dialogue"
-	stage_label.visible = current_mode != "dialogue"
-	floor_line.visible = current_mode != "dialogue"
-	hero_box.visible = current_mode != "dialogue"
+	stage_panel.visible = current_mode == "travel" or current_mode == "battle"
+	stage_label.visible = stage_panel.visible
+	floor_line.visible = stage_panel.visible
+	hero_box.visible = current_mode == "travel" or current_mode == "battle"
 	enemy_box.visible = current_mode == "battle"
 	status_box.visible = current_mode == "battle"
-	operation_tray.visible = current_mode != "dialogue"
+	operation_tray.visible = current_mode == "travel" or current_mode == "battle"
 	dialogue_panel.visible = current_mode == "dialogue"
-	if current_mode == "battle":
+	title_layer.visible = current_mode == "title"
+	bag_detail_layer.visible = current_mode == "bag_detail"
+	ending_layer.visible = current_mode == "ending"
+	concept_reference.visible = false
+	if current_mode == "title":
+		_apply_title_layout()
+	elif current_mode == "bag_detail":
+		_apply_bag_detail_layout()
+	elif current_mode == "ending":
+		_apply_ending_layout()
+	elif current_mode == "battle":
 		_apply_battle_layout()
 	elif current_mode == "travel":
 		_apply_travel_layout()
@@ -252,6 +399,31 @@ func _apply_mode() -> void:
 func _apply_dialogue_layout() -> void:
 	_set_rect(dialogue_panel, _screen_rect("dialogue", "dialogue_panel"))
 	_set_rect(concept_reference, Rect2(16, 80, 220, 124))
+
+
+func _apply_title_layout() -> void:
+	_set_rect(title_text_label, _screen_rect("title", "title_text"))
+	_set_rect(title_subtitle_label, _screen_rect("title", "subtitle_text"))
+	_set_rect(title_concept_preview, _screen_rect("title", "concept_preview"))
+	_set_rect(title_start_button, _screen_rect("title", "primary_button"))
+	_set_rect(title_quit_button, _screen_rect("title", "quit_button"))
+	_set_rect(title_note_panel, _screen_rect("title", "note_panel"))
+
+
+func _apply_bag_detail_layout() -> void:
+	_set_rect(bag_detail_layer.get_node("BagDetailTitle"), _screen_rect("bag_detail", "title"))
+	_set_rect(bag_detail_layer.get_node("BagDetailClose"), _screen_rect("bag_detail", "close_button"))
+	_set_rect(bag_memory_list, _screen_rect("bag_detail", "memory_list"))
+	_set_rect(bag_detail_panel, _screen_rect("bag_detail", "detail_panel"))
+	_set_rect(bag_detail_inventory, _screen_rect("bag_detail", "inventory_board"))
+
+
+func _apply_ending_layout() -> void:
+	_set_rect(ending_layer.get_node("EndingTitle"), _screen_rect("ending", "title"))
+	_set_rect(ending_summary_panel, _screen_rect("ending", "summary_panel"))
+	_set_rect(ending_memory_panel, _screen_rect("ending", "memory_panel"))
+	_set_rect(ending_layer.get_node("EndingRestart"), _screen_rect("ending", "restart_button"))
+	_set_rect(ending_layer.get_node("EndingTitleButton"), _screen_rect("ending", "title_button"))
 
 
 func _apply_travel_layout() -> void:

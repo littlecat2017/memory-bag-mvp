@@ -91,6 +91,11 @@ Each screen must have:
 - All placeholder/art assets stay inside their declared rectangles.
 - User or explicit human review confirms the screenshot direction is acceptable.
 
+## Current Status
+
+- R0 complete: clean project shell, source script loading, graybox UI, screenshot capture, and measurable layout tests.
+- R1 complete: title, dialogue, travel, battle, backpack detail, and ending graybox screens now have layout-contract coverage and screenshots.
+
 ## Current Target
 
-R0 only: create a clean project shell with source script loading, graybox UI, screenshot capture, and measurable layout tests.
+R2 next: script playback. The game should progress through the source-script tutorial/prologue/forest events without inventing new plot beats.

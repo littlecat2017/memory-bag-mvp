@@ -8,7 +8,7 @@ Run from this directory:
 & '..\temp\godot\extracted\Godot_v4.6.3-stable_win64_console.exe' --path .
 ```
 
-R0 verification:
+Verification:
 
 ```powershell
 & '..\temp\godot\extracted\Godot_v4.6.3-stable_win64_console.exe' --headless --path . -s 'res://scripts/debug/verify_reboot_shell.gd'
@@ -21,3 +21,8 @@ Screenshot capture:
 ```
 
 The previous prototype remains in Git history and should not be used as the reboot runtime source.
+
+Current reboot reports:
+
+- `docs/R0_TEST_REPORT.md`
+- `docs/R1_TEST_REPORT.md`

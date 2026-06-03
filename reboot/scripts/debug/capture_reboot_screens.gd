@@ -25,6 +25,11 @@ func _run() -> void:
 	viewport.add_child(main)
 	await _settle(8)
 
+	main.show_mode("title")
+	await _settle(4)
+	if not _save_snapshot("00_title_graybox.png"):
+		return
+
 	main.jump_to_event("T0001")
 	await _settle(4)
 	if not _save_snapshot("01_dialogue_graybox.png"):
@@ -38,6 +43,16 @@ func _run() -> void:
 	main.jump_to_event("F0003")
 	await _settle(4)
 	if not _save_snapshot("03_battle_graybox.png"):
+		return
+
+	main.show_mode("bag_detail")
+	await _settle(4)
+	if not _save_snapshot("04_bag_detail_graybox.png"):
+		return
+
+	main.show_mode("ending")
+	await _settle(4)
+	if not _save_snapshot("05_ending_graybox.png"):
 		return
 
 	main.queue_free()

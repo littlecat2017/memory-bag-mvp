@@ -3,6 +3,14 @@
   "design_canvas": [1280, 720],
   "concept_reference": "res://assets/reference/concept_memory_backpack.png",
   "screens": {
+    "title": {
+      "title_text": [120, 88, 560, 82],
+      "subtitle_text": [124, 178, 620, 54],
+      "concept_preview": [760, 72, 380, 214],
+      "primary_button": [124, 310, 260, 58],
+      "quit_button": [124, 386, 260, 58],
+      "note_panel": [124, 496, 680, 118]
+    },
     "dialogue": {
       "background": [0, 0, 1280, 720],
       "portrait": [770, 95, 360, 430],
@@ -24,11 +32,25 @@
       "hero": [330, 184, 170, 155],
       "enemy": [780, 172, 205, 168],
       "floor_baseline": [190, 340, 900, 4],
-      "status": [1000, 78, 205, 112],
+      "status": [900, 82, 205, 86],
       "operation_tray": [52, 386, 1176, 322],
       "trash_zone": [72, 430, 210, 230],
       "inventory_board": [404, 424, 556, 224],
       "found_zone": [1000, 430, 205, 230]
+    },
+    "bag_detail": {
+      "title": [72, 54, 420, 50],
+      "memory_list": [72, 130, 342, 520],
+      "detail_panel": [452, 130, 420, 520],
+      "inventory_board": [908, 190, 300, 190],
+      "close_button": [1040, 54, 168, 50]
+    },
+    "ending": {
+      "title": [120, 72, 560, 64],
+      "summary_panel": [120, 164, 520, 420],
+      "memory_panel": [690, 164, 470, 420],
+      "restart_button": [120, 610, 220, 54],
+      "title_button": [368, 610, 220, 54]
     }
   },
   "inventory": {
