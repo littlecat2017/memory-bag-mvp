@@ -69,6 +69,17 @@ func _run() -> void:
 	if not _save_snapshot("07_script_choice_result_graybox.png"):
 		return
 
+	main.jump_to_event("F0010")
+	main.choose_option(0)
+	await _settle(4)
+	if not _save_snapshot("08_memory_replace_graybox.png"):
+		return
+
+	main.replace_memory_at(0)
+	await _settle(4)
+	if not _save_snapshot("09_memory_replace_result_graybox.png"):
+		return
+
 	main.queue_free()
 	viewport.queue_free()
 	await process_frame

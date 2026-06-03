@@ -27,6 +27,8 @@ var route_id := ""
 var selected_ending_id := ""
 var applied_event_effect_ids: Array[String] = []
 var available_choice_options: Array[Dictionary] = []
+var pending_gain_memory_ids: Array[String] = []
+var pending_resume_event_id := ""
 var validation_errors: Array[String] = []
 
 var bg_layer: ColorRect
@@ -38,9 +40,12 @@ var enemy_box: PanelContainer
 var status_box: PanelContainer
 var operation_tray: Control
 var trash_zone: PanelContainer
+var trash_zone_label: Label
 var found_zone: PanelContainer
+var found_zone_label: Label
 var inventory_grid: GridContainer
 var inventory_cells: Array[PanelContainer] = []
+var inventory_cell_labels: Array[Label] = []
 var dialogue_panel: PanelContainer
 var speaker_label: Label
 var text_label: Label
@@ -75,8 +80,13 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		var key_event := event as InputEventKey
+		if current_mode == "memory_replace":
+			if key_event.keycode >= KEY_1 and key_event.keycode <= KEY_9:
+				replace_memory_at(int(key_event.keycode - KEY_1))
+				get_viewport().set_input_as_handled()
+				return
 		if current_mode == "choice":
-			var key_event := event as InputEventKey
 			if key_event.keycode >= KEY_1 and key_event.keycode <= KEY_9:
 				choose_option(int(key_event.keycode - KEY_1))
 				get_viewport().set_input_as_handled()
@@ -122,8 +132,10 @@ func choose_option(option_index: int) -> void:
 	if option_index < 0 or option_index >= available_choice_options.size():
 		return
 	var option: Dictionary = available_choice_options[option_index]
-	_apply_effects(option.get("effects", {}))
 	var target_id := str(option.get("target", ""))
+	var waits_for_replacement := _apply_effects(option.get("effects", {}), target_id)
+	if waits_for_replacement:
+		return
 	if target_id == "EVAL_ENDING":
 		_select_ending()
 		return
@@ -151,6 +163,11 @@ func has_discarded(memory_id: String) -> bool:
 
 func has_flag(flag_id: String) -> bool:
 	return flags.has(flag_id)
+
+
+func unlocked_memory_slots() -> int:
+	var inventory: Dictionary = layout.get("inventory", {})
+	return int(inventory.get("initial_unlocked_slots", 4))
 
 
 func loaded_event_count() -> int:
@@ -249,11 +266,15 @@ func _build_ui() -> void:
 	operation_tray.add_child(tray_bg)
 
 	trash_zone = _new_panel("trash")
-	trash_zone.add_child(_center_label("弃牌堆"))
+	trash_zone_label = _center_label("弃牌堆")
+	trash_zone_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	trash_zone.add_child(trash_zone_label)
 	operation_tray.add_child(trash_zone)
 
 	found_zone = _new_panel("found")
-	found_zone.add_child(_center_label("新记忆"))
+	found_zone_label = _center_label("新记忆")
+	found_zone_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	found_zone.add_child(found_zone_label)
 	operation_tray.add_child(found_zone)
 
 	inventory_grid = GridContainer.new()
@@ -442,6 +463,8 @@ func _build_inventory_cells() -> void:
 	var cell_size := _inventory_cell_size(board_rect, Vector2i(columns, rows), Vector2(float(gap[0]), float(gap[1])))
 	for index in range(columns * rows):
 		var cell := _new_panel("cell_unlocked" if index < unlocked else "cell_locked")
+		cell.mouse_filter = Control.MOUSE_FILTER_STOP
+		cell.gui_input.connect(_on_inventory_cell_gui_input.bind(index))
 		cell.custom_minimum_size = cell_size
 		cell.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -449,7 +472,9 @@ func _build_inventory_cells() -> void:
 		label.add_theme_font_size_override("font_size", 16 if index < unlocked else 13)
 		cell.add_child(label)
 		inventory_cells.append(cell)
+		inventory_cell_labels.append(label)
 		inventory_grid.add_child(cell)
+	_refresh_inventory_ui()
 
 
 func _go_to_event(event_id: String) -> void:
@@ -486,6 +511,9 @@ func _reset_script_state() -> void:
 	selected_ending_id = ""
 	applied_event_effect_ids.clear()
 	available_choice_options.clear()
+	pending_gain_memory_ids.clear()
+	pending_resume_event_id = ""
+	_refresh_inventory_ui()
 
 
 func _event_type(event: Dictionary) -> String:
@@ -536,21 +564,29 @@ func _rebuild_choice_list() -> void:
 		choice_list.add_child(option_button)
 
 
-func _apply_effects(effects_value) -> void:
+func _apply_effects(effects_value, resume_event_id := "") -> bool:
 	if typeof(effects_value) != TYPE_DICTIONARY:
-		return
+		return false
 	var effects: Dictionary = effects_value
-	_add_memories(_string_array(effects.get("gain", [])))
 	_discard_memories(_string_array(effects.get("discard", [])))
 	_discard_memories(_string_array(effects.get("consume", [])), false)
 	_add_flags(_string_array(effects.get("set_flags", [])))
 	if effects.has("set_route"):
 		route_id = str(effects.get("set_route", ""))
+	var gain_ids := _string_array(effects.get("gain", []))
+	if _needs_memory_replacement(gain_ids):
+		_begin_memory_replace(gain_ids, resume_event_id)
+		return true
+	_add_memories(gain_ids)
+	_refresh_inventory_ui()
+	return false
 
 
 func _add_memories(memory_ids: Array[String]) -> void:
 	for memory_id in memory_ids:
 		if memory_id.is_empty() or owned_memory_ids.has(memory_id):
+			continue
+		if owned_memory_ids.size() >= unlocked_memory_slots():
 			continue
 		owned_memory_ids.append(memory_id)
 
@@ -560,12 +596,61 @@ func _discard_memories(memory_ids: Array[String], mark_discarded := true) -> voi
 		owned_memory_ids.erase(memory_id)
 		if mark_discarded and not discarded_memory_ids.has(memory_id):
 			discarded_memory_ids.append(memory_id)
+	_refresh_inventory_ui()
 
 
 func _add_flags(flag_ids: Array[String]) -> void:
 	for flag_id in flag_ids:
 		if not flag_id.is_empty() and not flags.has(flag_id):
 			flags.append(flag_id)
+
+
+func _needs_memory_replacement(memory_ids: Array[String]) -> bool:
+	var new_count := 0
+	for memory_id in memory_ids:
+		if not memory_id.is_empty() and not owned_memory_ids.has(memory_id):
+			new_count += 1
+	return new_count > 0 and owned_memory_ids.size() + new_count > unlocked_memory_slots()
+
+
+func _begin_memory_replace(memory_ids: Array[String], resume_event_id: String) -> void:
+	pending_gain_memory_ids.clear()
+	for memory_id in memory_ids:
+		if not memory_id.is_empty() and not owned_memory_ids.has(memory_id):
+			pending_gain_memory_ids.append(memory_id)
+	pending_resume_event_id = resume_event_id
+	speaker_label.text = "系统"
+	text_label.text = "背包已满。选择一个已解锁格子丢弃，再放入新记忆。按 1-4，或点击前四个格子。"
+	current_mode = "memory_replace"
+	_refresh_inventory_ui()
+	_apply_mode()
+
+
+func replace_memory_at(slot_index: int) -> void:
+	if current_mode != "memory_replace":
+		return
+	if pending_gain_memory_ids.is_empty():
+		return
+	if slot_index < 0 or slot_index >= min(owned_memory_ids.size(), unlocked_memory_slots()):
+		return
+	var discarded_id := owned_memory_ids[slot_index]
+	owned_memory_ids.remove_at(slot_index)
+	if not discarded_memory_ids.has(discarded_id):
+		discarded_memory_ids.append(discarded_id)
+	var gained_id := str(pending_gain_memory_ids.pop_front())
+	if not owned_memory_ids.has(gained_id):
+		owned_memory_ids.append(gained_id)
+	_refresh_inventory_ui()
+	if not pending_gain_memory_ids.is_empty():
+		return
+	var resume_event_id := pending_resume_event_id
+	pending_resume_event_id = ""
+	if resume_event_id == "EVAL_ENDING":
+		_select_ending()
+	elif not resume_event_id.is_empty():
+		_go_to_event(resume_event_id)
+	else:
+		advance_script()
 
 
 func _conditions_met(condition_text: String) -> bool:
@@ -658,14 +743,14 @@ func _select_ending() -> void:
 
 
 func _apply_mode() -> void:
-	stage_panel.visible = current_mode == "travel" or current_mode == "battle"
+	stage_panel.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
 	stage_label.visible = stage_panel.visible
 	floor_line.visible = stage_panel.visible
-	hero_box.visible = current_mode == "travel" or current_mode == "battle"
+	hero_box.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
 	enemy_box.visible = current_mode == "battle"
 	status_box.visible = current_mode == "battle"
-	operation_tray.visible = current_mode == "travel" or current_mode == "battle"
-	dialogue_panel.visible = current_mode == "dialogue" or current_mode == "choice"
+	operation_tray.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
+	dialogue_panel.visible = current_mode == "dialogue" or current_mode == "choice" or current_mode == "memory_replace"
 	choice_panel.visible = current_mode == "choice"
 	title_layer.visible = current_mode == "title"
 	bag_detail_layer.visible = current_mode == "bag_detail"
@@ -681,6 +766,8 @@ func _apply_mode() -> void:
 		_apply_ending_layout()
 	elif current_mode == "battle":
 		_apply_battle_layout()
+	elif current_mode == "memory_replace":
+		_apply_memory_replace_layout()
 	elif current_mode == "travel":
 		_apply_travel_layout()
 	else:
@@ -697,9 +784,20 @@ func _apply_choice_layout() -> void:
 	_set_rect(choice_panel, _screen_rect("choice", "choice_panel"))
 
 
+func _apply_memory_replace_layout() -> void:
+	_apply_travel_layout()
+	stage_label.text = "背包替换：新记忆必须落入已解锁格子"
+	_set_rect(dialogue_panel, Rect2(176, 110, 900, 64))
+
+
 func _on_title_start_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		start_script()
+
+
+func _on_inventory_cell_gui_input(event: InputEvent, slot_index: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		replace_memory_at(slot_index)
 
 
 func _string_array(value) -> Array[String]:
@@ -710,6 +808,43 @@ func _string_array(value) -> Array[String]:
 	elif typeof(value) == TYPE_STRING and not str(value).is_empty():
 		result.append(str(value))
 	return result
+
+
+func _refresh_inventory_ui() -> void:
+	for index in range(inventory_cell_labels.size()):
+		var label := inventory_cell_labels[index]
+		if index < unlocked_memory_slots():
+			if index < owned_memory_ids.size():
+				label.text = "%d\n%s" % [index + 1, _short_memory_name(owned_memory_ids[index])]
+				label.add_theme_font_size_override("font_size", 11)
+			else:
+				label.text = "%d\n空" % [index + 1]
+				label.add_theme_font_size_override("font_size", 12)
+		else:
+			label.text = "锁"
+			label.add_theme_font_size_override("font_size", 13)
+	if found_zone_label != null:
+		if pending_gain_memory_ids.is_empty():
+			found_zone_label.text = "新记忆"
+		else:
+			found_zone_label.text = "待放入\n%s" % _short_memory_name(pending_gain_memory_ids[0])
+	if trash_zone_label != null:
+		if discarded_memory_ids.is_empty():
+			trash_zone_label.text = "弃牌堆"
+		else:
+			trash_zone_label.text = "最近丢弃\n%s" % _short_memory_name(discarded_memory_ids[discarded_memory_ids.size() - 1])
+
+
+func _memory_name(memory_id: String) -> String:
+	var memory: Dictionary = memories.get(memory_id, {})
+	return str(memory.get("name", memory_id))
+
+
+func _short_memory_name(memory_id: String) -> String:
+	var memory_name := _memory_name(memory_id)
+	if memory_name.length() <= 5:
+		return memory_name
+	return memory_name.substr(0, 5)
 
 
 func _apply_title_layout() -> void:

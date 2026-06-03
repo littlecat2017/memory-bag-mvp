@@ -96,7 +96,8 @@ Each screen must have:
 - R0 complete: clean project shell, source script loading, graybox UI, screenshot capture, and measurable layout tests.
 - R1 complete: title, dialogue, travel, battle, backpack detail, and ending graybox screens now have layout-contract coverage and screenshots.
 - R2 complete: source-script playback can start, advance through tutorial/prologue, show choices, apply option effects, and jump to source-script targets.
+- R3 complete: memory gains respect the initial four-slot capacity, full backpacks open replacement mode, discarded memories are tracked, and branch playback resumes after replacement.
 
 ## Current Target
 
-R3 next: backpack prototype. The player should be able to accept memories, hit capacity limits, and resolve replacement using the visible 7x4 grid with only the initial four slots unlocked.
+R4 next: travel and battle prototype. The game should autoplay simple battles, show basic win flow, and keep movement/battle screens connected to script progression.

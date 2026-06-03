@@ -13,6 +13,7 @@ func _run() -> void:
 	print("verify_reboot_shell: start")
 	var main: Control = MainScene.instantiate()
 	get_root().add_child(main)
+	await process_frame
 
 	_expect(main.validation_errors.is_empty(), "no validation errors")
 	_expect(main.loaded_event_count() >= 80, "loads MVP events from original source script")
@@ -69,6 +70,18 @@ func _run() -> void:
 	_expect(main.owned_memory_count() == 4, "standard opening gains four memories")
 	_expect(main.has_memory("mem_mothers_soup"), "standard opening keeps mother's soup")
 	_expect(main.has_memory("mem_my_name"), "standard opening keeps hero name")
+
+	main.jump_to_event("F0010")
+	main.choose_option(0)
+	_expect(main.current_mode == "memory_replace", "full backpack gain opens memory replacement")
+	_expect(main.pending_gain_memory_ids.size() == 1, "memory replacement tracks pending gain")
+	_expect(main.pending_gain_memory_ids[0] == "mem_someone_waits", "memory replacement stores selected new memory")
+	main.replace_memory_at(0)
+	_expect(str(main.current_event.get("id", "")) == "F0011A", "memory replacement resumes selected branch")
+	_expect(main.owned_memory_count() == 4, "memory replacement keeps unlocked capacity")
+	_expect(main.has_memory("mem_someone_waits"), "memory replacement adds new memory")
+	_expect(main.has_discarded("mem_mothers_soup"), "memory replacement discards replaced memory")
+	_expect(not main.has_memory("mem_mothers_soup"), "memory replacement removes old memory from bag")
 
 	main.show_mode("bag_detail")
 	_expect(main.bag_detail_layer.visible, "bag detail mode shows detail layer")
