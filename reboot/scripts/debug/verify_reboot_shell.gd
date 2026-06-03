@@ -29,10 +29,15 @@ func _run() -> void:
 	_expect(not main.operation_tray.visible, "dialogue event hides operation tray")
 	_expect(main.text_label.text.find("自动前进") >= 0, "dialogue text comes from original script")
 
+	main.jump_to_event("P0010")
+	_expect(main.operation_tray.visible, "memory event shows operation tray")
+	_expect(not main.dialogue_panel.visible, "memory event hides dialogue panel")
+
 	main.jump_to_event("F0010")
-	_expect(main.operation_tray.visible, "travel/memory event shows operation tray")
-	_expect(not main.dialogue_panel.visible, "travel/memory event hides dialogue panel")
-	_expect(main.hero_box.get_global_rect().end.y <= main.operation_tray.get_global_rect().position.y, "travel hero stays above tray")
+	_expect(main.current_mode == "choice", "choice event switches to choice mode")
+	_expect(main.dialogue_panel.visible, "choice mode keeps story text visible")
+	_expect(main.choice_panel.visible, "choice mode shows choice panel")
+	_expect(main.available_choice_options.size() == 3, "choice mode filters and shows available options")
 
 	main.jump_to_event("F0003")
 	var hero_rect: Rect2 = main.hero_box.get_global_rect()
@@ -49,6 +54,21 @@ func _run() -> void:
 
 	_expect(main.inventory_cells.size() == 28, "inventory shows full 7x4 grid")
 	_expect(main.inventory_grid.columns == 7, "inventory uses 7 columns")
+
+	main.start_script()
+	_expect(str(main.current_event.get("id", "")) == "T0001", "start_script begins at first tutorial event")
+	for _index in range(38):
+		if str(main.current_event.get("id", "")) == "P0034":
+			break
+		main.advance_script()
+	_expect(str(main.current_event.get("id", "")) == "P0034", "script playback reaches initial backpack choice")
+	_expect(main.current_mode == "choice", "initial backpack event is a choice")
+	_expect(main.available_choice_options.size() == 2, "initial backpack choice exposes two valid options")
+	main.choose_option(0)
+	_expect(str(main.current_event.get("id", "")) == "P0035A", "choice target jumps to standard opening line")
+	_expect(main.owned_memory_count() == 4, "standard opening gains four memories")
+	_expect(main.has_memory("mem_mothers_soup"), "standard opening keeps mother's soup")
+	_expect(main.has_memory("mem_my_name"), "standard opening keeps hero name")
 
 	main.show_mode("bag_detail")
 	_expect(main.bag_detail_layer.visible, "bag detail mode shows detail layer")

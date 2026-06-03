@@ -16,9 +16,17 @@ var layout: Dictionary = {}
 var events: Array[Dictionary] = []
 var memories: Dictionary = {}
 var events_by_id: Dictionary = {}
+var event_index_by_id: Dictionary = {}
 var current_event_index := 0
+var current_event: Dictionary = {}
 var current_mode := "dialogue"
 var owned_memory_ids: Array[String] = []
+var discarded_memory_ids: Array[String] = []
+var flags: Array[String] = []
+var route_id := ""
+var selected_ending_id := ""
+var applied_event_effect_ids: Array[String] = []
+var available_choice_options: Array[Dictionary] = []
 var validation_errors: Array[String] = []
 
 var bg_layer: ColorRect
@@ -36,6 +44,8 @@ var inventory_cells: Array[PanelContainer] = []
 var dialogue_panel: PanelContainer
 var speaker_label: Label
 var text_label: Label
+var choice_panel: PanelContainer
+var choice_list: VBoxContainer
 var source_label: Label
 var concept_reference: TextureRect
 var title_layer: Control
@@ -63,13 +73,84 @@ func _ready() -> void:
 	show_mode("title")
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if current_mode == "choice":
+			var key_event := event as InputEventKey
+			if key_event.keycode >= KEY_1 and key_event.keycode <= KEY_9:
+				choose_option(int(key_event.keycode - KEY_1))
+				get_viewport().set_input_as_handled()
+				return
+		if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_select"):
+			if current_mode == "title":
+				start_script()
+			elif current_mode in ["dialogue", "travel", "battle"]:
+				advance_script()
+			get_viewport().set_input_as_handled()
+
+
 func show_mode(mode: String) -> void:
 	current_mode = mode
 	_apply_mode()
 
 
 func jump_to_event(event_id: String) -> void:
-	_apply_event(event_id)
+	_go_to_event(event_id)
+
+
+func start_script() -> void:
+	_reset_script_state()
+	_go_to_event(_first_event_id("T0001"))
+
+
+func advance_script() -> void:
+	if current_event.is_empty():
+		start_script()
+		return
+	if _event_type(current_event) == "choice":
+		if not available_choice_options.is_empty():
+			choose_option(0)
+		return
+	var next_id := _next_playable_event_id(current_event_index + 1)
+	if next_id.is_empty():
+		show_mode("ending")
+		return
+	_go_to_event(next_id)
+
+
+func choose_option(option_index: int) -> void:
+	if option_index < 0 or option_index >= available_choice_options.size():
+		return
+	var option: Dictionary = available_choice_options[option_index]
+	_apply_effects(option.get("effects", {}))
+	var target_id := str(option.get("target", ""))
+	if target_id == "EVAL_ENDING":
+		_select_ending()
+		return
+	if target_id.is_empty():
+		advance_script()
+		return
+	_go_to_event(target_id)
+
+
+func owned_memory_count() -> int:
+	return owned_memory_ids.size()
+
+
+func discarded_memory_count() -> int:
+	return discarded_memory_ids.size()
+
+
+func has_memory(memory_id: String) -> bool:
+	return owned_memory_ids.has(memory_id)
+
+
+func has_discarded(memory_id: String) -> bool:
+	return discarded_memory_ids.has(memory_id)
+
+
+func has_flag(flag_id: String) -> bool:
+	return flags.has(flag_id)
 
 
 func loaded_event_count() -> int:
@@ -106,9 +187,10 @@ func _load_source_script() -> void:
 				memories[memory_id] = item
 		elif item.has("id"):
 			var event_id := str(item.get("id", ""))
-			if event_id.begins_with("T") or event_id.begins_with("P") or event_id.begins_with("F"):
+			if ["T", "P", "F", "M", "C", "K", "E"].has(event_id.left(1)):
 				events.append(item)
 				events_by_id[event_id] = item
+				event_index_by_id[event_id] = events.size() - 1
 	_validate_loaded_source()
 
 
@@ -200,6 +282,21 @@ func _build_ui() -> void:
 	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dialogue_box.add_child(text_label)
 
+	choice_panel = _new_panel("dialogue")
+	add_child(choice_panel)
+
+	var choice_margin := MarginContainer.new()
+	choice_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	choice_margin.add_theme_constant_override("margin_left", 14)
+	choice_margin.add_theme_constant_override("margin_top", 14)
+	choice_margin.add_theme_constant_override("margin_right", 14)
+	choice_margin.add_theme_constant_override("margin_bottom", 14)
+	choice_panel.add_child(choice_margin)
+
+	choice_list = VBoxContainer.new()
+	choice_list.add_theme_constant_override("separation", 8)
+	choice_margin.add_child(choice_list)
+
 	source_label = _new_label(16, Color(0.10, 0.10, 0.10, 0.75))
 	source_label.text = "REBOOT graybox | source: original JSONL script | concept reference only"
 	source_label.position = Vector2(20, 18)
@@ -234,7 +331,9 @@ func _build_title_layer() -> void:
 	title_layer.add_child(title_concept_preview)
 
 	title_start_button = _new_panel("button")
-	title_start_button.add_child(_center_label("开始灰盒验证"))
+	title_start_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	title_start_button.gui_input.connect(_on_title_start_gui_input)
+	title_start_button.add_child(_center_label("开始游戏"))
 	title_layer.add_child(title_start_button)
 
 	title_quit_button = _new_panel("button")
@@ -242,7 +341,7 @@ func _build_title_layer() -> void:
 	title_layer.add_child(title_quit_button)
 
 	title_note_panel = _new_panel("note")
-	var note := _center_label("R1 规则：本页不是最终美术，只验证标题页布局不会遮挡。")
+	var note := _center_label("R2 规则：按原始 JSONL 脚本播放，不新增剧情。空格/回车推进，选择页可按数字键。")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title_note_panel.add_child(note)
 	title_layer.add_child(title_note_panel)
@@ -353,20 +452,209 @@ func _build_inventory_cells() -> void:
 		inventory_grid.add_child(cell)
 
 
-func _apply_event(event_id: String) -> void:
+func _go_to_event(event_id: String) -> void:
 	var event: Dictionary = events_by_id.get(event_id, {})
 	if event.is_empty():
 		return
-	current_event_index = events.find(event)
+	current_event = event
+	current_event_index = int(event_index_by_id.get(event_id, events.find(event)))
+	available_choice_options.clear()
 	speaker_label.text = str(event.get("speaker", ""))
 	text_label.text = str(event.get("text", ""))
-	if str(event.get("type", "")) == "battle":
+	_apply_event_effects_if_needed(event)
+	var event_type := _event_type(event)
+	if event_type == "choice":
+		available_choice_options = _available_options(event)
+		_rebuild_choice_list()
+		current_mode = "choice"
+	elif event_type == "battle":
 		current_mode = "battle"
-	elif str(event.get("chapter", "")) == "forest" and str(event.get("type", "")) != "line":
+	elif event_type.begins_with("memory_"):
 		current_mode = "travel"
 	else:
 		current_mode = "dialogue"
 	_apply_mode()
+
+
+func _reset_script_state() -> void:
+	current_event = {}
+	current_event_index = 0
+	owned_memory_ids.clear()
+	discarded_memory_ids.clear()
+	flags.clear()
+	route_id = ""
+	selected_ending_id = ""
+	applied_event_effect_ids.clear()
+	available_choice_options.clear()
+
+
+func _event_type(event: Dictionary) -> String:
+	return str(event.get("type", ""))
+
+
+func _next_playable_event_id(start_index: int) -> String:
+	for index in range(max(0, start_index), events.size()):
+		var event: Dictionary = events[index]
+		if _conditions_met(str(event.get("condition", ""))):
+			return str(event.get("id", ""))
+	return ""
+
+
+func _apply_event_effects_if_needed(event: Dictionary) -> void:
+	var event_id := str(event.get("id", ""))
+	if event_id.is_empty() or applied_event_effect_ids.has(event_id):
+		return
+	if event.has("effects"):
+		_apply_effects(event.get("effects", {}))
+		applied_event_effect_ids.append(event_id)
+
+
+func _available_options(event: Dictionary) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var options = event.get("options", [])
+	if typeof(options) != TYPE_ARRAY:
+		return result
+	for option in options:
+		if typeof(option) != TYPE_DICTIONARY:
+			continue
+		var typed_option: Dictionary = option
+		if _requirements_met(str(typed_option.get("requires", ""))):
+			result.append(typed_option)
+	return result
+
+
+func _rebuild_choice_list() -> void:
+	for child in choice_list.get_children():
+		child.queue_free()
+	for index in range(available_choice_options.size()):
+		var option: Dictionary = available_choice_options[index]
+		var option_button := Button.new()
+		option_button.text = "%d. %s" % [index + 1, str(option.get("label", ""))]
+		option_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		option_button.add_theme_font_size_override("font_size", 16)
+		option_button.pressed.connect(choose_option.bind(index))
+		choice_list.add_child(option_button)
+
+
+func _apply_effects(effects_value) -> void:
+	if typeof(effects_value) != TYPE_DICTIONARY:
+		return
+	var effects: Dictionary = effects_value
+	_add_memories(_string_array(effects.get("gain", [])))
+	_discard_memories(_string_array(effects.get("discard", [])))
+	_discard_memories(_string_array(effects.get("consume", [])), false)
+	_add_flags(_string_array(effects.get("set_flags", [])))
+	if effects.has("set_route"):
+		route_id = str(effects.get("set_route", ""))
+
+
+func _add_memories(memory_ids: Array[String]) -> void:
+	for memory_id in memory_ids:
+		if memory_id.is_empty() or owned_memory_ids.has(memory_id):
+			continue
+		owned_memory_ids.append(memory_id)
+
+
+func _discard_memories(memory_ids: Array[String], mark_discarded := true) -> void:
+	for memory_id in memory_ids:
+		owned_memory_ids.erase(memory_id)
+		if mark_discarded and not discarded_memory_ids.has(memory_id):
+			discarded_memory_ids.append(memory_id)
+
+
+func _add_flags(flag_ids: Array[String]) -> void:
+	for flag_id in flag_ids:
+		if not flag_id.is_empty() and not flags.has(flag_id):
+			flags.append(flag_id)
+
+
+func _conditions_met(condition_text: String) -> bool:
+	return _requirements_met(condition_text)
+
+
+func _requirements_met(requirements_text: String) -> bool:
+	if requirements_text.strip_edges().is_empty():
+		return true
+	for requirement in requirements_text.split(",", false):
+		if not _single_requirement_met(requirement.strip_edges()):
+			return false
+	return true
+
+
+func _single_requirement_met(requirement: String) -> bool:
+	if requirement.is_empty():
+		return true
+	if requirement.begins_with("has_memory:"):
+		return has_memory(requirement.trim_prefix("has_memory:"))
+	if requirement.begins_with("not_has_memory:"):
+		return not has_memory(requirement.trim_prefix("not_has_memory:"))
+	if requirement.begins_with("discarded:"):
+		return has_discarded(requirement.trim_prefix("discarded:"))
+	if requirement.begins_with("not_discarded:"):
+		return not has_discarded(requirement.trim_prefix("not_discarded:"))
+	if requirement.begins_with("has_flag:"):
+		return has_flag(requirement.trim_prefix("has_flag:"))
+	if requirement.begins_with("not_has_flag:"):
+		return not has_flag(requirement.trim_prefix("not_has_flag:"))
+	if requirement.begins_with("route:"):
+		return route_id == requirement.trim_prefix("route:")
+	if requirement.begins_with("ending:"):
+		return selected_ending_id == requirement.trim_prefix("ending:")
+	if requirement.begins_with("score:"):
+		return _score_requirement_met(requirement.trim_prefix("score:"))
+	return true
+
+
+func _score_requirement_met(requirement: String) -> bool:
+	var operators := [">=", "<=", ">", "<", "=="]
+	for operator in operators:
+		var parts := requirement.split(operator, false, 1)
+		if parts.size() == 2:
+			var tag := parts[0].strip_edges()
+			var expected := int(parts[1].strip_edges())
+			var actual := _memory_tag_score(tag)
+			match operator:
+				">=":
+					return actual >= expected
+				"<=":
+					return actual <= expected
+				">":
+					return actual > expected
+				"<":
+					return actual < expected
+				"==":
+					return actual == expected
+	return false
+
+
+func _memory_tag_score(tag: String) -> int:
+	var score := 0
+	for memory_id in owned_memory_ids:
+		var memory: Dictionary = memories.get(memory_id, {})
+		var tags = memory.get("tags", [])
+		if typeof(tags) == TYPE_ARRAY and tags.has(tag):
+			score += 1
+	return score
+
+
+func _select_ending() -> void:
+	if route_id == "accept_discarded" and has_memory("mem_reason_to_depart") and has_memory("mem_my_name") and _memory_tag_score("温柔") >= 2:
+		selected_ending_id = "reconciliation"
+	elif route_id == "go_home" and has_memory("mem_want_to_go_home"):
+		selected_ending_id = "homecoming"
+	elif route_id == "kill_demon" and not has_memory("mem_reason_to_depart"):
+		selected_ending_id = "hollow"
+	elif route_id == "kill_demon" and not has_memory("mem_my_name"):
+		selected_ending_id = "nameless"
+	elif route_id == "kill_demon" and has_memory("mem_reason_to_depart") and has_memory("mem_my_name"):
+		selected_ending_id = "hero"
+	else:
+		selected_ending_id = "hollow"
+	var ending_event_id := _next_playable_event_id(int(event_index_by_id.get("E0001", events.size())))
+	if ending_event_id.is_empty():
+		show_mode("ending")
+	else:
+		_go_to_event(ending_event_id)
 
 
 func _apply_mode() -> void:
@@ -377,13 +665,16 @@ func _apply_mode() -> void:
 	enemy_box.visible = current_mode == "battle"
 	status_box.visible = current_mode == "battle"
 	operation_tray.visible = current_mode == "travel" or current_mode == "battle"
-	dialogue_panel.visible = current_mode == "dialogue"
+	dialogue_panel.visible = current_mode == "dialogue" or current_mode == "choice"
+	choice_panel.visible = current_mode == "choice"
 	title_layer.visible = current_mode == "title"
 	bag_detail_layer.visible = current_mode == "bag_detail"
 	ending_layer.visible = current_mode == "ending"
 	concept_reference.visible = false
 	if current_mode == "title":
 		_apply_title_layout()
+	elif current_mode == "choice":
+		_apply_choice_layout()
 	elif current_mode == "bag_detail":
 		_apply_bag_detail_layout()
 	elif current_mode == "ending":
@@ -399,6 +690,26 @@ func _apply_mode() -> void:
 func _apply_dialogue_layout() -> void:
 	_set_rect(dialogue_panel, _screen_rect("dialogue", "dialogue_panel"))
 	_set_rect(concept_reference, Rect2(16, 80, 220, 124))
+
+
+func _apply_choice_layout() -> void:
+	_set_rect(dialogue_panel, _screen_rect("dialogue", "dialogue_panel"))
+	_set_rect(choice_panel, _screen_rect("choice", "choice_panel"))
+
+
+func _on_title_start_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		start_script()
+
+
+func _string_array(value) -> Array[String]:
+	var result: Array[String] = []
+	if typeof(value) == TYPE_ARRAY:
+		for item in value:
+			result.append(str(item))
+	elif typeof(value) == TYPE_STRING and not str(value).is_empty():
+		result.append(str(value))
+	return result
 
 
 func _apply_title_layout() -> void:

@@ -55,6 +55,20 @@ func _run() -> void:
 	if not _save_snapshot("05_ending_graybox.png"):
 		return
 
+	main.start_script()
+	for _index in range(38):
+		if str(main.current_event.get("id", "")) == "P0034":
+			break
+		main.advance_script()
+	await _settle(4)
+	if not _save_snapshot("06_script_choice_graybox.png"):
+		return
+
+	main.choose_option(0)
+	await _settle(4)
+	if not _save_snapshot("07_script_choice_result_graybox.png"):
+		return
+
 	main.queue_free()
 	viewport.queue_free()
 	await process_frame
