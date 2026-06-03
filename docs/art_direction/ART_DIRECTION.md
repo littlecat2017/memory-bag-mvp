@@ -342,6 +342,24 @@
 - 如果接受，则本地抠绿、裁切、替换 `assets/chibi/chibi_hero_walk_sheet.png` 和 `assets/chibi/chibi_hero_attack_sheet.png`。
 - 如果不接受，则重做一张“全程面向右、无背向转身”的保守挥剑表，再接入。
 
+## 13. A 版主角 4x5 攻击动作试稿
+
+试稿文件：
+- 4x5 攻击序列帧：`docs/art_direction/chibi_trials/hero_chibi_a_attack_4x5_ordered_builtin.png`
+- 55ms GIF：`docs/art_direction/chibi_trials/hero_chibi_a_attack_4x5_preview_55ms.gif`
+- 70ms GIF：`docs/art_direction/chibi_trials/hero_chibi_a_attack_4x5_preview_70ms.gif`
+
+生成方式：
+- 使用 Codex 内置 image2 生图能力，不调用桌面 PHP 脚本。
+- 该图不计入 PHP 脚本每日 50 张额度。
+
+视觉检查结论：
+- 20 帧比 9 帧更顺，蓄力、冲刺、斩击、恢复阶段更完整。
+- 基本没有 3x3 版本里明显的背向转身问题。
+- 角色整体较小，适合后续实际播放时用更高帧数换流畅度。
+- 背景是轻微渐变绿幕，正式抠图时要使用宽松 chroma-key 阈值。
+- 生成尺寸为 `1254x1254`，不能直接作为 Godot 正式 4x5 sheet 使用；接入前需要规整到可整除的画布尺寸，例如 `1600x2000` 或 `1280x1600`。
+
 ## 7. 后续生成提示词基线
 
 通用正向：
