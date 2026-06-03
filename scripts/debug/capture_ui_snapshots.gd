@@ -24,16 +24,19 @@ func _run() -> void:
 	main.size = Vector2(SNAPSHOT_SIZE)
 	viewport.add_child(main)
 	await _settle()
-	_save_snapshot("01_opening.png")
+	if not _save_snapshot("01_opening.png"):
+		return
 	main.debug_jump_to_event("P0034")
 	await _settle()
-	_save_snapshot("02_memory_choice.png")
+	if not _save_snapshot("02_memory_choice.png"):
+		return
 	main._on_choice_pressed(0)
 	await _settle()
 	main._show_backpack_ui()
 	main._on_bag_toggle_pressed()
 	await _settle()
-	_save_snapshot("03_bag_panel.png")
+	if not _save_snapshot("03_bag_panel.png"):
+		return
 	main._on_bag_toggle_pressed()
 	main.debug_jump_to_event("F0004")
 	await _settle()
@@ -46,20 +49,24 @@ func _run() -> void:
 	main.run_controller.resume()
 	main._show_backpack_ui()
 	await _settle()
-	_save_snapshot("04_travel_stage.png")
+	if not _save_snapshot("04_travel_stage.png"):
+		return
 	main.debug_jump_to_event("F0003")
 	await _wait_for_battle_identity(main)
-	_save_snapshot("05_battle_stage.png")
+	if not _save_snapshot("05_battle_stage.png"):
+		return
 	main.debug_jump_to_event("F0036")
 	await _wait_for_battle_identity(main)
-	_save_snapshot("06_boss_battle_stage.png")
+	if not _save_snapshot("06_boss_battle_stage.png"):
+		return
 	main._on_debug_force_ending_pressed("mvp_named_with_reason")
 	await _settle()
 	main._on_next_pressed()
 	await _settle()
 	main._on_next_pressed()
 	await _settle()
-	_save_snapshot("07_ending_summary.png")
+	if not _save_snapshot("07_ending_summary.png"):
+		return
 	main.queue_free()
 	viewport.queue_free()
 	await process_frame
@@ -81,6 +88,24 @@ func _wait_for_battle_identity(main: Control) -> void:
 	await _settle()
 
 
-func _save_snapshot(file_name: String) -> void:
-	var image := viewport.get_texture().get_image()
-	image.save_png("%s/%s" % [SNAPSHOT_DIR, file_name])
+func _save_snapshot(file_name: String) -> bool:
+	var texture := viewport.get_texture()
+	if texture == null:
+		_fail("capture texture is null for %s" % file_name)
+		return false
+	var image := texture.get_image()
+	if image == null:
+		_fail("capture image is null for %s" % file_name)
+		return false
+	var error := image.save_png("%s/%s" % [SNAPSHOT_DIR, file_name])
+	if error != OK:
+		_fail("failed to save %s: %s" % [file_name, error])
+		return false
+	return true
+
+
+func _fail(message: String) -> void:
+	push_error("capture_ui_snapshots: %s" % message)
+	if viewport != null:
+		viewport.queue_free()
+	quit(1)

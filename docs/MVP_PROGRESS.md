@@ -482,6 +482,24 @@ MVP-1 暂不做：
   - 新增 `verify_mvp_completion.gd`，覆盖启动教程、提示面板、世界回响和正式 UI 隐藏调试入口。
   - MVP 模块表更新为 100%；本轮未调用 image2，2026-06-02 本日图片生成消耗保持 19 / 50。
 
+### 2026-06-03
+
+- 按“先不处理视频/人物动作，补人物动作以外的完成度”方向，补全 7 张 MVP 记忆物件图标：
+  - `icon_memory_wooden_sword`
+  - `icon_memory_reason_to_depart`
+  - `icon_memory_my_name`
+  - `icon_memory_someone_waits`
+  - `icon_memory_abandoned_afternoon`
+  - `icon_memory_no_more_explaining`
+  - `icon_memory_empty_nameplate`
+- 新图标统一为成熟版 A 的日系叙事幻想物件风格，强调纸、布、旧木、缎带、旧照片和记忆光点，不包含可读文字、角色或额外剧情内容。
+- 更新 `data/art_assets.json`，为 8 张 MVP 记忆全部登记 `memory_icon` 资源，背包格和记忆卡不再只有“母亲做的热汤”能显示图标。
+- 强化自动化验收：
+  - `verify_art_assets.gd` 要求 8 张 MVP 记忆图标全部注册、可加载、可通过 `get_art_asset_for_memory()` 解析。
+  - `verify_memory_cards.gd` 要求每张记忆卡都能显示图标并保留关系、承诺、丢弃提示文本。
+- 本轮使用 Codex 内置 image2 生成 7 张图，并全部写入 `logs/image_generation.jsonl`；未调用桌面 PHP 脚本，未使用或记录任何密钥。
+- 2026-06-03 本日图片生成统计：Codex 内置 image2 8 / 50（含今日早些时候 1 张 4x5 动作试验图），桌面 PHP image2 0 / 50。
+
 ## 5. 近期开发顺序
 
 ### 下一轮：导出试玩 exe
@@ -502,11 +520,11 @@ MVP-1 暂不做：
 
 ## 6. 图片生成计划
 
-当前累计已登记图片：29 张。
+当前累计已登记图片：36 张。
 
-2026-06-02 本日图片生成消耗：19 / 50 张。
+2026-06-03 本日图片生成消耗：Codex 内置 image2 8 / 50 张；桌面 PHP image2 0 / 50 张。
 
-已生成并登记的 29 张图片：
+已生成并登记的 36 张图片：
 
 1. `bg_village_dawn`
 2. `bg_forest_path`
@@ -537,6 +555,13 @@ MVP-1 暂不做：
 27. `chibi_boss_nameless_hunter`
 28. `ui_travel_stage_panel`
 29. `ui_quick_bag_tray`
+30. `icon_memory_wooden_sword`
+31. `icon_memory_reason_to_depart`
+32. `icon_memory_my_name`
+33. `icon_memory_someone_waits`
+34. `icon_memory_abandoned_afternoon`
+35. `icon_memory_no_more_explaining`
+36. `icon_memory_empty_nameplate`
 
 后续生成规则：
 
@@ -544,7 +569,7 @@ MVP-1 暂不做：
 - 不记录密钥、账号密码、token 或临时敏感 URL。
 - 单日最多 50 张。
 - 未确认风格前，不进入 36 张第一批美术批量生成。
-- 本日剩余可用额度：31 张；下一轮优先做体验验收和打包收口，不主动扩大生成量。
+- 本日剩余可用额度：Codex 内置 image2 42 张；桌面 PHP image2 50 张。下一轮优先做体验验收和打包收口，不主动扩大生成量。
 
 ## 7. 每轮更新规则
 
@@ -568,6 +593,7 @@ MVP-1 暂不做：
 - Boss 后 MVP 结尾已接入通关回顾层；Boss 本体已有首批正式战斗图片和基础压迫表现，但仍缺少更完整的名字主题演出。
 - 调试面板功能可用且默认隐藏，但视觉仍偏工具化，后续应随正式 UI 一起整理。
 - 首批真实美术资源、敌人战斗图、Q 版行进/战斗图和视觉小说 UI 皮肤已接入，立绘与敌人图已做本地透明化初版；边缘精度后续仍可继续抠图或重生透明背景版本。
+- 8 张 MVP 记忆已全部拥有物件图标，但图标仍是方形完整插画，后续如果背包改成多格占位物品，需要再拆成 1x1、1x2、2x1、2x2 等真实占格素材。
 - `fx_slash_basic_sheet` 已清理为真实透明背景并接入战斗演出播放；后续可根据实际观感重新生成更有冲击力的透明特效表。
 - Q 版行走和攻击动效已经通过视频回归排除遮挡与透明错误，但脚步节奏和挥剑关键姿势仍偏 MVP 初版，后续可用新九宫格资源继续提升。
 - 已可用便携 Godot 4.6.3 运行 headless 验证；本机全局 PATH 仍未配置 Godot。

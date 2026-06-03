@@ -50,6 +50,13 @@ func _verify_registry(registry) -> void:
 		"ui_travel_stage_panel",
 		"ui_quick_bag_tray",
 		"icon_memory_mothers_soup",
+		"icon_memory_wooden_sword",
+		"icon_memory_reason_to_depart",
+		"icon_memory_my_name",
+		"icon_memory_someone_waits",
+		"icon_memory_abandoned_afternoon",
+		"icon_memory_no_more_explaining",
+		"icon_memory_empty_nameplate",
 		"fx_slash_basic_sheet",
 	]
 	for asset_id in required:
@@ -86,6 +93,18 @@ func _verify_registry(registry) -> void:
 	if registry.get_art_asset_for_memory("mem_mothers_soup").is_empty():
 		_fail("memory icon should resolve mem_mothers_soup")
 		return
+	_verify_mvp_memory_icons_registered(registry)
+
+
+func _verify_mvp_memory_icons_registered(registry) -> void:
+	for memory_id in registry.memories.keys():
+		var asset: Dictionary = registry.get_art_asset_for_memory(memory_id)
+		if asset.is_empty():
+			_fail("memory icon should resolve %s" % memory_id)
+			return
+		if str(asset.get("memory_id", "")) != memory_id:
+			_fail("memory icon has wrong memory_id for %s" % memory_id)
+			return
 
 
 func _verify_png_files(registry) -> void:
@@ -139,20 +158,21 @@ func _verify_hero_walk_sheet_has_no_green_echo(registry) -> void:
 
 
 func _verify_memory_card_icon(registry) -> void:
-	var card = MemoryCardViewScript.new()
-	card.set_memory(
-		registry.memories["mem_mothers_soup"],
-		registry.get_art_asset_for_memory("mem_mothers_soup")
-	)
-	if not card.has_required_memory_text():
+	for memory_id in registry.memories.keys():
+		var card = MemoryCardViewScript.new()
+		card.set_memory(
+			registry.memories[memory_id],
+			registry.get_art_asset_for_memory(memory_id)
+		)
+		if not card.has_required_memory_text():
+			card.free()
+			_fail("memory card should keep required text with icon for %s" % memory_id)
+			return
+		if not card.icon_texture_rect.visible or card.icon_texture_rect.texture == null:
+			card.free()
+			_fail("memory card should show icon for %s" % memory_id)
+			return
 		card.free()
-		_fail("memory card should keep required text with icon")
-		return
-	if not card.icon_texture_rect.visible or card.icon_texture_rect.texture == null:
-		card.free()
-		_fail("memory card should show soup icon")
-		return
-	card.free()
 
 
 func _verify_main_art_preview() -> void:

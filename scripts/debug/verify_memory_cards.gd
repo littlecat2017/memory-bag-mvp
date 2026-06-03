@@ -12,9 +12,13 @@ func _init() -> void:
 
 	for memory_id in registry.memories.keys():
 		var card = MemoryCardViewScript.new()
-		card.set_memory(registry.memories[memory_id])
+		card.set_memory(registry.memories[memory_id], registry.get_art_asset_for_memory(memory_id), memory_id)
 		if not card.has_required_memory_text():
 			_fail("card missing required text for %s" % memory_id)
+			return
+		if not card.icon_texture_rect.visible or card.icon_texture_rect.texture == null:
+			card.free()
+			_fail("card missing memory icon for %s" % memory_id)
 			return
 		var relation_text: String = card.relation_label.text
 		var obligation_text: String = card.obligation_label.text

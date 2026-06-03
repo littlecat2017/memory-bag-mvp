@@ -175,13 +175,13 @@ func _apply_compact_visibility() -> void:
 	margin_container.add_theme_constant_override("margin_right", padding)
 	margin_container.add_theme_constant_override("margin_bottom", padding)
 	content_box.add_theme_constant_override("separation", separation)
-	icon_texture_rect.custom_minimum_size = Vector2(34, 34) if compact_mode else Vector2(46, 46)
+	icon_texture_rect.custom_minimum_size = Vector2(48, 48) if compact_mode else Vector2(46, 46)
 	effect_label.visible = not compact_mode
 	relation_label.visible = not compact_mode
 	obligation_label.visible = not compact_mode
 	loss_hint_label.visible = not compact_mode
 	tags_label.visible = not compact_mode or not zone_kind.is_empty() or memory_id.is_empty()
-	title_label.add_theme_font_size_override("font_size", 13 if compact_mode else 18)
+	title_label.add_theme_font_size_override("font_size", 12 if compact_mode else 18)
 	tags_label.add_theme_font_size_override("font_size", 10 if compact_mode else 13)
 	if compact_mode:
 		title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

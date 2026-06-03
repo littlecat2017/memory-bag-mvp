@@ -229,6 +229,69 @@
       "prompt_summary": "木碗热汤，旁边有手织餐巾"
     },
     {
+      "id": "icon_memory_wooden_sword",
+      "type": "memory_icon",
+      "memory_id": "mem_wooden_sword",
+      "path": "res://assets/memory_icons/icon_memory_wooden_sword.png",
+      "source_doc": "MC-02",
+      "expected_size": [512, 512],
+      "prompt_summary": "旧木剑，握柄有磨损，作为师父训练回忆的物件图标"
+    },
+    {
+      "id": "icon_memory_reason_to_depart",
+      "type": "memory_icon",
+      "memory_id": "mem_reason_to_depart",
+      "path": "res://assets/memory_icons/icon_memory_reason_to_depart.png",
+      "source_doc": "MC-03",
+      "expected_size": [512, 512],
+      "prompt_summary": "折好的信与手帕，带微弱光，代表莉娅的托付"
+    },
+    {
+      "id": "icon_memory_my_name",
+      "type": "memory_icon",
+      "memory_id": "mem_my_name",
+      "path": "res://assets/memory_icons/icon_memory_my_name.png",
+      "source_doc": "MC-04",
+      "expected_size": [512, 512],
+      "prompt_summary": "空白姓名牌与蓝色缎带，代表世界对艾尔的呼唤"
+    },
+    {
+      "id": "icon_memory_someone_waits",
+      "type": "memory_icon",
+      "memory_id": "mem_someone_waits",
+      "path": "res://assets/memory_icons/icon_memory_someone_waits.png",
+      "source_doc": "MC-05",
+      "expected_size": [512, 512],
+      "prompt_summary": "远处窗灯、路标与围巾，代表有人在路的另一端等待"
+    },
+    {
+      "id": "icon_memory_abandoned_afternoon",
+      "type": "memory_icon",
+      "memory_id": "mem_abandoned_afternoon",
+      "path": "res://assets/memory_icons/icon_memory_abandoned_afternoon.png",
+      "source_doc": "MC-06",
+      "expected_size": [512, 512],
+      "prompt_summary": "空长椅、布片与落叶，代表被抛下的下午"
+    },
+    {
+      "id": "icon_memory_no_more_explaining",
+      "type": "memory_icon",
+      "memory_id": "mem_no_more_explaining",
+      "path": "res://assets/memory_icons/icon_memory_no_more_explaining.png",
+      "source_doc": "MC-07",
+      "expected_size": [512, 512],
+      "prompt_summary": "封住的信与破裂对话卡，代表拒绝再解释"
+    },
+    {
+      "id": "icon_memory_empty_nameplate",
+      "type": "memory_icon",
+      "memory_id": "mem_empty_nameplate",
+      "path": "res://assets/memory_icons/icon_memory_empty_nameplate.png",
+      "source_doc": "MC-08",
+      "expected_size": [512, 512],
+      "prompt_summary": "空白旧名牌与磨损缎带，代表替无名者带走空白"
+    },
+    {
       "id": "fx_slash_basic_sheet",
       "type": "effect_sheet",
       "path": "res://assets/effects/fx_slash_basic_sheet.png",
