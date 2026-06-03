@@ -29,3 +29,10 @@ Current reboot reports:
 - `docs/R2_TEST_REPORT.md`
 - `docs/R3_TEST_REPORT.md`
 - `docs/R4_TEST_REPORT.md`
+- `docs/R5_TEST_REPORT.md`
+
+Full MVP playthrough verification:
+
+```powershell
+& '..\temp\godot\extracted\Godot_v4.6.3-stable_win64_console.exe' --headless --path . -s 'res://scripts/debug/verify_mvp_playthrough.gd'
+```

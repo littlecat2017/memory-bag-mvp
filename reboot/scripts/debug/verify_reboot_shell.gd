@@ -17,7 +17,9 @@ func _run() -> void:
 
 	_expect(main.validation_errors.is_empty(), "no validation errors")
 	_expect(main.loaded_event_count() >= 80, "loads MVP events from original source script")
-	_expect(main.loaded_memory_count() == 8, "loads exactly 8 MVP memories")
+	_expect(main.loaded_memory_count() >= 16, "loads complete memory definitions from original source script")
+	_expect(main.memories.has("mem_mothers_soup"), "loads required initial memory definition")
+	_expect(main.memories.has("mem_rusty_victory"), "loads late-game reward memory definition")
 
 	main.show_mode("title")
 	_expect(main.title_layer.visible, "title mode shows title layer")

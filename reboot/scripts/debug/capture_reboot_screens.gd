@@ -85,6 +85,12 @@ func _run() -> void:
 	if not _save_snapshot("09_memory_replace_result_graybox.png"):
 		return
 
+	if not await _run_hero_playthrough(main):
+		return
+	await _settle(4)
+	if not _save_snapshot("10_mvp_ending_graybox.png"):
+		return
+
 	main.queue_free()
 	viewport.queue_free()
 	await process_frame
@@ -116,3 +122,57 @@ func _fail(message: String) -> bool:
 func _settle(frames: int) -> void:
 	for _index in range(frames):
 		await process_frame
+
+
+func _run_hero_playthrough(main: Control) -> bool:
+	main.start_script()
+	for _step in range(600):
+		if main.current_mode == "ending" and str(main.current_event.get("id", "")).begins_with("E"):
+			return true
+		match main.current_mode:
+			"battle":
+				main.advance_battle()
+			"choice":
+				_choose_hero_option(main)
+			"memory_replace":
+				main.replace_memory_at(_replacement_slot(main))
+			"dialogue", "travel":
+				main.advance_script()
+			"ending":
+				return true
+			_:
+				main.advance_script()
+		await process_frame
+	return _fail("hero playthrough did not reach an ending")
+
+
+func _choose_hero_option(main: Control) -> void:
+	var targets := {
+		"P0034": "P0035A",
+		"F0010": "F0011A",
+		"F0021": "F0022B",
+		"F0034": "F0035A",
+		"M0010": "M0011B",
+		"M0017": "M0018B",
+		"M0020": "M0021B",
+		"C0011": "C0012D",
+		"C0022": "C0023B",
+		"C0029": "C0030D",
+		"K0020": "K0021A",
+		"K0026": "EVAL_ENDING",
+	}
+	var target := str(targets.get(str(main.current_event.get("id", "")), ""))
+	for index in range(main.available_choice_options.size()):
+		var option: Dictionary = main.available_choice_options[index]
+		if str(option.get("target", "")) == target:
+			main.choose_option(index)
+			return
+	main.choose_option(0)
+
+
+func _replacement_slot(main: Control) -> int:
+	var protected_memories := ["mem_mothers_soup", "mem_reason_to_depart", "mem_my_name"]
+	for index in range(main.owned_memory_ids.size()):
+		if not protected_memories.has(str(main.owned_memory_ids[index])):
+			return index
+	return 0

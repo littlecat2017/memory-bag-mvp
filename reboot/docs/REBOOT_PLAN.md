@@ -82,6 +82,13 @@ Each screen must have:
 - Add character/enemy art only when transparent-background assets and alpha checks pass.
 - Any failed art asset is rejected before it reaches the scene.
 
+### R5A: MVP End-To-End Completion
+
+- Deterministic title-to-ending playthrough.
+- Late-game memory-gain replacement handling.
+- Ending route selection from source-script conditions.
+- Ending summary screen with final backpack state.
+
 ## Definition Of Done For A Screen
 
 - Layout test passes.
@@ -98,7 +105,8 @@ Each screen must have:
 - R2 complete: source-script playback can start, advance through tutorial/prologue, show choices, apply option effects, and jump to source-script targets.
 - R3 complete: memory gains respect the initial four-slot capacity, full backpacks open replacement mode, discarded memories are tracked, and branch playback resumes after replacement.
 - R4 complete: source-script battle events now enter a readable automatic battle state, resolve on player advance, and continue to the next source-script event.
+- R5A complete: automated MVP playthrough reaches source-script hero ending after 164 events, 10 battles, and 4 backpack replacements.
 
 ## Current Target
 
-R5 next: MVP end-to-end completion. The game should support a deterministic playthrough from title to an ending, select an ending from source-script conditions, and show a readable final summary before any final art replacement is attempted.
+Next: keep MVP graybox stable while either expanding route coverage to other endings or starting controlled art replacement one asset category at a time.

@@ -1,7 +1,7 @@
 extends Control
 
 const DESIGN_SIZE := Vector2(1280, 720)
-const MVP_MEMORY_IDS := [
+const REQUIRED_MEMORY_IDS := [
 	"mem_mothers_soup",
 	"mem_wooden_sword",
 	"mem_reason_to_depart",
@@ -74,7 +74,9 @@ var bag_detail_inventory: GridContainer
 var bag_detail_cells: Array[PanelContainer] = []
 var ending_layer: Control
 var ending_summary_panel: PanelContainer
+var ending_summary_label: Label
 var ending_memory_panel: PanelContainer
+var ending_memory_label: Label
 
 
 func _ready() -> void:
@@ -103,7 +105,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				start_script()
 			elif current_mode == "battle":
 				advance_battle()
-			elif current_mode in ["dialogue", "travel"]:
+			elif current_mode in ["dialogue", "travel", "ending"]:
 				advance_script()
 			get_viewport().set_input_as_handled()
 
@@ -221,7 +223,7 @@ func _load_source_script() -> void:
 		var item: Dictionary = parsed
 		if str(item.get("type", "")) == "memory_def":
 			var memory_id := str(item.get("id", ""))
-			if MVP_MEMORY_IDS.has(memory_id):
+			if not memory_id.is_empty():
 				memories[memory_id] = item
 		elif item.has("id"):
 			var event_id := str(item.get("id", ""))
@@ -233,7 +235,7 @@ func _load_source_script() -> void:
 
 
 func _validate_loaded_source() -> void:
-	for memory_id in MVP_MEMORY_IDS:
+	for memory_id in REQUIRED_MEMORY_IDS:
 		if not memories.has(memory_id):
 			validation_errors.append("missing MVP memory from source script: %s" % memory_id)
 	for event_id in ["T0001", "T0002", "T0003", "P0034", "F0003", "F0010", "F0036"]:
@@ -410,7 +412,7 @@ func _build_bag_detail_layer() -> void:
 	bag_detail_layer.add_child(close_button)
 
 	bag_memory_list = _new_panel("note")
-	bag_memory_list.add_child(_center_label("记忆列表\n来自原始脚本的 8 段 MVP 记忆"))
+	bag_memory_list.add_child(_center_label("记忆列表\n来自原始脚本的记忆定义"))
 	bag_detail_layer.add_child(bag_memory_list)
 
 	bag_detail_panel = _new_panel("dialogue")
@@ -457,11 +459,15 @@ func _build_ending_layer() -> void:
 	ending_layer.add_child(title)
 
 	ending_summary_panel = _new_panel("dialogue")
-	ending_summary_panel.add_child(_center_label("结局摘要\n名字是否保留\n出发理由是否保留\n世界如何回应"))
+	ending_summary_label = _center_label("结局摘要\n名字是否保留\n出发理由是否保留\n世界如何回应")
+	ending_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ending_summary_panel.add_child(ending_summary_label)
 	ending_layer.add_child(ending_summary_panel)
 
 	ending_memory_panel = _new_panel("note")
-	ending_memory_panel.add_child(_center_label("最终背包\n保留记忆 / 丢弃记忆 / 核心记忆状态"))
+	ending_memory_label = _center_label("最终背包\n保留记忆 / 丢弃记忆 / 核心记忆状态")
+	ending_memory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ending_memory_panel.add_child(ending_memory_label)
 	ending_layer.add_child(ending_memory_panel)
 
 	var restart_button := _new_panel("button")
@@ -512,7 +518,8 @@ func _go_to_event(event_id: String) -> void:
 	available_choice_options.clear()
 	speaker_label.text = str(event.get("speaker", ""))
 	text_label.text = str(event.get("text", ""))
-	_apply_event_effects_if_needed(event)
+	if _apply_event_effects_if_needed(event):
+		return
 	var event_type := _event_type(event)
 	if event_type == "choice":
 		available_choice_options = _available_options(event)
@@ -521,6 +528,9 @@ func _go_to_event(event_id: String) -> void:
 	elif event_type == "battle":
 		_begin_battle(event)
 		current_mode = "battle"
+	elif event_type == "ending":
+		_reset_battle_state()
+		current_mode = "ending"
 	elif event_type.begins_with("memory_"):
 		_reset_battle_state()
 		current_mode = "travel"
@@ -587,13 +597,15 @@ func _next_playable_event_id(start_index: int) -> String:
 	return ""
 
 
-func _apply_event_effects_if_needed(event: Dictionary) -> void:
+func _apply_event_effects_if_needed(event: Dictionary) -> bool:
 	var event_id := str(event.get("id", ""))
 	if event_id.is_empty() or applied_event_effect_ids.has(event_id):
-		return
+		return false
 	if event.has("effects"):
-		_apply_effects(event.get("effects", {}))
+		var waits_for_replacement := _apply_effects(event.get("effects", {}))
 		applied_event_effect_ids.append(event_id)
+		return waits_for_replacement
+	return false
 
 
 func _available_options(event: Dictionary) -> Array[Dictionary]:
@@ -906,6 +918,82 @@ func _short_memory_name(memory_id: String) -> String:
 	return memory_name.substr(0, 5)
 
 
+func _refresh_ending_ui() -> void:
+	var title := ending_layer.get_node("EndingTitle") as Label
+	if title != null:
+		if selected_ending_id.is_empty():
+			title.text = "MVP 回顾灰盒"
+		else:
+			title.text = "结局：%s" % _format_ending_name(selected_ending_id)
+	if ending_summary_label != null:
+		ending_summary_label.add_theme_font_size_override("font_size", 18)
+		ending_summary_label.text = _ending_summary_text()
+	if ending_memory_label != null:
+		ending_memory_label.add_theme_font_size_override("font_size", 16)
+		ending_memory_label.text = _ending_memory_text()
+
+
+func _ending_summary_text() -> String:
+	var source_text := ""
+	if not current_event.is_empty() and _event_type(current_event) == "ending":
+		source_text = str(current_event.get("text", ""))
+	elif not selected_ending_id.is_empty():
+		var ending_event := _ending_event_for_selected()
+		source_text = str(ending_event.get("text", ""))
+	if source_text.is_empty():
+		source_text = "尚未进入原脚本结局。"
+	return "%s\n\n路线：%s\n原脚本结局：%s\n出发理由：%s\n我的名字：%s" % [
+		source_text,
+		route_id if not route_id.is_empty() else "未选择",
+		selected_ending_id if not selected_ending_id.is_empty() else "未判定",
+		"保留" if has_memory("mem_reason_to_depart") else "丢失",
+		"保留" if has_memory("mem_my_name") else "丢失",
+	]
+
+
+func _ending_memory_text() -> String:
+	return "最终背包\n%s\n\n已丢弃\n%s\n\n温柔记忆分数：%d" % [
+		_memory_names_for_ids(owned_memory_ids),
+		_memory_names_for_ids(discarded_memory_ids),
+		_memory_tag_score("温柔"),
+	]
+
+
+func _ending_event_for_selected() -> Dictionary:
+	if selected_ending_id.is_empty():
+		return {}
+	var required_condition := "ending:%s" % selected_ending_id
+	for event in events:
+		if _event_type(event) == "ending" and str(event.get("condition", "")) == required_condition:
+			return event
+	return {}
+
+
+func _memory_names_for_ids(memory_ids: Array[String]) -> String:
+	if memory_ids.is_empty():
+		return "无"
+	var names: Array[String] = []
+	for memory_id in memory_ids:
+		names.append(_memory_name(memory_id))
+	return "\n".join(names)
+
+
+func _format_ending_name(ending_id: String) -> String:
+	match ending_id:
+		"hero":
+			return "英雄"
+		"hollow":
+			return "空壳"
+		"homecoming":
+			return "归乡"
+		"nameless":
+			return "无名"
+		"reconciliation":
+			return "和解"
+		_:
+			return ending_id
+
+
 func _format_enemy_name(enemy_id: String) -> String:
 	return enemy_id.replace("enemy_", "").replace("boss_", "").replace("_", " / ")
 
@@ -948,6 +1036,7 @@ func _apply_ending_layout() -> void:
 	_set_rect(ending_memory_panel, _screen_rect("ending", "memory_panel"))
 	_set_rect(ending_layer.get_node("EndingRestart"), _screen_rect("ending", "restart_button"))
 	_set_rect(ending_layer.get_node("EndingTitleButton"), _screen_rect("ending", "title_button"))
+	_refresh_ending_ui()
 
 
 func _apply_travel_layout() -> void:
