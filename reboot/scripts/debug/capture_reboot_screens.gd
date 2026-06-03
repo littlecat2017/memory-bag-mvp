@@ -45,6 +45,11 @@ func _run() -> void:
 	if not _save_snapshot("03_battle_graybox.png"):
 		return
 
+	main.advance_battle()
+	await _settle(4)
+	if not _save_snapshot("03b_battle_resolved_graybox.png"):
+		return
+
 	main.show_mode("bag_detail")
 	await _settle(4)
 	if not _save_snapshot("04_bag_detail_graybox.png"):

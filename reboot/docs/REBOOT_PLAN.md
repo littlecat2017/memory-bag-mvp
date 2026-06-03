@@ -97,7 +97,8 @@ Each screen must have:
 - R1 complete: title, dialogue, travel, battle, backpack detail, and ending graybox screens now have layout-contract coverage and screenshots.
 - R2 complete: source-script playback can start, advance through tutorial/prologue, show choices, apply option effects, and jump to source-script targets.
 - R3 complete: memory gains respect the initial four-slot capacity, full backpacks open replacement mode, discarded memories are tracked, and branch playback resumes after replacement.
+- R4 complete: source-script battle events now enter a readable automatic battle state, resolve on player advance, and continue to the next source-script event.
 
 ## Current Target
 
-R4 next: travel and battle prototype. The game should autoplay simple battles, show basic win flow, and keep movement/battle screens connected to script progression.
+R5 next: MVP end-to-end completion. The game should support a deterministic playthrough from title to an ending, select an ending from source-script conditions, and show a readable final summary before any final art replacement is attempted.

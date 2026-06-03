@@ -28,3 +28,4 @@ Current reboot reports:
 - `docs/R1_TEST_REPORT.md`
 - `docs/R2_TEST_REPORT.md`
 - `docs/R3_TEST_REPORT.md`
+- `docs/R4_TEST_REPORT.md`

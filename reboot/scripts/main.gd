@@ -29,6 +29,11 @@ var applied_event_effect_ids: Array[String] = []
 var available_choice_options: Array[Dictionary] = []
 var pending_gain_memory_ids: Array[String] = []
 var pending_resume_event_id := ""
+var battle_active := false
+var battle_resolved := false
+var battle_turns := 0
+var battle_enemy_id := ""
+var battle_reward_ids: Array[String] = []
 var validation_errors: Array[String] = []
 
 var bg_layer: ColorRect
@@ -37,7 +42,9 @@ var stage_label: Label
 var floor_line: ColorRect
 var hero_box: PanelContainer
 var enemy_box: PanelContainer
-var status_box: PanelContainer
+var enemy_box_label: Label
+var status_box: ColorRect
+var status_box_label: Label
 var operation_tray: Control
 var trash_zone: PanelContainer
 var trash_zone_label: Label
@@ -94,7 +101,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_select"):
 			if current_mode == "title":
 				start_script()
-			elif current_mode in ["dialogue", "travel", "battle"]:
+			elif current_mode == "battle":
+				advance_battle()
+			elif current_mode in ["dialogue", "travel"]:
 				advance_script()
 			get_viewport().set_input_as_handled()
 
@@ -126,6 +135,18 @@ func advance_script() -> void:
 		show_mode("ending")
 		return
 	_go_to_event(next_id)
+
+
+func advance_battle() -> void:
+	if current_mode != "battle":
+		return
+	if not battle_resolved:
+		battle_turns += 3
+		battle_resolved = true
+		battle_active = false
+		_refresh_battle_ui()
+		return
+	advance_script()
 
 
 func choose_option(option_index: int) -> void:
@@ -251,11 +272,16 @@ func _build_ui() -> void:
 	add_child(hero_box)
 
 	enemy_box = _new_panel("enemy")
-	enemy_box.add_child(_center_label("敌人占位"))
+	enemy_box_label = _center_label("敌人占位")
+	enemy_box_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	enemy_box.add_child(enemy_box_label)
 	add_child(enemy_box)
 
-	status_box = _new_panel("status")
-	status_box.add_child(_center_label("战斗状态"))
+	status_box = ColorRect.new()
+	status_box.color = Color(0.92, 0.86, 0.68, 0.84)
+	status_box_label = _center_label("战斗状态")
+	status_box_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_box.add_child(status_box_label)
 	add_child(status_box)
 
 	operation_tray = Control.new()
@@ -493,10 +519,13 @@ func _go_to_event(event_id: String) -> void:
 		_rebuild_choice_list()
 		current_mode = "choice"
 	elif event_type == "battle":
+		_begin_battle(event)
 		current_mode = "battle"
 	elif event_type.begins_with("memory_"):
+		_reset_battle_state()
 		current_mode = "travel"
 	else:
+		_reset_battle_state()
 		current_mode = "dialogue"
 	_apply_mode()
 
@@ -513,11 +542,41 @@ func _reset_script_state() -> void:
 	available_choice_options.clear()
 	pending_gain_memory_ids.clear()
 	pending_resume_event_id = ""
+	_reset_battle_state()
 	_refresh_inventory_ui()
 
 
 func _event_type(event: Dictionary) -> String:
 	return str(event.get("type", ""))
+
+
+func _begin_battle(event: Dictionary) -> void:
+	battle_active = true
+	battle_resolved = false
+	battle_turns = 0
+	battle_enemy_id = str(event.get("enemy_id", "unknown_enemy"))
+	battle_reward_ids = _string_array(event.get("reward", []))
+	_refresh_battle_ui()
+
+
+func _reset_battle_state() -> void:
+	battle_active = false
+	battle_resolved = false
+	battle_turns = 0
+	battle_enemy_id = ""
+	battle_reward_ids.clear()
+
+
+func _refresh_battle_ui() -> void:
+	if enemy_box_label != null:
+		enemy_box_label.text = "敌人\n%s" % _battle_enemy_label()
+		enemy_box_label.add_theme_font_size_override("font_size", 15)
+	if status_box_label != null:
+		if battle_resolved:
+			status_box_label.text = "胜利 回车继续"
+		else:
+			status_box_label.text = "自动战斗 回车结算"
+		status_box_label.add_theme_font_size_override("font_size", 13)
 
 
 func _next_playable_event_id(start_index: int) -> String:
@@ -847,6 +906,25 @@ func _short_memory_name(memory_id: String) -> String:
 	return memory_name.substr(0, 5)
 
 
+func _format_enemy_name(enemy_id: String) -> String:
+	return enemy_id.replace("enemy_", "").replace("boss_", "").replace("_", " / ")
+
+
+func _battle_enemy_label() -> String:
+	if battle_enemy_id.begins_with("boss_"):
+		return "Boss"
+	return "敌群"
+
+
+func _format_rewards(reward_ids: Array[String]) -> String:
+	if reward_ids.is_empty():
+		return "无奖励"
+	var labels: Array[String] = []
+	for reward_id in reward_ids:
+		labels.append(reward_id.replace("_", " "))
+	return ", ".join(labels)
+
+
 func _apply_title_layout() -> void:
 	_set_rect(title_text_label, _screen_rect("title", "title_text"))
 	_set_rect(title_subtitle_label, _screen_rect("title", "subtitle_text"))
@@ -926,6 +1004,7 @@ func _set_rect(control: Control, rect: Rect2) -> void:
 	control.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	control.position = rect.position
 	control.size = rect.size
+	control.custom_minimum_size = Vector2.ZERO
 
 
 func _load_json(path: String) -> Dictionary:
