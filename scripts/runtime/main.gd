@@ -12,6 +12,33 @@ const SHOW_DEBUG_TOOLS := false
 const PAPER_TEXT := Color(0.22, 0.15, 0.08)
 const PAPER_TEXT_MUTED := Color(0.42, 0.33, 0.21)
 const PAPER_TEXT_ACCENT := Color(0.56, 0.36, 0.12)
+const DEFAULT_LAYOUT := {
+	"design_canvas": [1280, 720],
+	"rules": {
+		"inventory_total_grid": [7, 4],
+		"initial_unlocked_slots": 4,
+		"locked_slots_visible": true,
+	},
+	"sections": {
+		"travel_stage": {"rect": [192, 86, 896, 250]},
+		"battle_hero": {"rect": [318, 165, 180, 175], "baseline_y": 340},
+		"battle_enemy": {"rect": [770, 156, 205, 190], "baseline_y": 340},
+		"battle_enemy_status": {"rect": [1000, 78, 205, 112]},
+		"battle_status_text": {"rect": [455, 92, 370, 58]},
+		"battle_slash": {"rect": [595, 185, 230, 180]},
+		"battle_float_text": {"rect": [710, 160, 300, 78]},
+		"hint_panel": {"rect": [70, 94, 350, 118]},
+		"world_feedback": {"rect": [845, 94, 365, 118]},
+		"inventory_tray": {"rect": [52, 386, 1176, 322]},
+		"trash_zone": {"rect": [72, 430, 210, 230]},
+		"inventory_board": {"rect": [404, 424, 556, 224], "grid": [7, 4], "gap": [8, 8]},
+		"found_zone": {"rect": [1000, 430, 205, 230]},
+		"dialogue_panel": {"rect": [52, 380, 1176, 120]},
+		"choices_box": {"rect": [192, 208, 896, 170]},
+		"side_bag_panel": {"rect": [896, 58, 356, 562]},
+		"replacement_modal": {"rect": [154, 96, 972, 520]},
+	},
+}
 
 var registry = DataRegistryScript.new()
 var game_state = GameStateScript.new()
@@ -90,9 +117,12 @@ var speaker_label: Label
 var text_label: Label
 var bag_grid: GridContainer
 var memory_cards: Array[PanelContainer] = []
-var quick_bag_bar: PanelContainer
+var quick_bag_bar: Control
 var quick_bag_texture_rect: TextureRect
 var quick_bag_slots: Array[PanelContainer] = []
+var quick_bag_grid: GridContainer
+var inventory_cell_unlocked_texture: Texture2D
+var inventory_cell_locked_texture: Texture2D
 var trash_zone_card
 var found_zone_card
 var next_button: Button
@@ -230,14 +260,7 @@ func _build_ui() -> void:
 	_build_world_feedback_panel(root)
 
 	dialogue_panel = Control.new()
-	dialogue_panel.anchor_left = 0.04
-	dialogue_panel.anchor_top = 0.50
-	dialogue_panel.anchor_right = 0.96
-	dialogue_panel.anchor_bottom = 0.665
-	dialogue_panel.offset_left = 0
-	dialogue_panel.offset_top = 0
-	dialogue_panel.offset_right = 0
-	dialogue_panel.offset_bottom = 0
+	_apply_rect(dialogue_panel, _layout_rect("dialogue_panel"))
 	dialogue_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(dialogue_panel)
 
@@ -293,19 +316,13 @@ func _build_ui() -> void:
 	dialogue_box.add_child(text_label)
 
 	choices_box = VBoxContainer.new()
-	choices_box.anchor_left = 0.15
-	choices_box.anchor_top = 0.29
-	choices_box.anchor_right = 0.85
-	choices_box.anchor_bottom = 0.49
+	_apply_rect(choices_box, _layout_rect("choices_box"))
 	choices_box.add_theme_constant_override("separation", 10)
 	root.add_child(choices_box)
 
 	replacement_panel = PanelContainer.new()
 	_apply_modal_panel_style(replacement_panel)
-	replacement_panel.anchor_left = 0.12
-	replacement_panel.anchor_top = 0.14
-	replacement_panel.anchor_right = 0.88
-	replacement_panel.anchor_bottom = 0.86
+	_apply_rect(replacement_panel, _layout_rect("replacement_modal"))
 	replacement_panel.visible = false
 	root.add_child(replacement_panel)
 
@@ -360,10 +377,7 @@ func _build_ui() -> void:
 	confirm_buttons.add_child(cancel_button)
 
 	bag_panel = Control.new()
-	bag_panel.anchor_left = 0.70
-	bag_panel.anchor_top = 0.08
-	bag_panel.anchor_right = 0.98
-	bag_panel.anchor_bottom = 0.86
+	_apply_rect(bag_panel, _layout_rect("side_bag_panel"))
 	bag_panel.visible = false
 	root.add_child(bag_panel)
 
@@ -411,10 +425,7 @@ func _build_ui() -> void:
 
 	next_button = Button.new()
 	next_button.text = "继续"
-	next_button.anchor_left = 0.84
-	next_button.anchor_top = 0.590
-	next_button.anchor_right = 0.94
-	next_button.anchor_bottom = 0.650
+	_apply_rect(next_button, Rect2(1070, 450, 128, 44))
 	next_button.add_theme_font_size_override("font_size", 18)
 	next_button.add_theme_color_override("font_color", Color(0.94, 0.90, 0.78))
 	next_button.pressed.connect(_on_next_pressed)
@@ -483,12 +494,80 @@ func _build_ui() -> void:
 	_apply_button_texture_style(next_button, "ui_choice_button")
 
 
+func _layout_data() -> Dictionary:
+	if registry != null and typeof(registry.visual_layout) == TYPE_DICTIONARY and not registry.visual_layout.is_empty():
+		return registry.visual_layout
+	return DEFAULT_LAYOUT
+
+
+func _layout_rules() -> Dictionary:
+	return _layout_data().get("rules", DEFAULT_LAYOUT.rules)
+
+
+func _layout_sections() -> Dictionary:
+	return _layout_data().get("sections", DEFAULT_LAYOUT.sections)
+
+
+func _layout_section(section_id: String) -> Dictionary:
+	return _layout_sections().get(section_id, DEFAULT_LAYOUT.sections.get(section_id, {}))
+
+
+func _layout_rect(section_id: String) -> Rect2:
+	return _rect_from_array(_layout_section(section_id).get("rect", [0, 0, 0, 0]))
+
+
+func _layout_pair(section_id: String, key: String, fallback: Array) -> Vector2:
+	var values = _layout_section(section_id).get(key, fallback)
+	if typeof(values) != TYPE_ARRAY or values.size() != 2:
+		values = fallback
+	return Vector2(float(values[0]), float(values[1]))
+
+
+func _layout_grid_size() -> Vector2i:
+	var values = _layout_section("inventory_board").get("grid", _layout_rules().get("inventory_total_grid", [7, 4]))
+	if typeof(values) != TYPE_ARRAY or values.size() != 2:
+		values = [7, 4]
+	return Vector2i(int(values[0]), int(values[1]))
+
+
+func _layout_unlocked_slots() -> int:
+	return int(_layout_rules().get("initial_unlocked_slots", 4))
+
+
+func _layout_total_slots() -> int:
+	var grid := _layout_grid_size()
+	return grid.x * grid.y
+
+
+func _rect_from_array(values) -> Rect2:
+	if typeof(values) != TYPE_ARRAY or values.size() != 4:
+		return Rect2()
+	return Rect2(float(values[0]), float(values[1]), float(values[2]), float(values[3]))
+
+
+func _apply_rect(control: Control, rect: Rect2) -> void:
+	var size := _viewport_design_size()
+	if size.x <= 0.0 or size.y <= 0.0:
+		size = Vector2(1280, 720)
+	control.anchor_left = rect.position.x / size.x
+	control.anchor_top = rect.position.y / size.y
+	control.anchor_right = (rect.position.x + rect.size.x) / size.x
+	control.anchor_bottom = (rect.position.y + rect.size.y) / size.y
+	control.offset_left = 0
+	control.offset_top = 0
+	control.offset_right = 0
+	control.offset_bottom = 0
+
+
+func _set_rect(control: Control, rect: Rect2) -> void:
+	control.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	control.position = rect.position
+	control.size = rect.size
+
+
 func _build_system_hint_panel(root: Control) -> void:
 	system_hint_panel = PanelContainer.new()
-	system_hint_panel.anchor_left = 0.05
-	system_hint_panel.anchor_top = 0.11
-	system_hint_panel.anchor_right = 0.36
-	system_hint_panel.anchor_bottom = 0.31
+	_apply_rect(system_hint_panel, _layout_rect("hint_panel"))
 	system_hint_panel.visible = false
 	_apply_battle_enemy_style(system_hint_panel, Color(0.055, 0.070, 0.070, 0.82), Color(0.62, 0.52, 0.30, 0.88), 6)
 	root.add_child(system_hint_panel)
@@ -519,10 +598,7 @@ func _build_system_hint_panel(root: Control) -> void:
 
 func _build_world_feedback_panel(root: Control) -> void:
 	world_feedback_panel = PanelContainer.new()
-	world_feedback_panel.anchor_left = 0.65
-	world_feedback_panel.anchor_top = 0.11
-	world_feedback_panel.anchor_right = 0.95
-	world_feedback_panel.anchor_bottom = 0.31
+	_apply_rect(world_feedback_panel, _layout_rect("world_feedback"))
 	world_feedback_panel.visible = false
 	_apply_battle_enemy_style(world_feedback_panel, Color(0.050, 0.045, 0.038, 0.80), Color(0.58, 0.45, 0.25, 0.82), 6)
 	root.add_child(world_feedback_panel)
@@ -627,13 +703,9 @@ func _new_summary_label(font_size: int, color: Color) -> Label:
 
 
 func _build_quick_bag_bar(root: Control) -> void:
-	quick_bag_bar = PanelContainer.new()
-	quick_bag_bar.anchor_left = 0.04
-	quick_bag_bar.anchor_top = 0.535
-	quick_bag_bar.anchor_right = 0.96
-	quick_bag_bar.anchor_bottom = 0.985
+	quick_bag_bar = Control.new()
+	_apply_rect(quick_bag_bar, _layout_rect("inventory_tray"))
 	quick_bag_bar.mouse_filter = Control.MOUSE_FILTER_PASS
-	_apply_battle_enemy_style(quick_bag_bar, Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0)
 	root.add_child(quick_bag_bar)
 
 	quick_bag_texture_rect = TextureRect.new()
@@ -643,79 +715,86 @@ func _build_quick_bag_bar(root: Control) -> void:
 	quick_bag_texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	quick_bag_bar.add_child(quick_bag_texture_rect)
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 34)
-	margin.add_theme_constant_override("margin_top", 20)
-	margin.add_theme_constant_override("margin_right", 34)
-	margin.add_theme_constant_override("margin_bottom", 22)
-	quick_bag_bar.add_child(margin)
-
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 16)
-	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	margin.add_child(row)
+	var tray_rect := _layout_rect("inventory_tray")
+	var trash_rect := _layout_rect("trash_zone")
+	var board_rect := _layout_rect("inventory_board")
+	var found_rect := _layout_rect("found_zone")
 
 	var trash_section := VBoxContainer.new()
-	trash_section.custom_minimum_size = Vector2(280, 0)
 	trash_section.alignment = BoxContainer.ALIGNMENT_CENTER
-	trash_section.add_theme_constant_override("separation", 8)
-	row.add_child(trash_section)
+	trash_section.add_theme_constant_override("separation", 6)
+	_set_rect(trash_section, Rect2(trash_rect.position - tray_rect.position, trash_rect.size))
+	quick_bag_bar.add_child(trash_section)
 
 	var trash_label := _new_tray_label("弃牌堆")
 	trash_section.add_child(trash_label)
 
 	trash_zone_card = MemoryCardViewScript.new()
 	trash_zone_card.set_compact(true)
-	trash_zone_card.custom_minimum_size = Vector2(230, 155)
+	trash_zone_card.custom_minimum_size = Vector2(trash_rect.size.x, trash_rect.size.y - 34)
 	trash_zone_card.set_zone("弃牌堆", "拖入丢弃", "trash")
 	trash_zone_card.configure_drop_target("trash")
 	trash_zone_card.memory_dropped.connect(_on_memory_card_dropped)
 	trash_section.add_child(trash_zone_card)
 
 	var bag_section := VBoxContainer.new()
-	bag_section.custom_minimum_size = Vector2(500, 0)
 	bag_section.alignment = BoxContainer.ALIGNMENT_CENTER
-	bag_section.add_theme_constant_override("separation", 8)
-	row.add_child(bag_section)
+	bag_section.add_theme_constant_override("separation", 6)
+	_set_rect(bag_section, Rect2(board_rect.position - tray_rect.position, board_rect.size))
+	quick_bag_bar.add_child(bag_section)
 
 	var bag_label := _new_tray_label("记忆背包")
 	bag_section.add_child(bag_label)
 
-	var quick_bag_grid := GridContainer.new()
-	quick_bag_grid.columns = 2
+	quick_bag_grid = GridContainer.new()
+	var grid_size := _layout_grid_size()
+	var grid_gap := _layout_pair("inventory_board", "gap", [8, 8])
+	quick_bag_grid.columns = grid_size.x
 	quick_bag_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quick_bag_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	quick_bag_grid.add_theme_constant_override("h_separation", 10)
-	quick_bag_grid.add_theme_constant_override("v_separation", 10)
+	quick_bag_grid.add_theme_constant_override("h_separation", int(grid_gap.x))
+	quick_bag_grid.add_theme_constant_override("v_separation", int(grid_gap.y))
 	bag_section.add_child(quick_bag_grid)
 
-	for index in range(4):
+	var total_slots := _layout_total_slots()
+	var cell_size := _quick_bag_cell_size()
+	for index in range(total_slots):
 		var slot = MemoryCardViewScript.new()
 		slot.set_compact(true)
-		slot.custom_minimum_size = Vector2(220, 92)
-		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slot.set_grid_cell_mode(true)
+		slot.custom_minimum_size = cell_size
+		slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		slot.configure_drop_target("bag", index)
 		slot.memory_dropped.connect(_on_memory_card_dropped)
 		quick_bag_slots.append(slot)
 		quick_bag_grid.add_child(slot)
 
 	var found_section := VBoxContainer.new()
-	found_section.custom_minimum_size = Vector2(280, 0)
 	found_section.alignment = BoxContainer.ALIGNMENT_CENTER
-	found_section.add_theme_constant_override("separation", 8)
-	row.add_child(found_section)
+	found_section.add_theme_constant_override("separation", 6)
+	_set_rect(found_section, Rect2(found_rect.position - tray_rect.position, found_rect.size))
+	quick_bag_bar.add_child(found_section)
 
 	var found_label := _new_tray_label("新记忆")
 	found_section.add_child(found_label)
 
 	found_zone_card = MemoryCardViewScript.new()
 	found_zone_card.set_compact(true)
-	found_zone_card.custom_minimum_size = Vector2(230, 155)
+	found_zone_card.custom_minimum_size = Vector2(found_rect.size.x, found_rect.size.y - 34)
 	found_zone_card.set_zone("新发现", "等待拾取", "found")
 	found_zone_card.configure_drop_target("found")
 	found_zone_card.memory_dropped.connect(_on_memory_card_dropped)
 	found_section.add_child(found_zone_card)
+
+
+func _quick_bag_cell_size() -> Vector2:
+	var board_rect := _layout_rect("inventory_board")
+	var grid_size := _layout_grid_size()
+	var gap := _layout_pair("inventory_board", "gap", [8, 8])
+	var available_width := board_rect.size.x - gap.x * float(max(0, grid_size.x - 1))
+	var available_height := board_rect.size.y - gap.y * float(max(0, grid_size.y - 1)) - 28.0
+	return Vector2(floor(available_width / float(grid_size.x)), floor(available_height / float(grid_size.y)))
 
 
 func _new_tray_label(text: String) -> Label:
@@ -729,10 +808,7 @@ func _new_tray_label(text: String) -> Label:
 
 func _build_travel_stage(root: Control) -> void:
 	travel_stage = Control.new()
-	travel_stage.anchor_left = 0.15
-	travel_stage.anchor_top = 0.12
-	travel_stage.anchor_right = 0.85
-	travel_stage.anchor_bottom = 0.47
+	_apply_rect(travel_stage, _layout_rect("travel_stage"))
 	travel_stage.visible = false
 	travel_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(travel_stage)
@@ -968,14 +1044,23 @@ func _update_bag_cards() -> void:
 
 
 func _update_quick_bag_cards(capacity: int) -> void:
+	var minimum_unlocked_slots: int = _layout_unlocked_slots()
+	var unlocked_slots: int = clampi(max(capacity, minimum_unlocked_slots), 0, _layout_total_slots())
 	for index in quick_bag_slots.size():
 		var slot = quick_bag_slots[index]
-		slot.visible = index < capacity
-		slot.configure_drop_target("bag", index)
-		if index < game_state.owned_memory_ids.size():
+		slot.visible = true
+		if index >= unlocked_slots:
+			slot.configure_drop_target("locked", index)
+			slot.set_backing_texture(inventory_cell_locked_texture)
+			slot.set_locked(index + 1)
+		elif index < game_state.owned_memory_ids.size():
 			var memory_id: String = str(game_state.owned_memory_ids[index])
+			slot.configure_drop_target("bag", index)
+			slot.set_backing_texture(inventory_cell_unlocked_texture)
 			slot.set_memory(registry.memories.get(memory_id, {}), registry.get_art_asset_for_memory(memory_id), memory_id)
 		else:
+			slot.configure_drop_target("bag", index)
+			slot.set_backing_texture(inventory_cell_unlocked_texture)
 			slot.set_empty(index + 1)
 	if found_zone_card != null:
 		found_zone_card.configure_drop_target("found")
@@ -1159,6 +1244,8 @@ func _on_memory_card_dropped(data: Dictionary, target_kind: String, target_index
 	var source_index := int(data.get("source_index", -1))
 	if memory_id.is_empty():
 		return
+	if target_kind == "locked" or (target_kind == "bag" and not _is_quick_bag_slot_unlocked(target_index)):
+		return
 	if target_kind == "trash":
 		_discard_memory_from_drag(memory_id)
 	elif target_kind == "bag":
@@ -1169,6 +1256,15 @@ func _on_memory_card_dropped(data: Dictionary, target_kind: String, target_index
 	elif target_kind == "found" and source_kind == "bag":
 		_move_memory_slot(source_index, game_state.owned_memory_ids.size() - 1)
 	_update_bag_cards()
+
+
+func _is_quick_bag_slot_unlocked(index: int) -> bool:
+	if index < 0:
+		return false
+	var capacity := int(registry.balance.get("bag", {}).get("capacity_base", 4))
+	if game_state.capacity() > 0:
+		capacity = game_state.capacity()
+	return index < clampi(max(capacity, _layout_unlocked_slots()), 0, _layout_total_slots())
 
 
 func _discard_memory_from_drag(memory_id: String) -> void:
@@ -1587,6 +1683,8 @@ func _apply_static_ui_art() -> void:
 	travel_walk_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_hero_walk_sheet", "chibi_sheet"))
 	chibi_hero_attack_sheet_texture = _texture_from_asset(registry.get_art_asset("chibi_hero_attack_sheet", "chibi_sheet"))
 	slash_sheet_texture = _texture_from_asset(registry.get_art_asset("fx_slash_basic_sheet", "effect_sheet"))
+	inventory_cell_unlocked_texture = _texture_from_asset(registry.get_art_asset("ui_inventory_cell_unlocked", "ui"))
+	inventory_cell_locked_texture = _texture_from_asset(registry.get_art_asset("ui_inventory_cell_locked", "ui"))
 	if travel_walk_sheet_texture != null:
 		travel_chibi_texture_rect.texture = _sheet_frame_texture(travel_walk_sheet_texture, 0)
 	if chibi_hero_attack_sheet_texture != null:
@@ -1660,7 +1758,27 @@ func _apply_hp_bar_style() -> void:
 func _on_viewport_size_changed() -> void:
 	if ui_root != null:
 		ui_root.size = _viewport_design_size()
+		_apply_layout_contract()
 	_layout_battle_stage()
+
+
+func _apply_layout_contract() -> void:
+	if dialogue_panel != null:
+		_apply_rect(dialogue_panel, _layout_rect("dialogue_panel"))
+	if choices_box != null:
+		_apply_rect(choices_box, _layout_rect("choices_box"))
+	if replacement_panel != null:
+		_apply_rect(replacement_panel, _layout_rect("replacement_modal"))
+	if bag_panel != null:
+		_apply_rect(bag_panel, _layout_rect("side_bag_panel"))
+	if quick_bag_bar != null:
+		_apply_rect(quick_bag_bar, _layout_rect("inventory_tray"))
+	if travel_stage != null:
+		_apply_rect(travel_stage, _layout_rect("travel_stage"))
+	if system_hint_panel != null:
+		_apply_rect(system_hint_panel, _layout_rect("hint_panel"))
+	if world_feedback_panel != null:
+		_apply_rect(world_feedback_panel, _layout_rect("world_feedback"))
 
 
 func _viewport_design_size() -> Vector2:
@@ -1788,23 +1906,28 @@ func _hide_context_panels() -> void:
 func _layout_battle_stage() -> void:
 	if battle_hero_texture_rect == null or battle_enemy_panel == null:
 		return
-	var size := _viewport_design_size()
-	battle_hero_texture_rect.position = Vector2(size.x * 0.03, size.y * 0.10)
-	battle_hero_texture_rect.size = Vector2(size.x * 0.18, size.y * 0.38)
-	battle_chibi_hero_texture_rect.position = Vector2(size.x * 0.24, size.y * 0.27)
-	battle_chibi_hero_texture_rect.size = Vector2(size.x * 0.18, size.y * 0.23)
-	battle_chibi_enemy_texture_rect.position = Vector2(size.x * 0.61, size.y * 0.26)
-	battle_chibi_enemy_texture_rect.size = Vector2(size.x * 0.18, size.y * 0.24)
+	var hero_rect := _layout_rect("battle_hero")
+	var enemy_rect := _layout_rect("battle_enemy")
+	battle_hero_texture_rect.position = hero_rect.position
+	battle_hero_texture_rect.size = hero_rect.size
+	battle_chibi_hero_texture_rect.position = hero_rect.position
+	battle_chibi_hero_texture_rect.size = hero_rect.size
+	battle_chibi_enemy_texture_rect.position = enemy_rect.position
+	battle_chibi_enemy_texture_rect.size = enemy_rect.size
 	_layout_shadow_for(battle_chibi_hero_shadow, battle_chibi_hero_texture_rect, Vector2(0.52, 0.88), Vector2(0.38, 0.075))
 	_layout_shadow_for(battle_chibi_enemy_shadow, battle_chibi_enemy_texture_rect, Vector2(0.50, 0.88), Vector2(0.48, 0.075))
-	battle_enemy_panel.position = Vector2(size.x * 0.77, size.y * 0.08)
-	battle_enemy_panel.size = Vector2(size.x * 0.18, size.y * 0.14)
-	battle_status_label.position = Vector2(size.x * 0.31, size.y * 0.12)
-	battle_status_label.size = Vector2(size.x * 0.38, size.y * 0.08)
-	battle_slash_layer.position = Vector2(size.x * 0.48, size.y * 0.28)
-	battle_slash_layer.size = Vector2(size.x * 0.24, size.y * 0.24)
-	battle_float_label.position = Vector2(size.x * 0.56, size.y * 0.25)
-	battle_float_label.size = Vector2(size.x * 0.29, size.y * 0.12)
+	var enemy_panel_rect := _layout_rect("battle_enemy_status")
+	battle_enemy_panel.position = enemy_panel_rect.position
+	battle_enemy_panel.size = enemy_panel_rect.size
+	var status_rect := _layout_rect("battle_status_text")
+	battle_status_label.position = status_rect.position
+	battle_status_label.size = status_rect.size
+	var slash_rect := _layout_rect("battle_slash")
+	battle_slash_layer.position = slash_rect.position
+	battle_slash_layer.size = slash_rect.size
+	var float_rect := _layout_rect("battle_float_text")
+	battle_float_label.position = float_rect.position
+	battle_float_label.size = float_rect.size
 	_update_battle_home_positions()
 
 

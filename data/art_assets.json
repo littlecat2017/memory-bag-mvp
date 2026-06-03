@@ -217,7 +217,7 @@
       "path": "res://assets/ui/ui_quick_bag_tray.png",
       "source_doc": "UI-05",
       "expected_size": [3840, 1280],
-      "prompt_summary": "底部背包操作台皮肤：左弃牌堆、中 2x2 记忆背包、右新记忆"
+      "prompt_summary": "底部背包操作台皮肤：左弃牌堆、中 7x4 可视记忆背包网格、右新记忆；MVP 初始仅 4 格可用，其余灰色锁定"
     },
     {
       "id": "icon_memory_mothers_soup",
@@ -379,6 +379,22 @@
       "source_doc": "UI-11",
       "expected_size": [512, 64],
       "prompt_summary": "敌人生命条填充贴图"
+    },
+    {
+      "id": "ui_inventory_cell_unlocked",
+      "type": "ui",
+      "path": "res://assets/ui/ui_inventory_cell_unlocked.png",
+      "source_doc": "UI-12-LOCAL",
+      "expected_size": [128, 128],
+      "prompt_summary": "从现有背包材质本地派生的已解锁背包格贴图"
+    },
+    {
+      "id": "ui_inventory_cell_locked",
+      "type": "ui",
+      "path": "res://assets/ui/ui_inventory_cell_locked.png",
+      "source_doc": "UI-13-LOCAL",
+      "expected_size": [128, 128],
+      "prompt_summary": "从现有背包材质本地派生的灰色未解锁背包格贴图"
     }
   ]
 }

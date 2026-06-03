@@ -33,12 +33,29 @@ func _verify_quick_bar_exists(main: Control) -> void:
 	_expect(main.quick_bag_texture_rect != null and main.quick_bag_texture_rect.texture != null, "quick bag should use image2 tray art")
 	_expect(main.trash_zone_card != null, "trash zone should exist")
 	_expect(main.found_zone_card != null, "found zone should exist")
-	_expect(main.quick_bag_slots.size() == 4, "quick bag should have 4 visible MVP slots")
-	_expect(abs(main.quick_bag_bar.anchor_top - 0.535) < 0.001, "quick bag should sit in the lower operation area")
-	_expect(abs(main.quick_bag_bar.anchor_bottom - 0.985) < 0.001, "quick bag should be a large image2 backpack tray")
+	_expect(main.quick_bag_slots.size() == 28, "quick bag should expose the full 7x4 concept grid")
+	_expect(main.quick_bag_grid.columns == 7, "quick bag grid should use 7 columns")
+	_expect(main.quick_bag_slots[0].target_kind == "bag", "first slot should be unlocked")
+	_expect(main.quick_bag_slots[3].target_kind == "bag", "fourth slot should be unlocked at MVP start")
+	_expect(main.quick_bag_slots[4].target_kind == "locked", "fifth slot should be visible but locked")
+	_expect(main.quick_bag_slots[27].target_kind == "locked", "last concept-grid slot should be visible but locked")
+	_expect(main.quick_bag_slots[4].visible, "locked slots should remain visible")
+	_expect(main.quick_bag_slots[4].backing_texture_rect.texture != null, "locked slot should use texture backing")
+	var tray_rect: Rect2 = main.quick_bag_bar.get_global_rect()
+	var expected_rect: Rect2 = Rect2(52, 386, 1176, 322)
+	_expect(tray_rect.position.distance_to(expected_rect.position) < 2.0, "quick bag should use visual contract tray position")
+	_expect(tray_rect.size.distance_to(expected_rect.size) < 2.0, "quick bag should use visual contract tray size")
 	main._show_backpack_ui()
 	_expect(main.quick_bag_bar.visible, "quick bag should be visible in backpack mode")
 	_expect(not main.dialogue_panel.visible, "dialogue panel should be hidden in backpack mode")
+	_set_bag(main, ["mem_mothers_soup"])
+	main._on_memory_card_dropped({
+		"memory_id": "mem_mothers_soup",
+		"source_kind": "bag",
+		"source_index": 0,
+	}, "bag", 4)
+	_expect(main.game_state.owned_memory_ids.size() == 1, "locked slot drop should not add or remove memories")
+	_expect(main.game_state.owned_memory_ids[0] == "mem_mothers_soup", "locked slot drop should be ignored")
 
 
 func _verify_slot_reorder(main: Control) -> void:

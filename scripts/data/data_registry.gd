@@ -8,6 +8,7 @@ const DATA_PATHS := {
 	"balance": "res://data/balance.json",
 	"mvp_endings": "res://data/mvp_endings.json",
 	"art_assets": "res://data/art_assets.json",
+	"visual_layout": "res://data/visual_layout.json",
 	"script_events": "res://data/script_events_mvp.jsonl",
 }
 
@@ -20,6 +21,7 @@ var chapter_flow: Dictionary = {}
 var balance: Dictionary = {}
 var mvp_endings: Dictionary = {}
 var art_assets: Dictionary = {}
+var visual_layout: Dictionary = {}
 var art_assets_by_type: Dictionary = {}
 var art_asset_aliases: Dictionary = {}
 var validation_errors: Array[String] = []
@@ -33,6 +35,7 @@ func load_all() -> bool:
 	balance = _load_json_file(DATA_PATHS.balance)
 	mvp_endings = _load_json_file(DATA_PATHS.mvp_endings)
 	art_assets = _load_items_file(DATA_PATHS.art_assets, "art_asset")
+	visual_layout = _load_json_file(DATA_PATHS.visual_layout)
 	script_events = _load_jsonl_events(DATA_PATHS.script_events)
 	_build_branch_lookup()
 	_build_art_asset_type_lookup()
@@ -56,6 +59,7 @@ func validate() -> void:
 	_validate_chapter_flow_references()
 	_validate_ending_conditions()
 	_validate_art_assets()
+	_validate_visual_layout()
 
 
 func get_art_asset(asset_id: String, expected_type: String = "") -> Dictionary:
@@ -286,6 +290,80 @@ func _validate_art_assets() -> void:
 			validation_errors.append("Art asset %s aliases must be an array" % asset_id)
 		if asset_type == "memory_icon":
 			_validate_memory_id(str(asset.get("memory_id", "")), "art asset %s memory_id" % asset_id)
+
+
+func _validate_visual_layout() -> void:
+	if visual_layout.is_empty():
+		validation_errors.append("visual_layout is empty")
+		return
+	_validate_number_pair(visual_layout.get("design_canvas", []), "visual_layout.design_canvas")
+	var rules = visual_layout.get("rules", {})
+	if typeof(rules) != TYPE_DICTIONARY:
+		validation_errors.append("visual_layout.rules must be an object")
+		return
+	_validate_integer_pair(rules.get("inventory_total_grid", []), "visual_layout.rules.inventory_total_grid")
+	var total_grid: Array = rules.get("inventory_total_grid", [])
+	if total_grid.size() == 2 and int(total_grid[0]) * int(total_grid[1]) < int(rules.get("initial_unlocked_slots", 0)):
+		validation_errors.append("visual_layout initial_unlocked_slots exceeds inventory_total_grid")
+	if not bool(rules.get("locked_slots_visible", false)):
+		validation_errors.append("visual_layout must keep locked slots visible")
+	var sections = visual_layout.get("sections", {})
+	if typeof(sections) != TYPE_DICTIONARY:
+		validation_errors.append("visual_layout.sections must be an object")
+		return
+	for section_id in [
+		"upper_stage",
+		"travel_stage",
+		"battle_hero",
+		"battle_enemy",
+		"inventory_tray",
+		"trash_zone",
+		"inventory_board",
+		"found_zone",
+		"dialogue_panel",
+		"choices_box",
+	]:
+		var section = sections.get(section_id, {})
+		if typeof(section) != TYPE_DICTIONARY:
+			validation_errors.append("visual_layout missing section: %s" % section_id)
+			continue
+		_validate_rect(section.get("rect", []), "visual_layout.sections.%s.rect" % section_id)
+	var board = sections.get("inventory_board", {})
+	if typeof(board) == TYPE_DICTIONARY:
+		_validate_integer_pair(board.get("grid", []), "visual_layout.sections.inventory_board.grid")
+		_validate_number_pair(board.get("gap", []), "visual_layout.sections.inventory_board.gap")
+
+
+func _validate_rect(values, context: String) -> void:
+	if typeof(values) != TYPE_ARRAY or values.size() != 4:
+		validation_errors.append("%s must be [x, y, width, height]" % context)
+		return
+	for value in values:
+		if typeof(value) != TYPE_FLOAT and typeof(value) != TYPE_INT:
+			validation_errors.append("%s contains a non-number" % context)
+			return
+	if float(values[2]) <= 0.0 or float(values[3]) <= 0.0:
+		validation_errors.append("%s width and height must be positive" % context)
+
+
+func _validate_number_pair(values, context: String) -> void:
+	if typeof(values) != TYPE_ARRAY or values.size() != 2:
+		validation_errors.append("%s must be [number, number]" % context)
+		return
+	for value in values:
+		if typeof(value) != TYPE_FLOAT and typeof(value) != TYPE_INT:
+			validation_errors.append("%s contains a non-number" % context)
+			return
+
+
+func _validate_integer_pair(values, context: String) -> void:
+	_validate_number_pair(values, context)
+	if typeof(values) != TYPE_ARRAY or values.size() != 2:
+		return
+	for value in values:
+		if int(value) != value or int(value) <= 0:
+			validation_errors.append("%s must contain positive integers" % context)
+			return
 
 
 func _validate_condition_list(context: String, text: String) -> void:

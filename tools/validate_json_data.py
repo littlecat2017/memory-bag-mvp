@@ -13,6 +13,7 @@ JSON_FILES = [
     "memories.json",
     "mvp_endings.json",
     "script_extract_mvp.json",
+    "visual_layout.json",
 ]
 
 

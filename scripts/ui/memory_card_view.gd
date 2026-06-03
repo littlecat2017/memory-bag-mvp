@@ -8,6 +8,8 @@ const CARD_TEXT_DANGER := Color(0.68, 0.20, 0.16)
 const CARD_TEXT_DANGER_MUTED := Color(0.56, 0.32, 0.22)
 const CARD_TEXT_FOUND := Color(0.72, 0.92, 0.94)
 const CARD_TEXT_FOUND_MUTED := Color(0.58, 0.78, 0.78)
+const CARD_TEXT_LOCKED := Color(0.50, 0.48, 0.42)
+const CARD_TEXT_LOCKED_MUTED := Color(0.42, 0.40, 0.36)
 
 var title_label: Label
 var tags_label: Label
@@ -16,12 +18,14 @@ var relation_label: Label
 var obligation_label: Label
 var loss_hint_label: Label
 var icon_texture_rect: TextureRect
+var backing_texture_rect: TextureRect
 var margin_container: MarginContainer
 var content_box: VBoxContainer
 var memory_id := ""
 var slot_index := -1
 var target_kind := "card"
 var compact_mode := false
+var grid_cell_mode := false
 var zone_kind := ""
 
 
@@ -81,9 +85,39 @@ func set_zone(title: String, subtitle: String, kind: String) -> void:
 	_apply_panel_style()
 
 
+func set_locked(slot_index: int) -> void:
+	memory_id = ""
+	zone_kind = "locked"
+	target_kind = "locked"
+	self.slot_index = slot_index - 1
+	icon_texture_rect.visible = false
+	icon_texture_rect.texture = null
+	title_label.text = "未解锁"
+	tags_label.text = "格 %02d" % slot_index
+	effect_label.text = ""
+	relation_label.text = ""
+	obligation_label.text = ""
+	loss_hint_label.text = ""
+	_apply_compact_visibility()
+	_apply_panel_style()
+
+
 func set_compact(enabled: bool) -> void:
 	compact_mode = enabled
-	custom_minimum_size = Vector2(138, 86) if compact_mode else Vector2(260, 132)
+	if grid_cell_mode:
+		custom_minimum_size = Vector2(72, 42)
+	else:
+		custom_minimum_size = Vector2(138, 86) if compact_mode else Vector2(260, 132)
+	_apply_compact_visibility()
+	_apply_panel_style()
+
+
+func set_grid_cell_mode(enabled: bool) -> void:
+	grid_cell_mode = enabled
+	if grid_cell_mode:
+		custom_minimum_size = Vector2(72, 42)
+	else:
+		custom_minimum_size = Vector2(138, 86) if compact_mode else Vector2(260, 132)
 	_apply_compact_visibility()
 	_apply_panel_style()
 
@@ -116,7 +150,7 @@ func _get_drag_data(_at_position: Vector2):
 
 
 func _can_drop_data(_at_position: Vector2, data) -> bool:
-	return typeof(data) == TYPE_DICTIONARY and str(data.get("memory_id", "")) != ""
+	return target_kind != "locked" and typeof(data) == TYPE_DICTIONARY and str(data.get("memory_id", "")) != ""
 
 
 func _drop_data(_at_position: Vector2, data) -> void:
@@ -126,6 +160,13 @@ func _drop_data(_at_position: Vector2, data) -> void:
 
 
 func _build() -> void:
+	backing_texture_rect = TextureRect.new()
+	backing_texture_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backing_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	backing_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	backing_texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(backing_texture_rect)
+
 	margin_container = MarginContainer.new()
 	margin_container.add_theme_constant_override("margin_left", 10)
 	margin_container.add_theme_constant_override("margin_top", 10)
@@ -165,6 +206,13 @@ func _build() -> void:
 	_apply_panel_style()
 
 
+func set_backing_texture(texture: Texture2D) -> void:
+	if backing_texture_rect == null:
+		return
+	backing_texture_rect.texture = texture
+	backing_texture_rect.visible = texture != null
+
+
 func _new_label(font_size: int) -> Label:
 	var label := Label.new()
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -175,12 +223,29 @@ func _new_label(font_size: int) -> Label:
 func _apply_compact_visibility() -> void:
 	if title_label == null:
 		return
+	if grid_cell_mode:
+		margin_container.add_theme_constant_override("margin_left", 2)
+		margin_container.add_theme_constant_override("margin_top", 2)
+		margin_container.add_theme_constant_override("margin_right", 2)
+		margin_container.add_theme_constant_override("margin_bottom", 2)
+		content_box.alignment = BoxContainer.ALIGNMENT_CENTER
+		content_box.add_theme_constant_override("separation", 0)
+		title_label.visible = false
+		tags_label.visible = false
+		effect_label.visible = false
+		relation_label.visible = false
+		obligation_label.visible = false
+		loss_hint_label.visible = false
+		icon_texture_rect.custom_minimum_size = Vector2(34, 34)
+		icon_texture_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		return
 	var padding := 3 if compact_mode else 10
 	var separation := 3 if compact_mode else 5
 	margin_container.add_theme_constant_override("margin_left", padding)
 	margin_container.add_theme_constant_override("margin_top", padding)
 	margin_container.add_theme_constant_override("margin_right", padding)
 	margin_container.add_theme_constant_override("margin_bottom", padding)
+	content_box.alignment = BoxContainer.ALIGNMENT_BEGIN
 	content_box.add_theme_constant_override("separation", separation)
 	icon_texture_rect.custom_minimum_size = Vector2(48, 48) if compact_mode else Vector2(46, 46)
 	effect_label.visible = not compact_mode
@@ -200,6 +265,9 @@ func _apply_compact_visibility() -> void:
 		elif zone_kind == "found":
 			title_label.add_theme_color_override("font_color", CARD_TEXT_FOUND)
 			tags_label.add_theme_color_override("font_color", CARD_TEXT_FOUND_MUTED)
+		elif zone_kind == "locked":
+			title_label.add_theme_color_override("font_color", CARD_TEXT_LOCKED)
+			tags_label.add_theme_color_override("font_color", CARD_TEXT_LOCKED_MUTED)
 		else:
 			title_label.add_theme_color_override("font_color", CARD_TEXT)
 			tags_label.add_theme_color_override("font_color", CARD_TEXT_MUTED)
