@@ -19,7 +19,7 @@
       "dialogue_text": [110, 575, 1000, 70]
     },
     "choice": {
-      "choice_panel": [748, 304, 460, 190],
+      "choice_panel": [748, 146, 460, 190],
       "stage_panel": [732, 104, 368, 220]
     },
     "travel": {

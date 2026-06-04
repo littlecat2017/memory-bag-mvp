@@ -20,6 +20,12 @@ func _run() -> void:
 	_expect(main.loaded_memory_count() >= 16, "loads complete memory definitions from original source script")
 	_expect(main.memories.has("mem_mothers_soup"), "loads required initial memory definition")
 	_expect(main.memories.has("mem_rusty_victory"), "loads late-game reward memory definition")
+	_expect(main.screen_background_art.texture != null, "loads gameplay shell art")
+	_expect(main.title_background_art.texture != null, "loads title background art")
+	_expect(main.dialogue_panel_art.texture != null, "loads dialogue panel art")
+	_expect(main.hero_art.texture != null, "loads hero transparent art")
+	_expect(main.enemy_art.texture != null, "loads enemy transparent art")
+	_expect(main.memory_icons_texture != null, "loads memory icon atlas")
 
 	main.show_mode("title")
 	_expect(main.title_layer.visible, "title mode shows title layer")
@@ -42,7 +48,7 @@ func _run() -> void:
 
 	main.jump_to_event("F0010")
 	_expect(main.current_mode == "choice", "choice event switches to choice mode")
-	_expect(main.dialogue_panel.visible, "choice mode keeps story text visible")
+	_expect(not main.dialogue_panel.visible, "choice mode hides dialogue panel to avoid backpack overlap")
 	_expect(main.choice_panel.visible, "choice mode shows choice panel")
 	_expect(main.available_choice_options.size() == 3, "choice mode filters and shows available options")
 
@@ -87,6 +93,7 @@ func _run() -> void:
 	_expect(main.owned_memory_count() == 4, "standard opening gains four memories")
 	_expect(main.has_memory("mem_mothers_soup"), "standard opening keeps mother's soup")
 	_expect(main.has_memory("mem_my_name"), "standard opening keeps hero name")
+	_expect(main.inventory_cell_icons[0].texture != null, "owned memory cell renders an atlas icon")
 
 	main.jump_to_event("F0010")
 	main.choose_option(0)

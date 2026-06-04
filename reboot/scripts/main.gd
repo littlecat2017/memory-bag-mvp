@@ -4,6 +4,25 @@ const DESIGN_SIZE := Vector2(1280, 720)
 const POINTER_HOLD_INITIAL_DELAY := 0.35
 const POINTER_HOLD_REPEAT_INTERVAL := 0.16
 const DRAG_START_THRESHOLD := 8.0
+const ART_ROOT := "res://assets/generated/mvp_art/"
+const ART_GAMEPLAY_SHELL := ART_ROOT + "gameplay_shell.png"
+const ART_TITLE_BACKGROUND := ART_ROOT + "title_background.png"
+const ART_DIALOGUE_PANEL := ART_ROOT + "dialogue_panel.png"
+const ART_BUTTON := ART_ROOT + "button.png"
+const ART_ENDING_BACKGROUND := ART_ROOT + "ending_background.png"
+const ART_HERO := ART_ROOT + "hero.png"
+const ART_ENEMY := ART_ROOT + "enemy.png"
+const ART_MEMORY_ICONS_ATLAS := ART_ROOT + "memory_icons_atlas.png"
+const ART_ASSET_PATHS := [
+	ART_GAMEPLAY_SHELL,
+	ART_TITLE_BACKGROUND,
+	ART_DIALOGUE_PANEL,
+	ART_BUTTON,
+	ART_ENDING_BACKGROUND,
+	ART_HERO,
+	ART_ENEMY,
+	ART_MEMORY_ICONS_ATLAS,
+]
 const REQUIRED_MEMORY_IDS := [
 	"mem_mothers_soup",
 	"mem_wooden_sword",
@@ -14,6 +33,26 @@ const REQUIRED_MEMORY_IDS := [
 	"mem_no_more_explaining",
 	"mem_empty_nameplate",
 ]
+const MEMORY_ICON_IDS := {
+	"mem_mothers_soup": 0,
+	"mem_wooden_sword": 1,
+	"mem_reason_to_depart": 2,
+	"mem_my_name": 3,
+	"mem_someone_waits": 5,
+	"mem_abandoned_afternoon": 8,
+	"mem_no_more_explaining": 7,
+	"mem_empty_nameplate": 13,
+	"mem_masters_scolding": 8,
+	"mem_battle_instinct": 9,
+	"mem_prove_with_wound": 15,
+	"mem_rusty_victory": 11,
+	"mem_rain_lamp": 12,
+	"mem_want_to_go_home": 14,
+	"mem_crown_without_name": 11,
+	"mem_not_let_go": 15,
+}
+const MEMORY_ICON_ATLAS_COLUMNS := 4
+const MEMORY_ICON_ATLAS_ROWS := 4
 
 var layout: Dictionary = {}
 var events: Array[Dictionary] = []
@@ -50,30 +89,40 @@ var drag_start_position := Vector2.ZERO
 var validation_errors: Array[String] = []
 
 var bg_layer: ColorRect
+var screen_background_art: TextureRect
 var stage_panel: PanelContainer
 var stage_label: Label
 var floor_line: ColorRect
 var hero_box: PanelContainer
+var hero_art: TextureRect
 var enemy_box: PanelContainer
+var enemy_art: TextureRect
 var enemy_box_label: Label
 var status_box: ColorRect
+var status_box_art: TextureRect
 var status_box_label: Label
 var operation_tray: Control
 var trash_zone: PanelContainer
+var trash_zone_icon: TextureRect
 var trash_zone_label: Label
 var found_zone: PanelContainer
+var found_zone_icon: TextureRect
 var found_zone_label: Label
 var inventory_grid: GridContainer
 var inventory_cells: Array[PanelContainer] = []
 var inventory_cell_labels: Array[Label] = []
+var inventory_cell_icons: Array[TextureRect] = []
 var dialogue_panel: PanelContainer
+var dialogue_panel_art: TextureRect
 var speaker_label: Label
 var text_label: Label
 var choice_panel: PanelContainer
+var choice_panel_art: TextureRect
 var choice_list: VBoxContainer
 var source_label: Label
 var concept_reference: TextureRect
 var title_layer: Control
+var title_background_art: TextureRect
 var title_text_label: Label
 var title_subtitle_label: Label
 var title_concept_preview: TextureRect
@@ -81,12 +130,15 @@ var title_start_button: PanelContainer
 var title_quit_button: PanelContainer
 var title_note_panel: PanelContainer
 var bag_detail_layer: Control
+var bag_detail_background_art: TextureRect
 var bag_detail_close_button: PanelContainer
 var bag_memory_list: PanelContainer
 var bag_detail_panel: PanelContainer
 var bag_detail_inventory: GridContainer
 var bag_detail_cells: Array[PanelContainer] = []
+var bag_detail_cell_icons: Array[TextureRect] = []
 var ending_layer: Control
+var ending_background_art: TextureRect
 var ending_summary_panel: PanelContainer
 var ending_summary_label: Label
 var ending_memory_panel: PanelContainer
@@ -94,7 +146,9 @@ var ending_memory_label: Label
 var ending_restart_button: PanelContainer
 var ending_title_button: PanelContainer
 var drag_preview: PanelContainer
+var drag_preview_icon: TextureRect
 var drag_preview_label: Label
+var memory_icons_texture: Texture2D
 
 
 func _ready() -> void:
@@ -303,6 +357,13 @@ func _validate_loaded_source() -> void:
 	for event_id in ["T0001", "T0002", "T0003", "P0034", "F0003", "F0010", "F0036"]:
 		if not events_by_id.has(event_id):
 			validation_errors.append("missing required MVP event from source script: %s" % event_id)
+	_validate_art_assets()
+
+
+func _validate_art_assets() -> void:
+	for path in ART_ASSET_PATHS:
+		if not FileAccess.file_exists(path):
+			validation_errors.append("missing MVP art asset: %s" % path)
 
 
 func _build_ui() -> void:
@@ -311,6 +372,13 @@ func _build_ui() -> void:
 	bg_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg_layer.gui_input.connect(_on_progress_gui_input)
 	add_child(bg_layer)
+
+	screen_background_art = _new_texture_rect(ART_GAMEPLAY_SHELL, TextureRect.STRETCH_SCALE)
+	screen_background_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	screen_background_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(screen_background_art)
+
+	memory_icons_texture = _load_texture(ART_MEMORY_ICONS_ATLAS)
 
 	concept_reference = TextureRect.new()
 	_set_rect(concept_reference, Rect2(16, 80, 220, 124))
@@ -335,19 +403,28 @@ func _build_ui() -> void:
 
 	hero_box = _new_panel("hero")
 	hero_box.gui_input.connect(_on_progress_gui_input)
-	hero_box.add_child(_center_label("主角占位"))
+	hero_art = _new_texture_rect(ART_HERO, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	hero_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hero_box.add_child(hero_art)
 	add_child(hero_box)
 
 	enemy_box = _new_panel("enemy")
 	enemy_box.gui_input.connect(_on_progress_gui_input)
+	enemy_art = _new_texture_rect(ART_ENEMY, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	enemy_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	enemy_box.add_child(enemy_art)
 	enemy_box_label = _center_label("敌人占位")
 	enemy_box_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	enemy_box.add_child(enemy_box_label)
 	add_child(enemy_box)
 
 	status_box = ColorRect.new()
-	status_box.color = Color(0.92, 0.86, 0.68, 0.84)
+	status_box.color = Color(1, 1, 1, 0)
 	status_box.gui_input.connect(_on_progress_gui_input)
+	status_box_art = _new_texture_rect(ART_BUTTON, TextureRect.STRETCH_SCALE)
+	status_box_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	status_box_art.modulate = Color(1, 1, 1, 0.96)
+	status_box.add_child(status_box_art)
 	status_box_label = _center_label("战斗状态")
 	status_box_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_box.add_child(status_box_label)
@@ -361,6 +438,10 @@ func _build_ui() -> void:
 	operation_tray.add_child(tray_bg)
 
 	trash_zone = _new_panel("trash")
+	trash_zone_icon = _new_texture_rect(_memory_icon_texture("trash"), TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	trash_zone_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	trash_zone_icon.modulate = Color(1, 1, 1, 0.78)
+	trash_zone.add_child(trash_zone_icon)
 	trash_zone_label = _center_label("弃牌堆")
 	trash_zone_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	trash_zone.add_child(trash_zone_label)
@@ -369,6 +450,10 @@ func _build_ui() -> void:
 	found_zone = _new_panel("found")
 	found_zone.mouse_filter = Control.MOUSE_FILTER_STOP
 	found_zone.gui_input.connect(_on_found_zone_gui_input)
+	found_zone_icon = _new_texture_rect(_memory_icon_texture("found"), TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	found_zone_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	found_zone_icon.modulate = Color(1, 1, 1, 0.70)
+	found_zone.add_child(found_zone_icon)
 	found_zone_label = _center_label("新记忆")
 	found_zone_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	found_zone.add_child(found_zone_label)
@@ -383,6 +468,10 @@ func _build_ui() -> void:
 	dialogue_panel = _new_panel("dialogue")
 	dialogue_panel.gui_input.connect(_on_progress_gui_input)
 	add_child(dialogue_panel)
+
+	dialogue_panel_art = _new_texture_rect(ART_DIALOGUE_PANEL, TextureRect.STRETCH_SCALE)
+	dialogue_panel_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dialogue_panel.add_child(dialogue_panel_art)
 
 	var dialogue_margin := MarginContainer.new()
 	dialogue_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -406,6 +495,10 @@ func _build_ui() -> void:
 	choice_panel = _new_panel("dialogue")
 	add_child(choice_panel)
 
+	choice_panel_art = _new_texture_rect(ART_DIALOGUE_PANEL, TextureRect.STRETCH_SCALE)
+	choice_panel_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	choice_panel.add_child(choice_panel_art)
+
 	var choice_margin := MarginContainer.new()
 	choice_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	choice_margin.add_theme_constant_override("margin_left", 14)
@@ -418,8 +511,8 @@ func _build_ui() -> void:
 	choice_list.add_theme_constant_override("separation", 8)
 	choice_margin.add_child(choice_list)
 
-	source_label = _new_label(16, Color(0.10, 0.10, 0.10, 0.75))
-	source_label.text = "REBOOT graybox | source: original JSONL script | concept reference only"
+	source_label = _new_label(16, Color(0.10, 0.10, 0.10, 0.54))
+	source_label.text = "REBOOT MVP | 原始 JSONL 剧本 | 概念图风格资源"
 	source_label.position = Vector2(20, 18)
 	source_label.size = Vector2(760, 28)
 	add_child(source_label)
@@ -435,37 +528,43 @@ func _build_title_layer() -> void:
 	title_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(title_layer)
 
+	title_background_art = _new_texture_rect(ART_TITLE_BACKGROUND, TextureRect.STRETCH_SCALE)
+	title_background_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	title_layer.add_child(title_background_art)
+
 	title_text_label = _new_label(44, Color(0.16, 0.10, 0.05))
 	title_text_label.text = "记忆背包"
 	title_text_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_layer.add_child(title_text_label)
 
 	title_subtitle_label = _new_label(22, Color(0.24, 0.17, 0.10))
-	title_subtitle_label.text = "重启灰盒：先锁定结构，再接入美术"
+	title_subtitle_label.text = "把关系与承诺装进四格背包"
 	title_subtitle_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_layer.add_child(title_subtitle_label)
 
 	title_concept_preview = TextureRect.new()
 	title_concept_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	title_concept_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	title_concept_preview.modulate = Color(1, 1, 1, 0.78)
+	title_concept_preview.modulate = Color(1, 1, 1, 0.0)
 	_load_texture_rect(title_concept_preview, "res://assets/reference/concept_memory_backpack.png")
 	title_layer.add_child(title_concept_preview)
 
 	title_start_button = _new_panel("button")
 	title_start_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	title_start_button.gui_input.connect(_on_title_start_gui_input)
+	_add_button_art(title_start_button)
 	title_start_button.add_child(_center_label("开始游戏"))
 	title_layer.add_child(title_start_button)
 
 	title_quit_button = _new_panel("button")
 	title_quit_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	title_quit_button.gui_input.connect(_on_title_quit_gui_input)
+	_add_button_art(title_quit_button)
 	title_quit_button.add_child(_center_label("退出游戏"))
 	title_layer.add_child(title_quit_button)
 
 	title_note_panel = _new_panel("note")
-	var note := _center_label("R2 规则：按原始 JSONL 脚本播放，不新增剧情。空格/回车推进，选择页可按数字键。")
+	var note := _center_label("")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title_note_panel.add_child(note)
 	title_layer.add_child(title_note_panel)
@@ -476,15 +575,21 @@ func _build_bag_detail_layer() -> void:
 	bag_detail_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bag_detail_layer)
 
+	bag_detail_background_art = _new_texture_rect(ART_GAMEPLAY_SHELL, TextureRect.STRETCH_SCALE)
+	bag_detail_background_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bag_detail_background_art.modulate = Color(1, 1, 1, 0.92)
+	bag_detail_layer.add_child(bag_detail_background_art)
+
 	var title := _new_label(32, Color(0.16, 0.10, 0.05))
 	title.name = "BagDetailTitle"
-	title.text = "背包详情灰盒"
+	title.text = "记忆背包"
 	bag_detail_layer.add_child(title)
 
 	bag_detail_close_button = _new_panel("button")
 	bag_detail_close_button.name = "BagDetailClose"
 	bag_detail_close_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	bag_detail_close_button.gui_input.connect(_on_bag_detail_close_gui_input)
+	_add_button_art(bag_detail_close_button)
 	bag_detail_close_button.add_child(_center_label("返回"))
 	bag_detail_layer.add_child(bag_detail_close_button)
 
@@ -518,10 +623,19 @@ func _build_detail_inventory_cells() -> void:
 		cell.custom_minimum_size = cell_size
 		cell.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var icon := _new_texture_rect(null, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon.offset_left = -5
+		icon.offset_top = -5
+		icon.offset_right = 5
+		icon.offset_bottom = 5
+		icon.modulate = Color(1, 1, 1, 0.92)
+		cell.add_child(icon)
 		var label := _center_label(str(index + 1) if index < unlocked else "锁")
 		label.add_theme_font_size_override("font_size", 16 if index < unlocked else 13)
 		cell.add_child(label)
 		bag_detail_cells.append(cell)
+		bag_detail_cell_icons.append(icon)
 		bag_detail_inventory.add_child(cell)
 
 
@@ -530,9 +644,13 @@ func _build_ending_layer() -> void:
 	ending_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(ending_layer)
 
+	ending_background_art = _new_texture_rect(ART_ENDING_BACKGROUND, TextureRect.STRETCH_SCALE)
+	ending_background_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ending_layer.add_child(ending_background_art)
+
 	var title := _new_label(38, Color(0.16, 0.10, 0.05))
 	title.name = "EndingTitle"
-	title.text = "MVP 回顾灰盒"
+	title.text = "MVP 回顾"
 	ending_layer.add_child(title)
 
 	ending_summary_panel = _new_panel("dialogue")
@@ -551,6 +669,7 @@ func _build_ending_layer() -> void:
 	ending_restart_button.name = "EndingRestart"
 	ending_restart_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	ending_restart_button.gui_input.connect(_on_ending_restart_gui_input)
+	_add_button_art(ending_restart_button)
 	ending_restart_button.add_child(_center_label("重新开始"))
 	ending_layer.add_child(ending_restart_button)
 
@@ -558,6 +677,7 @@ func _build_ending_layer() -> void:
 	ending_title_button.name = "EndingTitleButton"
 	ending_title_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	ending_title_button.gui_input.connect(_on_ending_title_gui_input)
+	_add_button_art(ending_title_button)
 	ending_title_button.add_child(_center_label("回标题"))
 	ending_layer.add_child(ending_title_button)
 
@@ -581,11 +701,20 @@ func _build_inventory_cells() -> void:
 		cell.custom_minimum_size = cell_size
 		cell.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var icon := _new_texture_rect(null, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon.offset_left = -5
+		icon.offset_top = -5
+		icon.offset_right = 5
+		icon.offset_bottom = 5
+		icon.modulate = Color(1, 1, 1, 0.94)
+		cell.add_child(icon)
 		var label := _center_label(str(index + 1) if index < unlocked else "锁")
 		label.add_theme_font_size_override("font_size", 16 if index < unlocked else 13)
 		cell.add_child(label)
 		inventory_cells.append(cell)
 		inventory_cell_labels.append(label)
+		inventory_cell_icons.append(icon)
 		inventory_grid.add_child(cell)
 	_refresh_inventory_ui()
 
@@ -595,6 +724,9 @@ func _build_drag_preview() -> void:
 	drag_preview.visible = false
 	drag_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	drag_preview.modulate = Color(1.0, 1.0, 1.0, 0.86)
+	drag_preview_icon = _new_texture_rect(null, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	drag_preview_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	drag_preview.add_child(drag_preview_icon)
 	drag_preview_label = _center_label("")
 	drag_preview_label.add_theme_font_size_override("font_size", 13)
 	drag_preview.add_child(drag_preview_label)
@@ -673,13 +805,13 @@ func _reset_battle_state() -> void:
 
 func _refresh_battle_ui() -> void:
 	if enemy_box_label != null:
-		enemy_box_label.text = "敌人\n%s" % _battle_enemy_label()
+		enemy_box_label.text = ""
 		enemy_box_label.add_theme_font_size_override("font_size", 15)
 	if status_box_label != null:
 		if battle_resolved:
-			status_box_label.text = "胜利 回车继续"
+			status_box_label.text = "胜利\n点击继续"
 		else:
-			status_box_label.text = "自动战斗 回车结算"
+			status_box_label.text = "%s\n点击结算" % _battle_enemy_label()
 		status_box_label.add_theme_font_size_override("font_size", 13)
 
 
@@ -908,6 +1040,7 @@ func _select_ending() -> void:
 
 
 func _apply_mode() -> void:
+	_update_screen_background()
 	stage_panel.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
 	stage_label.visible = stage_panel.visible
 	floor_line.visible = stage_panel.visible
@@ -915,12 +1048,13 @@ func _apply_mode() -> void:
 	enemy_box.visible = current_mode == "battle"
 	status_box.visible = current_mode == "battle"
 	operation_tray.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
-	dialogue_panel.visible = current_mode == "dialogue" or current_mode == "choice" or current_mode == "memory_replace"
+	dialogue_panel.visible = current_mode == "dialogue" or current_mode == "memory_replace"
 	choice_panel.visible = current_mode == "choice"
 	title_layer.visible = current_mode == "title"
 	bag_detail_layer.visible = current_mode == "bag_detail"
 	ending_layer.visible = current_mode == "ending"
 	concept_reference.visible = false
+	source_label.visible = false
 	if current_mode == "title":
 		_apply_title_layout()
 	elif current_mode == "choice":
@@ -937,6 +1071,16 @@ func _apply_mode() -> void:
 		_apply_travel_layout()
 	else:
 		_apply_dialogue_layout()
+
+
+func _update_screen_background() -> void:
+	if screen_background_art == null:
+		return
+	match current_mode:
+		"title", "ending":
+			screen_background_art.visible = false
+		_:
+			screen_background_art.visible = true
 
 
 func _apply_dialogue_layout() -> void:
@@ -1132,9 +1276,12 @@ func _slot_at_position(pointer_position: Vector2) -> int:
 
 
 func _update_drag_preview(label_text: String) -> void:
-	drag_preview.size = Vector2(104, 58)
+	drag_preview.size = Vector2(92, 92)
+	if drag_preview_icon != null:
+		drag_preview_icon.texture = _memory_icon_texture(drag_memory_id)
+		drag_preview_icon.visible = true
 	drag_preview_label.text = label_text
-	drag_preview_label.add_theme_font_size_override("font_size", 13)
+	drag_preview_label.add_theme_font_size_override("font_size", 10)
 
 
 func _update_drag_preview_position(pointer_position: Vector2) -> void:
@@ -1161,26 +1308,78 @@ func _string_array(value) -> Array[String]:
 func _refresh_inventory_ui() -> void:
 	for index in range(inventory_cell_labels.size()):
 		var label := inventory_cell_labels[index]
+		var icon: TextureRect = inventory_cell_icons[index] if index < inventory_cell_icons.size() else null
 		if index < unlocked_memory_slots():
 			if index < owned_memory_ids.size():
-				label.text = "%d\n%s" % [index + 1, _short_memory_name(owned_memory_ids[index])]
-				label.add_theme_font_size_override("font_size", 11)
+				var memory_id := str(owned_memory_ids[index])
+				label.text = "%s" % _short_memory_name(memory_id)
+				label.add_theme_font_size_override("font_size", 10)
+				if icon != null:
+					icon.texture = _memory_icon_texture(memory_id)
+					icon.visible = true
+					icon.modulate = Color(1, 1, 1, 0.96)
 			else:
-				label.text = "%d\n空" % [index + 1]
+				label.text = ""
 				label.add_theme_font_size_override("font_size", 12)
+				if icon != null:
+					icon.texture = null
+					icon.visible = false
 		else:
-			label.text = "锁"
+			label.text = ""
 			label.add_theme_font_size_override("font_size", 13)
+			if icon != null:
+				icon.texture = null
+				icon.visible = false
+	_refresh_detail_inventory_ui()
 	if found_zone_label != null:
 		if pending_gain_memory_ids.is_empty():
 			found_zone_label.text = "新记忆"
+			if found_zone_icon != null:
+				found_zone_icon.texture = _memory_icon_texture("found")
+				found_zone_icon.visible = true
 		else:
-			found_zone_label.text = "待放入\n%s" % _short_memory_name(pending_gain_memory_ids[0])
+			var pending_memory_id := str(pending_gain_memory_ids[0])
+			found_zone_label.text = "待放入\n%s" % _short_memory_name(pending_memory_id)
+			if found_zone_icon != null:
+				found_zone_icon.texture = _memory_icon_texture(pending_memory_id)
+				found_zone_icon.visible = true
 	if trash_zone_label != null:
 		if discarded_memory_ids.is_empty():
 			trash_zone_label.text = "弃牌堆"
+			if trash_zone_icon != null:
+				trash_zone_icon.texture = _memory_icon_texture("trash")
+				trash_zone_icon.visible = true
 		else:
-			trash_zone_label.text = "最近丢弃\n%s" % _short_memory_name(discarded_memory_ids[discarded_memory_ids.size() - 1])
+			var discarded_memory_id := str(discarded_memory_ids[discarded_memory_ids.size() - 1])
+			trash_zone_label.text = "最近丢弃\n%s" % _short_memory_name(discarded_memory_id)
+			if trash_zone_icon != null:
+				trash_zone_icon.texture = _memory_icon_texture(discarded_memory_id)
+				trash_zone_icon.visible = true
+
+
+func _refresh_detail_inventory_ui() -> void:
+	for index in range(bag_detail_cells.size()):
+		var label := bag_detail_cells[index].get_child(bag_detail_cells[index].get_child_count() - 1) as Label
+		var icon: TextureRect = bag_detail_cell_icons[index] if index < bag_detail_cell_icons.size() else null
+		if index < unlocked_memory_slots():
+			if index < owned_memory_ids.size():
+				var memory_id := str(owned_memory_ids[index])
+				label.text = _short_memory_name(memory_id)
+				label.add_theme_font_size_override("font_size", 10)
+				if icon != null:
+					icon.texture = _memory_icon_texture(memory_id)
+					icon.visible = true
+					icon.modulate = Color(1, 1, 1, 0.96)
+			else:
+				label.text = ""
+				if icon != null:
+					icon.texture = null
+					icon.visible = false
+		else:
+			label.text = ""
+			if icon != null:
+				icon.texture = null
+				icon.visible = false
 
 
 func _memory_name(memory_id: String) -> String:
@@ -1320,20 +1519,20 @@ func _apply_travel_layout() -> void:
 	_set_rect(stage_panel, _screen_rect("travel", "stage"))
 	_set_rect(stage_label, Rect2(_screen_rect("travel", "stage").position + Vector2(26, 16), Vector2(620, 34)))
 	_set_rect(floor_line, _screen_rect("travel", "floor_baseline"))
-	_set_rect(hero_box, _screen_rect("travel", "hero"))
+	_set_rect(hero_box, _grounded_actor_rect(_screen_rect("travel", "hero"), _screen_rect("travel", "floor_baseline"), 188.0))
 	_set_operation_layout("travel")
-	stage_label.text = "行走灰盒舞台：主角必须踩在基线附近"
+	stage_label.text = ""
 
 
 func _apply_battle_layout() -> void:
 	_set_rect(stage_panel, _screen_rect("battle", "stage"))
 	_set_rect(stage_label, Rect2(_screen_rect("battle", "stage").position + Vector2(26, 16), Vector2(620, 34)))
 	_set_rect(floor_line, _screen_rect("battle", "floor_baseline"))
-	_set_rect(hero_box, _screen_rect("battle", "hero"))
-	_set_rect(enemy_box, _screen_rect("battle", "enemy"))
+	_set_rect(hero_box, _grounded_actor_rect(_screen_rect("battle", "hero"), _screen_rect("battle", "floor_baseline"), 188.0))
+	_set_rect(enemy_box, _grounded_actor_rect(_screen_rect("battle", "enemy"), _screen_rect("battle", "floor_baseline"), 190.0))
 	_set_rect(status_box, _screen_rect("battle", "status"))
 	_set_operation_layout("battle")
-	stage_label.text = "战斗灰盒舞台：左主角 / 右敌人 / 同一地面"
+	stage_label.text = ""
 
 
 func _set_operation_layout(screen_id: String) -> void:
@@ -1352,6 +1551,12 @@ func _screen_rect(screen_id: String, section_id: String) -> Rect2:
 
 func _relative_rect(rect: Rect2, origin: Vector2) -> Rect2:
 	return Rect2(rect.position - origin, rect.size)
+
+
+func _grounded_actor_rect(anchor_rect: Rect2, floor_rect: Rect2, actor_height: float) -> Rect2:
+	var width: float = max(anchor_rect.size.x, actor_height * 0.62)
+	var bottom: float = floor_rect.position.y + 18.0
+	return Rect2(Vector2(anchor_rect.get_center().x - width * 0.5, bottom - actor_height), Vector2(width, actor_height))
 
 
 func _inventory_cell_size(board_rect: Rect2, grid_size: Vector2i, gap: Vector2) -> Vector2:
@@ -1390,44 +1595,67 @@ func _load_texture_rect(texture_rect: TextureRect, path: String) -> void:
 	texture_rect.texture = ImageTexture.create_from_image(image)
 
 
+func _load_texture(path: String) -> Texture2D:
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return null
+	var image := Image.new()
+	if image.load(path) != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+
+func _new_texture_rect(texture_source, stretch_mode := TextureRect.STRETCH_KEEP_ASPECT_CENTERED) -> TextureRect:
+	var texture_rect := TextureRect.new()
+	texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	texture_rect.stretch_mode = stretch_mode
+	texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if texture_source is Texture2D:
+		texture_rect.texture = texture_source
+	elif typeof(texture_source) == TYPE_STRING and not str(texture_source).is_empty():
+		texture_rect.texture = _load_texture(str(texture_source))
+	return texture_rect
+
+
+func _add_button_art(button: Control) -> void:
+	var art := _new_texture_rect(ART_BUTTON, TextureRect.STRETCH_SCALE)
+	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art.modulate = Color(1, 1, 1, 0.96)
+	button.add_child(art)
+
+
+func _memory_icon_texture(memory_id: String) -> Texture2D:
+	if memory_icons_texture == null:
+		return null
+	var icon_index := int(MEMORY_ICON_IDS.get(memory_id, abs(hash(memory_id)) % (MEMORY_ICON_ATLAS_COLUMNS * MEMORY_ICON_ATLAS_ROWS)))
+	var atlas_texture := AtlasTexture.new()
+	atlas_texture.atlas = memory_icons_texture
+	var icon_size := Vector2(
+		float(memory_icons_texture.get_width()) / float(MEMORY_ICON_ATLAS_COLUMNS),
+		float(memory_icons_texture.get_height()) / float(MEMORY_ICON_ATLAS_ROWS)
+	)
+	var column := icon_index % MEMORY_ICON_ATLAS_COLUMNS
+	var row := int(floor(float(icon_index) / float(MEMORY_ICON_ATLAS_COLUMNS))) % MEMORY_ICON_ATLAS_ROWS
+	atlas_texture.region = Rect2(Vector2(float(column) * icon_size.x, float(row) * icon_size.y), icon_size)
+	return atlas_texture
+
+
 func _new_panel(kind: String) -> PanelContainer:
 	var panel := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	match kind:
-		"stage":
-			style.bg_color = Color(0.88, 0.82, 0.64, 0.72)
-			style.border_color = Color(0.32, 0.25, 0.13, 0.9)
-		"hero":
-			style.bg_color = Color(0.35, 0.62, 0.86, 0.78)
-			style.border_color = Color(0.12, 0.26, 0.40, 1.0)
-		"enemy":
-			style.bg_color = Color(0.74, 0.40, 0.47, 0.78)
-			style.border_color = Color(0.36, 0.12, 0.16, 1.0)
-		"status":
-			style.bg_color = Color(0.92, 0.86, 0.68, 0.84)
-			style.border_color = Color(0.32, 0.22, 0.10, 1.0)
-		"operation":
-			style.bg_color = Color(0.72, 0.61, 0.43, 0.74)
-			style.border_color = Color(0.26, 0.18, 0.09, 1.0)
-		"trash":
-			style.bg_color = Color(0.78, 0.70, 0.54, 0.86)
-			style.border_color = Color(0.42, 0.22, 0.16, 1.0)
-		"found":
-			style.bg_color = Color(0.46, 0.58, 0.62, 0.86)
-			style.border_color = Color(0.18, 0.28, 0.32, 1.0)
 		"cell_locked":
-			style.bg_color = Color(0.42, 0.42, 0.38, 0.82)
-			style.border_color = Color(0.18, 0.18, 0.16, 1.0)
-		"dialogue":
-			style.bg_color = Color(0.94, 0.88, 0.73, 0.94)
-			style.border_color = Color(0.30, 0.20, 0.10, 1.0)
+			style.bg_color = Color(0.20, 0.20, 0.18, 0.18)
+			style.border_color = Color(0, 0, 0, 0)
+		"cell_unlocked":
+			style.bg_color = Color(1, 1, 1, 0.02)
+			style.border_color = Color(0, 0, 0, 0)
 		_:
-			style.bg_color = Color(0.88, 0.80, 0.62, 0.90)
-			style.border_color = Color(0.42, 0.31, 0.18, 1.0)
-	style.border_width_left = 3
-	style.border_width_top = 3
-	style.border_width_right = 3
-	style.border_width_bottom = 3
+			style.bg_color = Color(1, 1, 1, 0)
+			style.border_color = Color(0, 0, 0, 0)
+	style.border_width_left = 0
+	style.border_width_top = 0
+	style.border_width_right = 0
+	style.border_width_bottom = 0
 	style.corner_radius_top_left = 4
 	style.corner_radius_top_right = 4
 	style.corner_radius_bottom_right = 4
