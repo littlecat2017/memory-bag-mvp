@@ -30,6 +30,7 @@ Current reboot reports:
 - `docs/R3_TEST_REPORT.md`
 - `docs/R4_TEST_REPORT.md`
 - `docs/R5_TEST_REPORT.md`
+- `docs/R6_TEST_REPORT.md`
 
 Full MVP playthrough verification:
 

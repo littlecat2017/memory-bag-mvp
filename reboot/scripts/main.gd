@@ -1,6 +1,9 @@
 extends Control
 
 const DESIGN_SIZE := Vector2(1280, 720)
+const POINTER_HOLD_INITIAL_DELAY := 0.35
+const POINTER_HOLD_REPEAT_INTERVAL := 0.16
+const DRAG_START_THRESHOLD := 8.0
 const REQUIRED_MEMORY_IDS := [
 	"mem_mothers_soup",
 	"mem_wooden_sword",
@@ -34,6 +37,15 @@ var battle_resolved := false
 var battle_turns := 0
 var battle_enemy_id := ""
 var battle_reward_ids: Array[String] = []
+var pointer_hold_active := false
+var pointer_hold_elapsed := 0.0
+var pointer_hold_next_at := 0.0
+var drag_active := false
+var drag_moved := false
+var drag_source_kind := ""
+var drag_source_slot := -1
+var drag_memory_id := ""
+var drag_start_position := Vector2.ZERO
 var validation_errors: Array[String] = []
 
 var bg_layer: ColorRect
@@ -77,6 +89,8 @@ var ending_summary_panel: PanelContainer
 var ending_summary_label: Label
 var ending_memory_panel: PanelContainer
 var ending_memory_label: Label
+var drag_preview: PanelContainer
+var drag_preview_label: Label
 
 
 func _ready() -> void:
@@ -87,7 +101,35 @@ func _ready() -> void:
 	show_mode("title")
 
 
+func _process(delta: float) -> void:
+	if drag_active:
+		var pointer_position := get_viewport().get_mouse_position()
+		drag_moved = drag_moved or pointer_position.distance_to(drag_start_position) >= DRAG_START_THRESHOLD
+		_update_drag_preview_position(pointer_position)
+	if pointer_hold_active:
+		if not _can_pointer_advance():
+			_stop_pointer_hold()
+			return
+		pointer_hold_elapsed += delta
+		if pointer_hold_elapsed >= pointer_hold_next_at:
+			_advance_by_pointer()
+			pointer_hold_next_at += POINTER_HOLD_REPEAT_INTERVAL
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed:
+			_stop_pointer_hold()
+			if drag_active:
+				_finish_drag(mouse_event.position)
+				get_viewport().set_input_as_handled()
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		_handle_progress_mouse_event(event as InputEventMouseButton)
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key_event := event as InputEventKey
 		if current_mode == "memory_replace":
@@ -166,6 +208,10 @@ func choose_option(option_index: int) -> void:
 		advance_script()
 		return
 	_go_to_event(target_id)
+
+
+func advance_by_pointer() -> void:
+	_advance_by_pointer()
 
 
 func owned_memory_count() -> int:
@@ -247,6 +293,7 @@ func _build_ui() -> void:
 	bg_layer = ColorRect.new()
 	bg_layer.color = Color(0.78, 0.84, 0.73)
 	bg_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg_layer.gui_input.connect(_on_progress_gui_input)
 	add_child(bg_layer)
 
 	concept_reference = TextureRect.new()
@@ -258,6 +305,7 @@ func _build_ui() -> void:
 	add_child(concept_reference)
 
 	stage_panel = _new_panel("stage")
+	stage_panel.gui_input.connect(_on_progress_gui_input)
 	stage_label = _new_label(22, Color(0.18, 0.14, 0.10))
 	add_child(stage_panel)
 
@@ -270,10 +318,12 @@ func _build_ui() -> void:
 	add_child(floor_line)
 
 	hero_box = _new_panel("hero")
+	hero_box.gui_input.connect(_on_progress_gui_input)
 	hero_box.add_child(_center_label("主角占位"))
 	add_child(hero_box)
 
 	enemy_box = _new_panel("enemy")
+	enemy_box.gui_input.connect(_on_progress_gui_input)
 	enemy_box_label = _center_label("敌人占位")
 	enemy_box_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	enemy_box.add_child(enemy_box_label)
@@ -281,6 +331,7 @@ func _build_ui() -> void:
 
 	status_box = ColorRect.new()
 	status_box.color = Color(0.92, 0.86, 0.68, 0.84)
+	status_box.gui_input.connect(_on_progress_gui_input)
 	status_box_label = _center_label("战斗状态")
 	status_box_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_box.add_child(status_box_label)
@@ -300,6 +351,8 @@ func _build_ui() -> void:
 	operation_tray.add_child(trash_zone)
 
 	found_zone = _new_panel("found")
+	found_zone.mouse_filter = Control.MOUSE_FILTER_STOP
+	found_zone.gui_input.connect(_on_found_zone_gui_input)
 	found_zone_label = _center_label("新记忆")
 	found_zone_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	found_zone.add_child(found_zone_label)
@@ -310,6 +363,7 @@ func _build_ui() -> void:
 	_build_inventory_cells()
 
 	dialogue_panel = _new_panel("dialogue")
+	dialogue_panel.gui_input.connect(_on_progress_gui_input)
 	add_child(dialogue_panel)
 
 	var dialogue_margin := MarginContainer.new()
@@ -355,6 +409,7 @@ func _build_ui() -> void:
 	_build_title_layer()
 	_build_bag_detail_layer()
 	_build_ending_layer()
+	_build_drag_preview()
 
 
 func _build_title_layer() -> void:
@@ -507,6 +562,18 @@ func _build_inventory_cells() -> void:
 		inventory_cell_labels.append(label)
 		inventory_grid.add_child(cell)
 	_refresh_inventory_ui()
+
+
+func _build_drag_preview() -> void:
+	drag_preview = _new_panel("cell_unlocked")
+	drag_preview.visible = false
+	drag_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	drag_preview.modulate = Color(1.0, 1.0, 1.0, 0.86)
+	drag_preview_label = _center_label("")
+	drag_preview_label.add_theme_font_size_override("font_size", 13)
+	drag_preview.add_child(drag_preview_label)
+	add_child(drag_preview)
+	drag_preview.z_index = 100
 
 
 func _go_to_event(event_id: String) -> void:
@@ -861,14 +928,163 @@ func _apply_memory_replace_layout() -> void:
 	_set_rect(dialogue_panel, Rect2(176, 110, 900, 64))
 
 
+func _handle_progress_mouse_event(event: InputEventMouseButton) -> void:
+	if event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if event.pressed:
+		_start_pointer_hold()
+	else:
+		_stop_pointer_hold()
+	get_viewport().set_input_as_handled()
+
+
+func _on_progress_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		_handle_progress_mouse_event(event as InputEventMouseButton)
+
+
+func _on_found_zone_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed and current_mode == "memory_replace":
+			_start_drag("pending", -1, _pending_memory_id(), mouse_event.global_position)
+			get_viewport().set_input_as_handled()
+
+
 func _on_title_start_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		start_script()
 
 
 func _on_inventory_cell_gui_input(event: InputEvent, slot_index: int) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		replace_memory_at(slot_index)
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			if current_mode == "memory_replace" and _can_replace_slot(slot_index):
+				_start_drag("owned", slot_index, str(owned_memory_ids[slot_index]), mouse_event.global_position)
+				get_viewport().set_input_as_handled()
+		elif mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed:
+			if drag_active:
+				_finish_drag(mouse_event.global_position)
+			get_viewport().set_input_as_handled()
+
+
+func _start_pointer_hold() -> void:
+	if not _can_pointer_advance():
+		return
+	_advance_by_pointer()
+	pointer_hold_active = true
+	pointer_hold_elapsed = 0.0
+	pointer_hold_next_at = POINTER_HOLD_INITIAL_DELAY
+
+
+func _stop_pointer_hold() -> void:
+	pointer_hold_active = false
+	pointer_hold_elapsed = 0.0
+	pointer_hold_next_at = 0.0
+
+
+func _can_pointer_advance() -> bool:
+	return current_mode in ["title", "dialogue", "travel", "battle", "ending"]
+
+
+func _advance_by_pointer() -> void:
+	if current_mode == "title":
+		start_script()
+	elif current_mode == "battle":
+		advance_battle()
+	elif current_mode in ["dialogue", "travel", "ending"]:
+		advance_script()
+
+
+func _start_drag(source_kind: String, source_slot: int, memory_id: String, pointer_position: Vector2) -> void:
+	if memory_id.is_empty():
+		return
+	drag_active = true
+	drag_moved = false
+	drag_source_kind = source_kind
+	drag_source_slot = source_slot
+	drag_memory_id = memory_id
+	drag_start_position = pointer_position
+	_update_drag_preview(_memory_name(memory_id))
+	_update_drag_preview_position(pointer_position)
+	drag_preview.visible = true
+	_update_inventory_drag_visuals(source_slot)
+
+
+func _finish_drag(pointer_position: Vector2) -> void:
+	if not drag_active:
+		return
+	var should_replace := false
+	if current_mode == "memory_replace":
+		should_replace = _drop_hits_trash(pointer_position) or _drop_hits_inventory(pointer_position) or not drag_moved
+		if drag_source_kind == "pending":
+			should_replace = _drop_hits_inventory(pointer_position)
+	if should_replace:
+		var slot_index := _replacement_slot_from_drag(pointer_position)
+		if slot_index >= 0:
+			replace_memory_at(slot_index)
+	_clear_drag_state()
+
+
+func _clear_drag_state() -> void:
+	drag_active = false
+	drag_moved = false
+	drag_source_kind = ""
+	drag_source_slot = -1
+	drag_memory_id = ""
+	if drag_preview != null:
+		drag_preview.visible = false
+	_update_inventory_drag_visuals(-1)
+
+
+func _replacement_slot_from_drag(pointer_position: Vector2) -> int:
+	if drag_source_kind == "owned" and _can_replace_slot(drag_source_slot):
+		return drag_source_slot
+	var slot := _slot_at_position(pointer_position)
+	if _can_replace_slot(slot):
+		return slot
+	return -1
+
+
+func _can_replace_slot(slot_index: int) -> bool:
+	return current_mode == "memory_replace" and slot_index >= 0 and slot_index < min(owned_memory_ids.size(), unlocked_memory_slots())
+
+
+func _pending_memory_id() -> String:
+	return str(pending_gain_memory_ids[0]) if not pending_gain_memory_ids.is_empty() else ""
+
+
+func _drop_hits_trash(pointer_position: Vector2) -> bool:
+	return trash_zone.visible and trash_zone.get_global_rect().has_point(pointer_position)
+
+
+func _drop_hits_inventory(pointer_position: Vector2) -> bool:
+	return inventory_grid.visible and inventory_grid.get_global_rect().has_point(pointer_position)
+
+
+func _slot_at_position(pointer_position: Vector2) -> int:
+	for index in range(inventory_cells.size()):
+		if inventory_cells[index].get_global_rect().has_point(pointer_position):
+			return index
+	return -1
+
+
+func _update_drag_preview(label_text: String) -> void:
+	drag_preview.size = Vector2(104, 58)
+	drag_preview_label.text = label_text
+	drag_preview_label.add_theme_font_size_override("font_size", 13)
+
+
+func _update_drag_preview_position(pointer_position: Vector2) -> void:
+	if drag_preview == null:
+		return
+	drag_preview.position = pointer_position + Vector2(14, 14)
+
+
+func _update_inventory_drag_visuals(active_slot: int) -> void:
+	for index in range(inventory_cells.size()):
+		inventory_cells[index].modulate = Color(1, 1, 1, 0.48) if index == active_slot else Color(1, 1, 1, 1)
 
 
 func _string_array(value) -> Array[String]:
