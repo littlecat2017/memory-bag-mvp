@@ -40,6 +40,7 @@ var battle_reward_ids: Array[String] = []
 var pointer_hold_active := false
 var pointer_hold_elapsed := 0.0
 var pointer_hold_next_at := 0.0
+var last_story_mode := "dialogue"
 var drag_active := false
 var drag_moved := false
 var drag_source_kind := ""
@@ -80,6 +81,7 @@ var title_start_button: PanelContainer
 var title_quit_button: PanelContainer
 var title_note_panel: PanelContainer
 var bag_detail_layer: Control
+var bag_detail_close_button: PanelContainer
 var bag_memory_list: PanelContainer
 var bag_detail_panel: PanelContainer
 var bag_detail_inventory: GridContainer
@@ -89,6 +91,8 @@ var ending_summary_panel: PanelContainer
 var ending_summary_label: Label
 var ending_memory_panel: PanelContainer
 var ending_memory_label: Label
+var ending_restart_button: PanelContainer
+var ending_title_button: PanelContainer
 var drag_preview: PanelContainer
 var drag_preview_label: Label
 
@@ -155,6 +159,18 @@ func _unhandled_input(event: InputEvent) -> void:
 func show_mode(mode: String) -> void:
 	current_mode = mode
 	_apply_mode()
+
+
+func open_bag_detail() -> void:
+	if current_mode != "bag_detail":
+		last_story_mode = current_mode
+	show_mode("bag_detail")
+
+
+func return_to_story() -> void:
+	if last_story_mode.is_empty() or last_story_mode == "bag_detail":
+		last_story_mode = "dialogue"
+	show_mode(last_story_mode)
 
 
 func jump_to_event(event_id: String) -> void:
@@ -359,6 +375,8 @@ func _build_ui() -> void:
 	operation_tray.add_child(found_zone)
 
 	inventory_grid = GridContainer.new()
+	inventory_grid.mouse_filter = Control.MOUSE_FILTER_STOP
+	inventory_grid.gui_input.connect(_on_inventory_grid_gui_input)
 	operation_tray.add_child(inventory_grid)
 	_build_inventory_cells()
 
@@ -441,7 +459,9 @@ func _build_title_layer() -> void:
 	title_layer.add_child(title_start_button)
 
 	title_quit_button = _new_panel("button")
-	title_quit_button.add_child(_center_label("退出占位"))
+	title_quit_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	title_quit_button.gui_input.connect(_on_title_quit_gui_input)
+	title_quit_button.add_child(_center_label("退出游戏"))
 	title_layer.add_child(title_quit_button)
 
 	title_note_panel = _new_panel("note")
@@ -461,10 +481,12 @@ func _build_bag_detail_layer() -> void:
 	title.text = "背包详情灰盒"
 	bag_detail_layer.add_child(title)
 
-	var close_button := _new_panel("button")
-	close_button.name = "BagDetailClose"
-	close_button.add_child(_center_label("返回"))
-	bag_detail_layer.add_child(close_button)
+	bag_detail_close_button = _new_panel("button")
+	bag_detail_close_button.name = "BagDetailClose"
+	bag_detail_close_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	bag_detail_close_button.gui_input.connect(_on_bag_detail_close_gui_input)
+	bag_detail_close_button.add_child(_center_label("返回"))
+	bag_detail_layer.add_child(bag_detail_close_button)
 
 	bag_memory_list = _new_panel("note")
 	bag_memory_list.add_child(_center_label("记忆列表\n来自原始脚本的记忆定义"))
@@ -525,15 +547,19 @@ func _build_ending_layer() -> void:
 	ending_memory_panel.add_child(ending_memory_label)
 	ending_layer.add_child(ending_memory_panel)
 
-	var restart_button := _new_panel("button")
-	restart_button.name = "EndingRestart"
-	restart_button.add_child(_center_label("重新开始"))
-	ending_layer.add_child(restart_button)
+	ending_restart_button = _new_panel("button")
+	ending_restart_button.name = "EndingRestart"
+	ending_restart_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	ending_restart_button.gui_input.connect(_on_ending_restart_gui_input)
+	ending_restart_button.add_child(_center_label("重新开始"))
+	ending_layer.add_child(ending_restart_button)
 
-	var title_button := _new_panel("button")
-	title_button.name = "EndingTitleButton"
-	title_button.add_child(_center_label("回标题"))
-	ending_layer.add_child(title_button)
+	ending_title_button = _new_panel("button")
+	ending_title_button.name = "EndingTitleButton"
+	ending_title_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	ending_title_button.gui_input.connect(_on_ending_title_gui_input)
+	ending_title_button.add_child(_center_label("回标题"))
+	ending_layer.add_child(ending_title_button)
 
 
 func _build_inventory_cells() -> void:
@@ -619,6 +645,7 @@ func _reset_script_state() -> void:
 	available_choice_options.clear()
 	pending_gain_memory_ids.clear()
 	pending_resume_event_id = ""
+	last_story_mode = "dialogue"
 	_reset_battle_state()
 	_refresh_inventory_ui()
 
@@ -951,9 +978,43 @@ func _on_found_zone_gui_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
+func _on_inventory_grid_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed and current_mode in ["travel", "battle"]:
+			open_bag_detail()
+			get_viewport().set_input_as_handled()
+
+
 func _on_title_start_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		start_script()
+		get_viewport().set_input_as_handled()
+
+
+func _on_title_quit_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled()
+		get_tree().quit()
+
+
+func _on_bag_detail_close_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		return_to_story()
+		get_viewport().set_input_as_handled()
+
+
+func _on_ending_restart_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		start_script()
+		get_viewport().set_input_as_handled()
+
+
+func _on_ending_title_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_reset_script_state()
+		show_mode("title")
+		get_viewport().set_input_as_handled()
 
 
 func _on_inventory_cell_gui_input(event: InputEvent, slot_index: int) -> void:

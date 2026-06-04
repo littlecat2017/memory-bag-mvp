@@ -68,6 +68,10 @@ func _run() -> void:
 
 	_expect(main.inventory_cells.size() == 28, "inventory shows full 7x4 grid")
 	_expect(main.inventory_grid.columns == 7, "inventory uses 7 columns")
+	main.open_bag_detail()
+	_expect(main.current_mode == "bag_detail", "mouse-accessible backpack detail opens from story")
+	main.return_to_story()
+	_expect(main.current_mode == "dialogue", "backpack detail returns to previous story mode")
 
 	main.start_script()
 	_expect(str(main.current_event.get("id", "")) == "T0001", "start_script begins at first tutorial event")
@@ -114,6 +118,13 @@ func _run() -> void:
 	_expect(main.ending_layer.visible, "ending mode shows ending layer")
 	_expect(main.ending_summary_panel.get_global_rect().end.x < main.ending_memory_panel.get_global_rect().position.x, "ending summary should be left of memory panel")
 	_expect(not main.operation_tray.visible, "ending mode hides operation tray")
+	main.start_script()
+	main.show_mode("ending")
+	main._on_ending_title_gui_input(_mouse_click())
+	_expect(main.current_mode == "title", "ending title button returns to title")
+	main.show_mode("ending")
+	main._on_ending_restart_gui_input(_mouse_click())
+	_expect(str(main.current_event.get("id", "")) == "T0001", "ending restart button starts a new script run")
 
 	main.queue_free()
 	if failed:
@@ -128,3 +139,10 @@ func _expect(condition: bool, message: String) -> void:
 		return
 	failed = true
 	push_error("verify_reboot_shell: %s" % message)
+
+
+func _mouse_click() -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+	return event

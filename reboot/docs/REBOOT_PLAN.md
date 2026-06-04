@@ -89,6 +89,13 @@ Each screen must have:
 - Ending route selection from source-script conditions.
 - Ending summary screen with final backpack state.
 
+### R6/R7: Mouse-First Playable MVP
+
+- Mouse click and hold-to-advance.
+- Mouse-clickable choices and battle progression.
+- Drag replacement for backpack memory management.
+- Mouse-accessible backpack detail, ending restart, title return, and quit.
+
 ## Definition Of Done For A Screen
 
 - Layout test passes.
@@ -106,7 +113,8 @@ Each screen must have:
 - R3 complete: memory gains respect the initial four-slot capacity, full backpacks open replacement mode, discarded memories are tracked, and branch playback resumes after replacement.
 - R4 complete: source-script battle events now enter a readable automatic battle state, resolve on player advance, and continue to the next source-script event.
 - R5A complete: automated MVP playthrough reaches source-script hero ending after 164 events, 10 battles, and 4 backpack replacements.
+- R6/R7 complete: mouse-first playable loop now covers title, story advance, choices, battles, backpack detail, drag replacement, ending restart, and title return.
 
 ## Current Target
 
-Next: keep MVP graybox stable while either expanding route coverage to other endings or starting controlled art replacement one asset category at a time.
+Next: the functional graybox MVP is complete. Future work should either package a playtest build, expand route coverage, or start controlled art replacement one asset category at a time.
