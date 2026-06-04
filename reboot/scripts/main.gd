@@ -53,6 +53,42 @@ const MEMORY_ICON_IDS := {
 }
 const MEMORY_ICON_ATLAS_COLUMNS := 4
 const MEMORY_ICON_ATLAS_ROWS := 4
+const MEMORY_GRID_SIZES := {
+	"mem_mothers_soup": Vector2i(1, 1),
+	"mem_wooden_sword": Vector2i(4, 1),
+	"mem_reason_to_depart": Vector2i(2, 3),
+	"mem_my_name": Vector2i(2, 1),
+	"mem_someone_waits": Vector2i(2, 1),
+	"mem_abandoned_afternoon": Vector2i(2, 1),
+	"mem_no_more_explaining": Vector2i(2, 1),
+	"mem_empty_nameplate": Vector2i(2, 1),
+	"mem_masters_scolding": Vector2i(1, 2),
+	"mem_battle_instinct": Vector2i(2, 2),
+	"mem_prove_with_wound": Vector2i(2, 2),
+	"mem_rusty_victory": Vector2i(1, 1),
+	"mem_rain_lamp": Vector2i(1, 2),
+	"mem_want_to_go_home": Vector2i(2, 2),
+	"mem_crown_without_name": Vector2i(1, 1),
+	"mem_not_let_go": Vector2i(2, 2),
+}
+const MEMORY_DEFAULT_POSITIONS := {
+	"mem_mothers_soup": Vector2i(0, 0),
+	"mem_wooden_sword": Vector2i(1, 0),
+	"mem_reason_to_depart": Vector2i(5, 0),
+	"mem_my_name": Vector2i(0, 1),
+	"mem_someone_waits": Vector2i(2, 1),
+	"mem_abandoned_afternoon": Vector2i(2, 2),
+	"mem_no_more_explaining": Vector2i(0, 2),
+	"mem_empty_nameplate": Vector2i(3, 3),
+	"mem_masters_scolding": Vector2i(4, 1),
+	"mem_battle_instinct": Vector2i(2, 2),
+	"mem_prove_with_wound": Vector2i(3, 2),
+	"mem_rusty_victory": Vector2i(6, 3),
+	"mem_rain_lamp": Vector2i(0, 2),
+	"mem_want_to_go_home": Vector2i(3, 1),
+	"mem_crown_without_name": Vector2i(6, 3),
+	"mem_not_let_go": Vector2i(4, 2),
+}
 
 var layout: Dictionary = {}
 var events: Array[Dictionary] = []
@@ -63,6 +99,7 @@ var current_event_index := 0
 var current_event: Dictionary = {}
 var current_mode := "dialogue"
 var owned_memory_ids: Array[String] = []
+var memory_grid_positions: Dictionary = {}
 var discarded_memory_ids: Array[String] = []
 var flags: Array[String] = []
 var route_id := ""
@@ -85,6 +122,7 @@ var drag_moved := false
 var drag_source_kind := ""
 var drag_source_slot := -1
 var drag_memory_id := ""
+var drag_origin_position := Vector2i(-1, -1)
 var drag_start_position := Vector2.ZERO
 var validation_errors: Array[String] = []
 
@@ -109,6 +147,7 @@ var found_zone: PanelContainer
 var found_zone_icon: TextureRect
 var found_zone_label: Label
 var inventory_grid: GridContainer
+var inventory_item_layer: Control
 var inventory_cells: Array[PanelContainer] = []
 var inventory_cell_labels: Array[Label] = []
 var inventory_cell_icons: Array[TextureRect] = []
@@ -135,6 +174,7 @@ var bag_detail_close_button: PanelContainer
 var bag_memory_list: PanelContainer
 var bag_detail_panel: PanelContainer
 var bag_detail_inventory: GridContainer
+var bag_detail_item_layer: Control
 var bag_detail_cells: Array[PanelContainer] = []
 var bag_detail_cell_icons: Array[TextureRect] = []
 var ending_layer: Control
@@ -157,6 +197,7 @@ func _ready() -> void:
 	_load_source_script()
 	_build_ui()
 	show_mode("title")
+	_refresh_inventory_ui()
 
 
 func _process(delta: float) -> void:
@@ -307,6 +348,12 @@ func has_flag(flag_id: String) -> bool:
 func unlocked_memory_slots() -> int:
 	var inventory: Dictionary = layout.get("inventory", {})
 	return int(inventory.get("initial_unlocked_slots", 4))
+
+
+func inventory_grid_size() -> Vector2i:
+	var inventory: Dictionary = layout.get("inventory", {})
+	var grid = inventory.get("grid", [7, 4])
+	return Vector2i(int(grid[0]), int(grid[1]))
 
 
 func loaded_event_count() -> int:
@@ -465,6 +512,10 @@ func _build_ui() -> void:
 	operation_tray.add_child(inventory_grid)
 	_build_inventory_cells()
 
+	inventory_item_layer = Control.new()
+	inventory_item_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	operation_tray.add_child(inventory_item_layer)
+
 	dialogue_panel = _new_panel("dialogue")
 	dialogue_panel.gui_input.connect(_on_progress_gui_input)
 	add_child(dialogue_panel)
@@ -604,6 +655,10 @@ func _build_bag_detail_layer() -> void:
 	bag_detail_inventory = GridContainer.new()
 	bag_detail_layer.add_child(bag_detail_inventory)
 	_build_detail_inventory_cells()
+
+	bag_detail_item_layer = Control.new()
+	bag_detail_item_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bag_detail_layer.add_child(bag_detail_item_layer)
 
 
 func _build_detail_inventory_cells() -> void:
@@ -769,6 +824,7 @@ func _reset_script_state() -> void:
 	current_event = {}
 	current_event_index = 0
 	owned_memory_ids.clear()
+	memory_grid_positions.clear()
 	discarded_memory_ids.clear()
 	flags.clear()
 	route_id = ""
@@ -883,14 +939,17 @@ func _add_memories(memory_ids: Array[String]) -> void:
 	for memory_id in memory_ids:
 		if memory_id.is_empty() or owned_memory_ids.has(memory_id):
 			continue
-		if owned_memory_ids.size() >= unlocked_memory_slots():
+		var placement := _first_available_position(memory_id)
+		if placement.x < 0:
 			continue
 		owned_memory_ids.append(memory_id)
+		memory_grid_positions[memory_id] = placement
 
 
 func _discard_memories(memory_ids: Array[String], mark_discarded := true) -> void:
 	for memory_id in memory_ids:
 		owned_memory_ids.erase(memory_id)
+		memory_grid_positions.erase(memory_id)
 		if mark_discarded and not discarded_memory_ids.has(memory_id):
 			discarded_memory_ids.append(memory_id)
 	_refresh_inventory_ui()
@@ -903,11 +962,19 @@ func _add_flags(flag_ids: Array[String]) -> void:
 
 
 func _needs_memory_replacement(memory_ids: Array[String]) -> bool:
-	var new_count := 0
+	var simulated_positions := memory_grid_positions.duplicate(true)
+	var simulated_owned: Array[String] = []
+	for owned_id in owned_memory_ids:
+		simulated_owned.append(str(owned_id))
 	for memory_id in memory_ids:
-		if not memory_id.is_empty() and not owned_memory_ids.has(memory_id):
-			new_count += 1
-	return new_count > 0 and owned_memory_ids.size() + new_count > unlocked_memory_slots()
+		if memory_id.is_empty() or simulated_owned.has(memory_id):
+			continue
+		var placement := _first_available_position(memory_id, simulated_positions)
+		if placement.x < 0:
+			return true
+		simulated_owned.append(memory_id)
+		simulated_positions[memory_id] = placement
+	return false
 
 
 func _begin_memory_replace(memory_ids: Array[String], resume_event_id: String) -> void:
@@ -917,29 +984,79 @@ func _begin_memory_replace(memory_ids: Array[String], resume_event_id: String) -
 			pending_gain_memory_ids.append(memory_id)
 	pending_resume_event_id = resume_event_id
 	speaker_label.text = "系统"
-	text_label.text = "背包已满。选择一个已解锁格子丢弃，再放入新记忆。按 1-4，或点击前四个格子。"
+	text_label.text = "背包空间不足。拖动一件记忆到弃牌堆，或把新记忆拖到空白区域。"
 	current_mode = "memory_replace"
 	_refresh_inventory_ui()
 	_apply_mode()
 
 
-func replace_memory_at(slot_index: int) -> void:
+func replace_memory_at(slot_index: int, target_grid_position := Vector2i(-1, -1)) -> void:
 	if current_mode != "memory_replace":
 		return
 	if pending_gain_memory_ids.is_empty():
 		return
-	if slot_index < 0 or slot_index >= min(owned_memory_ids.size(), unlocked_memory_slots()):
+	if slot_index < 0 or slot_index >= owned_memory_ids.size():
 		return
 	var discarded_id := owned_memory_ids[slot_index]
+	var original_position := _memory_grid_position(discarded_id)
 	owned_memory_ids.remove_at(slot_index)
+	memory_grid_positions.erase(discarded_id)
 	if not discarded_memory_ids.has(discarded_id):
 		discarded_memory_ids.append(discarded_id)
 	var gained_id := str(pending_gain_memory_ids.pop_front())
 	if not owned_memory_ids.has(gained_id):
+		var placement := target_grid_position
+		if placement.x < 0 or not _can_place_memory(gained_id, placement):
+			placement = _first_available_position(gained_id)
+		if placement.x < 0:
+			owned_memory_ids.insert(slot_index, discarded_id)
+			memory_grid_positions[discarded_id] = original_position
+			discarded_memory_ids.erase(discarded_id)
+			pending_gain_memory_ids.push_front(gained_id)
+			_refresh_inventory_ui()
+			return
 		owned_memory_ids.append(gained_id)
+		memory_grid_positions[gained_id] = placement
 	_refresh_inventory_ui()
 	if not pending_gain_memory_ids.is_empty():
 		return
+	var resume_event_id := pending_resume_event_id
+	pending_resume_event_id = ""
+	if resume_event_id == "EVAL_ENDING":
+		_select_ending()
+	elif not resume_event_id.is_empty():
+		_go_to_event(resume_event_id)
+	else:
+		advance_script()
+
+
+func move_memory_to(memory_id: String, target_grid_position: Vector2i) -> bool:
+	if not owned_memory_ids.has(memory_id):
+		return false
+	if not _can_place_memory(memory_id, target_grid_position, memory_id):
+		return false
+	memory_grid_positions[memory_id] = target_grid_position
+	_refresh_inventory_ui()
+	return true
+
+
+func accept_pending_memory_at(target_grid_position: Vector2i) -> bool:
+	if current_mode != "memory_replace" or pending_gain_memory_ids.is_empty():
+		return false
+	var pending_id := str(pending_gain_memory_ids[0])
+	if not _can_place_memory(pending_id, target_grid_position):
+		return false
+	pending_gain_memory_ids.pop_front()
+	if not owned_memory_ids.has(pending_id):
+		owned_memory_ids.append(pending_id)
+		memory_grid_positions[pending_id] = target_grid_position
+	_refresh_inventory_ui()
+	if pending_gain_memory_ids.is_empty():
+		_resume_after_memory_replace()
+	return true
+
+
+func _resume_after_memory_replace() -> void:
 	var resume_event_id := pending_resume_event_id
 	pending_resume_event_id = ""
 	if resume_event_id == "EVAL_ENDING":
@@ -1165,8 +1282,10 @@ func _on_inventory_cell_gui_input(event: InputEvent, slot_index: int) -> void:
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
-			if current_mode == "memory_replace" and _can_replace_slot(slot_index):
-				_start_drag("owned", slot_index, str(owned_memory_ids[slot_index]), mouse_event.global_position)
+			if current_mode in ["travel", "battle", "memory_replace"]:
+				var memory_id := _memory_id_at_slot(slot_index)
+				if not memory_id.is_empty():
+					_start_drag("owned", owned_memory_ids.find(memory_id), memory_id, mouse_event.global_position)
 				get_viewport().set_input_as_handled()
 		elif mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed:
 			if drag_active:
@@ -1210,6 +1329,7 @@ func _start_drag(source_kind: String, source_slot: int, memory_id: String, point
 	drag_source_kind = source_kind
 	drag_source_slot = source_slot
 	drag_memory_id = memory_id
+	drag_origin_position = _memory_grid_position(memory_id)
 	drag_start_position = pointer_position
 	_update_drag_preview(_memory_name(memory_id))
 	_update_drag_preview_position(pointer_position)
@@ -1220,15 +1340,22 @@ func _start_drag(source_kind: String, source_slot: int, memory_id: String, point
 func _finish_drag(pointer_position: Vector2) -> void:
 	if not drag_active:
 		return
-	var should_replace := false
+	var handled := false
+	var target_position := _grid_position_at_point(pointer_position)
 	if current_mode == "memory_replace":
-		should_replace = _drop_hits_trash(pointer_position) or _drop_hits_inventory(pointer_position) or not drag_moved
-		if drag_source_kind == "pending":
-			should_replace = _drop_hits_inventory(pointer_position)
-	if should_replace:
-		var slot_index := _replacement_slot_from_drag(pointer_position)
-		if slot_index >= 0:
-			replace_memory_at(slot_index)
+		if drag_source_kind == "pending" and target_position.x >= 0:
+			handled = accept_pending_memory_at(target_position)
+		elif drag_source_kind == "owned" and _drop_hits_trash(pointer_position):
+			var pending_target := target_position if target_position.x >= 0 else drag_origin_position
+			replace_memory_at(drag_source_slot, pending_target)
+			handled = true
+		elif drag_source_kind == "owned" and target_position.x >= 0:
+			handled = move_memory_to(drag_memory_id, target_position)
+	elif drag_source_kind == "owned" and target_position.x >= 0:
+		handled = move_memory_to(drag_memory_id, target_position)
+	if not handled and drag_source_kind == "owned" and drag_origin_position.x >= 0:
+		memory_grid_positions[drag_memory_id] = drag_origin_position
+		_refresh_inventory_ui()
 	_clear_drag_state()
 
 
@@ -1238,6 +1365,7 @@ func _clear_drag_state() -> void:
 	drag_source_kind = ""
 	drag_source_slot = -1
 	drag_memory_id = ""
+	drag_origin_position = Vector2i(-1, -1)
 	if drag_preview != null:
 		drag_preview.visible = false
 	_update_inventory_drag_visuals(-1)
@@ -1253,7 +1381,7 @@ func _replacement_slot_from_drag(pointer_position: Vector2) -> int:
 
 
 func _can_replace_slot(slot_index: int) -> bool:
-	return current_mode == "memory_replace" and slot_index >= 0 and slot_index < min(owned_memory_ids.size(), unlocked_memory_slots())
+	return current_mode == "memory_replace" and slot_index >= 0 and slot_index < owned_memory_ids.size()
 
 
 func _pending_memory_id() -> String:
@@ -1275,11 +1403,87 @@ func _slot_at_position(pointer_position: Vector2) -> int:
 	return -1
 
 
+func _memory_id_at_slot(slot_index: int) -> String:
+	var grid_position := _grid_position_from_slot(slot_index)
+	for memory_id in owned_memory_ids:
+		if _memory_rect(str(memory_id)).has_point(grid_position):
+			return str(memory_id)
+	return ""
+
+
+func _grid_position_from_slot(slot_index: int) -> Vector2i:
+	var grid_size := inventory_grid_size()
+	if slot_index < 0 or grid_size.x <= 0:
+		return Vector2i(-1, -1)
+	return Vector2i(slot_index % grid_size.x, int(floor(float(slot_index) / float(grid_size.x))))
+
+
+func _grid_position_at_point(pointer_position: Vector2) -> Vector2i:
+	var slot := _slot_at_position(pointer_position)
+	return _grid_position_from_slot(slot)
+
+
+func _memory_grid_position(memory_id: String) -> Vector2i:
+	if memory_grid_positions.has(memory_id):
+		return memory_grid_positions[memory_id]
+	return Vector2i(-1, -1)
+
+
+func _memory_grid_size(memory_id: String) -> Vector2i:
+	return MEMORY_GRID_SIZES.get(memory_id, Vector2i(1, 1))
+
+
+func _memory_rect(memory_id: String, position := Vector2i(-1, -1)) -> Rect2i:
+	var origin := position if position.x >= 0 else _memory_grid_position(memory_id)
+	return Rect2i(origin, _memory_grid_size(memory_id))
+
+
+func _can_place_memory(memory_id: String, position: Vector2i, ignore_memory_id := "", positions := {}) -> bool:
+	if position.x < 0 or position.y < 0:
+		return false
+	var grid_size := inventory_grid_size()
+	var size := _memory_grid_size(memory_id)
+	if position.x + size.x > grid_size.x or position.y + size.y > grid_size.y:
+		return false
+	var candidate := Rect2i(position, size)
+	var occupied_positions: Dictionary = positions if not positions.is_empty() else memory_grid_positions
+	for other_id in occupied_positions.keys():
+		var typed_id := str(other_id)
+		if typed_id == ignore_memory_id:
+			continue
+		if not occupied_positions.has(typed_id):
+			continue
+		if _rects_overlap(candidate, _memory_rect(typed_id, occupied_positions[typed_id])):
+			return false
+	return true
+
+
+func _rects_overlap(a: Rect2i, b: Rect2i) -> bool:
+	return a.position.x < b.end.x and a.end.x > b.position.x and a.position.y < b.end.y and a.end.y > b.position.y
+
+
+func _first_available_position(memory_id: String, positions_override := {}) -> Vector2i:
+	var occupied_positions: Dictionary = positions_override if not positions_override.is_empty() else memory_grid_positions
+	var grid_size := inventory_grid_size()
+	var item_size := _memory_grid_size(memory_id)
+	var preferred_position: Vector2i = MEMORY_DEFAULT_POSITIONS.get(memory_id, Vector2i(-1, -1))
+	if preferred_position.x >= 0 and _can_place_memory(memory_id, preferred_position, "", occupied_positions):
+		return preferred_position
+	for y in range(0, grid_size.y - item_size.y + 1):
+		for x in range(0, grid_size.x - item_size.x + 1):
+			var candidate := Vector2i(x, y)
+			if _can_place_memory(memory_id, candidate, "", occupied_positions):
+				return candidate
+	return Vector2i(-1, -1)
+
+
 func _update_drag_preview(label_text: String) -> void:
-	drag_preview.size = Vector2(92, 92)
+	var preview_rect := _inventory_item_rect(inventory_grid.size, Vector2i.ZERO, _memory_grid_size(drag_memory_id))
+	drag_preview.size = preview_rect.size
 	if drag_preview_icon != null:
 		drag_preview_icon.texture = _memory_icon_texture(drag_memory_id)
 		drag_preview_icon.visible = true
+		drag_preview_icon.stretch_mode = TextureRect.STRETCH_SCALE
 	drag_preview_label.text = label_text
 	drag_preview_label.add_theme_font_size_override("font_size", 10)
 
@@ -1292,7 +1496,11 @@ func _update_drag_preview_position(pointer_position: Vector2) -> void:
 
 func _update_inventory_drag_visuals(active_slot: int) -> void:
 	for index in range(inventory_cells.size()):
-		inventory_cells[index].modulate = Color(1, 1, 1, 0.48) if index == active_slot else Color(1, 1, 1, 1)
+		var slot_position := _grid_position_from_slot(index)
+		var active := false
+		if active_slot >= 0 and not drag_memory_id.is_empty():
+			active = _memory_rect(drag_memory_id).has_point(slot_position)
+		inventory_cells[index].modulate = Color(1, 1, 1, 0.48) if active else Color(1, 1, 1, 1)
 
 
 func _string_array(value) -> Array[String]:
@@ -1309,27 +1517,11 @@ func _refresh_inventory_ui() -> void:
 	for index in range(inventory_cell_labels.size()):
 		var label := inventory_cell_labels[index]
 		var icon: TextureRect = inventory_cell_icons[index] if index < inventory_cell_icons.size() else null
-		if index < unlocked_memory_slots():
-			if index < owned_memory_ids.size():
-				var memory_id := str(owned_memory_ids[index])
-				label.text = "%s" % _short_memory_name(memory_id)
-				label.add_theme_font_size_override("font_size", 10)
-				if icon != null:
-					icon.texture = _memory_icon_texture(memory_id)
-					icon.visible = true
-					icon.modulate = Color(1, 1, 1, 0.96)
-			else:
-				label.text = ""
-				label.add_theme_font_size_override("font_size", 12)
-				if icon != null:
-					icon.texture = null
-					icon.visible = false
-		else:
-			label.text = ""
-			label.add_theme_font_size_override("font_size", 13)
-			if icon != null:
-				icon.texture = null
-				icon.visible = false
+		label.text = ""
+		if icon != null:
+			icon.texture = null
+			icon.visible = false
+	_rebuild_memory_item_layer(inventory_item_layer)
 	_refresh_detail_inventory_ui()
 	if found_zone_label != null:
 		if pending_gain_memory_ids.is_empty():
@@ -1361,25 +1553,37 @@ func _refresh_detail_inventory_ui() -> void:
 	for index in range(bag_detail_cells.size()):
 		var label := bag_detail_cells[index].get_child(bag_detail_cells[index].get_child_count() - 1) as Label
 		var icon: TextureRect = bag_detail_cell_icons[index] if index < bag_detail_cell_icons.size() else null
-		if index < unlocked_memory_slots():
-			if index < owned_memory_ids.size():
-				var memory_id := str(owned_memory_ids[index])
-				label.text = _short_memory_name(memory_id)
-				label.add_theme_font_size_override("font_size", 10)
-				if icon != null:
-					icon.texture = _memory_icon_texture(memory_id)
-					icon.visible = true
-					icon.modulate = Color(1, 1, 1, 0.96)
-			else:
-				label.text = ""
-				if icon != null:
-					icon.texture = null
-					icon.visible = false
-		else:
-			label.text = ""
-			if icon != null:
-				icon.texture = null
-				icon.visible = false
+		label.text = ""
+		if icon != null:
+			icon.texture = null
+			icon.visible = false
+	_rebuild_memory_item_layer(bag_detail_item_layer)
+
+
+func _rebuild_memory_item_layer(item_layer: Control) -> void:
+	if item_layer == null:
+		return
+	for child in item_layer.get_children():
+		child.queue_free()
+	for memory_id in owned_memory_ids:
+		var typed_id := str(memory_id)
+		var position := _memory_grid_position(typed_id)
+		if position.x < 0:
+			continue
+		var item_rect := _inventory_item_rect(item_layer.size, position, _memory_grid_size(typed_id))
+		var item := _new_panel("cell_unlocked")
+		item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item.position = item_rect.position
+		item.size = item_rect.size
+		var icon := _new_texture_rect(_memory_icon_texture(typed_id), TextureRect.STRETCH_SCALE)
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon.modulate = Color(1, 1, 1, 0.96)
+		item.add_child(icon)
+		var label := _center_label(_short_memory_name(typed_id))
+		label.add_theme_font_size_override("font_size", 10)
+		label.modulate = Color(1, 1, 1, 0.94)
+		item.add_child(label)
+		item_layer.add_child(item)
 
 
 func _memory_name(memory_id: String) -> String:
@@ -1504,6 +1708,8 @@ func _apply_bag_detail_layout() -> void:
 	_set_rect(bag_memory_list, _screen_rect("bag_detail", "memory_list"))
 	_set_rect(bag_detail_panel, _screen_rect("bag_detail", "detail_panel"))
 	_set_rect(bag_detail_inventory, _screen_rect("bag_detail", "inventory_board"))
+	_set_rect(bag_detail_item_layer, _screen_rect("bag_detail", "inventory_board"))
+	_refresh_detail_inventory_ui()
 
 
 func _apply_ending_layout() -> void:
@@ -1540,7 +1746,10 @@ func _set_operation_layout(screen_id: String) -> void:
 	_set_rect(operation_tray, tray_rect)
 	_set_rect(trash_zone, _relative_rect(_screen_rect(screen_id, "trash_zone"), tray_rect.position))
 	_set_rect(found_zone, _relative_rect(_screen_rect(screen_id, "found_zone"), tray_rect.position))
-	_set_rect(inventory_grid, _relative_rect(_screen_rect(screen_id, "inventory_board"), tray_rect.position))
+	var inventory_rect := _relative_rect(_screen_rect(screen_id, "inventory_board"), tray_rect.position)
+	_set_rect(inventory_grid, inventory_rect)
+	_set_rect(inventory_item_layer, inventory_rect)
+	_refresh_inventory_ui()
 
 
 func _screen_rect(screen_id: String, section_id: String) -> Rect2:
@@ -1563,6 +1772,23 @@ func _inventory_cell_size(board_rect: Rect2, grid_size: Vector2i, gap: Vector2) 
 	var width := board_rect.size.x - gap.x * float(max(0, grid_size.x - 1))
 	var height := board_rect.size.y - gap.y * float(max(0, grid_size.y - 1))
 	return Vector2(floor(width / float(grid_size.x)), floor(height / float(grid_size.y)))
+
+
+func _inventory_item_rect(board_size: Vector2, grid_position: Vector2i, item_size: Vector2i) -> Rect2:
+	var inventory: Dictionary = layout.get("inventory", {})
+	var grid_size := inventory_grid_size()
+	var gap_value = inventory.get("gap", [8, 8])
+	var gap := Vector2(float(gap_value[0]), float(gap_value[1]))
+	var cell_size := _inventory_cell_size(Rect2(Vector2.ZERO, board_size), grid_size, gap)
+	var position := Vector2(
+		float(grid_position.x) * (cell_size.x + gap.x),
+		float(grid_position.y) * (cell_size.y + gap.y)
+	)
+	var size := Vector2(
+		float(item_size.x) * cell_size.x + float(max(0, item_size.x - 1)) * gap.x,
+		float(item_size.y) * cell_size.y + float(max(0, item_size.y - 1)) * gap.y
+	)
+	return Rect2(position, size)
 
 
 func _rect_from_array(values) -> Rect2:

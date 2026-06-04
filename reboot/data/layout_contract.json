@@ -59,8 +59,9 @@
   },
   "inventory": {
     "grid": [7, 4],
-    "initial_unlocked_slots": 4,
-    "locked_slots_visible": true,
+    "initial_unlocked_slots": 28,
+    "initial_memory_items": 4,
+    "locked_slots_visible": false,
     "gap": [8, 8]
   },
   "rules": {

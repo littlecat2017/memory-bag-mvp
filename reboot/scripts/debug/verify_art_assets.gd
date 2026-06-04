@@ -32,7 +32,8 @@ func _run() -> void:
 	main.choose_option(0)
 	await process_frame
 	_expect(main.inventory_cell_icons.size() == 28, "inventory has icon holders")
-	_expect(main.inventory_cell_icons[0].texture != null, "first owned memory has icon")
+	_expect(main.inventory_item_layer.get_child_count() == 4, "owned memories render as item overlays")
+	_expect(main._memory_grid_size("mem_wooden_sword") == Vector2i(4, 1), "wooden sword uses a multi-cell footprint")
 
 	main.queue_free()
 	if failed:

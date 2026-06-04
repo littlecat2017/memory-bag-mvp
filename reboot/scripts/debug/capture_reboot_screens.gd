@@ -35,7 +35,9 @@ func _run() -> void:
 	if not _save_snapshot("01_dialogue_art.png"):
 		return
 
-	main.jump_to_event("F0010")
+	await _prepare_standard_opening(main)
+	main.jump_to_event("P0035A")
+	main.show_mode("travel")
 	await _settle(4)
 	if not _save_snapshot("02_travel_art.png"):
 		return
@@ -76,13 +78,15 @@ func _run() -> void:
 
 	main.jump_to_event("F0010")
 	main.choose_option(0)
+	main.show_mode("travel")
 	await _settle(4)
-	if not _save_snapshot("08_memory_replace_art.png"):
+	if not _save_snapshot("08_spatial_pickup_art.png"):
 		return
 
-	main.replace_memory_at(0)
+	main.move_memory_to("mem_wooden_sword", Vector2i(0, 3))
+	main.show_mode("travel")
 	await _settle(4)
-	if not _save_snapshot("09_memory_replace_result_art.png"):
+	if not _save_snapshot("09_spatial_rearrange_art.png"):
 		return
 
 	if not await _run_hero_playthrough(main):
@@ -122,6 +126,16 @@ func _fail(message: String) -> bool:
 func _settle(frames: int) -> void:
 	for _index in range(frames):
 		await process_frame
+
+
+func _prepare_standard_opening(main: Control) -> void:
+	main.start_script()
+	for _index in range(38):
+		if str(main.current_event.get("id", "")) == "P0034":
+			break
+		main.advance_script()
+	main.choose_option(0)
+	await _settle(4)
 
 
 func _run_hero_playthrough(main: Control) -> bool:
