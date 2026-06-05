@@ -58,6 +58,17 @@ func _run() -> void:
 	if not _save_snapshot("06_reward_travel_art.png"):
 		return
 
+	await _drive_to_battle(main)
+	await _settle(4)
+	if not _save_snapshot("06b_second_map_battle_art.png"):
+		return
+	if not await _resolve_current_battle(main):
+		return
+	await _wait_for_travel(main)
+	await _settle(4)
+	if not _save_snapshot("06c_third_map_travel_art.png"):
+		return
+
 	main.move_memory_to("mem_wooden_sword", Vector2i(0, 3))
 	main.show_mode("travel")
 	await _settle(4)

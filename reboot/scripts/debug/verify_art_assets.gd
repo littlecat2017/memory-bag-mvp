@@ -21,6 +21,9 @@ func _run() -> void:
 	_expect(not main.stage_background_tiles.is_empty(), "stage background tiles exist")
 	_expect(main.stage_background_tiles[0].texture != null, "scrolling stage background texture")
 	_expect(main.stage_background_tiles[0].texture.get_width() == 2048 and main.stage_background_tiles[0].texture.get_height() == 512, "scrolling stage background is normalized")
+	_expect(main.stage_background_textures.size() >= 3, "three scrolling stage maps are loaded")
+	for texture in main.stage_background_textures:
+		_expect(texture.get_width() == 2048 and texture.get_height() == 512, "stage map texture is normalized")
 	_expect(main.title_background_art.texture != null, "title background texture")
 	_expect(main.dialogue_panel_art.texture != null, "dialogue panel texture")
 	_expect(main.hero_art.texture != null, "hero texture")

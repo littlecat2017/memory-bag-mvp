@@ -28,8 +28,16 @@ Total generated today for this MVP art fill: 2 / 50.
 
 ## 2026-06-06
 
-Total generated today for scrolling stage work: 1 / 50.
+Total generated today for scrolling stage work: 2 / 50.
 
 | # | Tool | Prompt Summary | Source Output | Workspace Asset | Status |
 |---|---|---|---|---|---|
 | 1 | Built-in image generation | Wide side-scrolling Japanese fairy-tale forest/tower stage background with a clean flat walkable ground band and no characters/UI/text. | `C:\Users\64844\.codex\generated_images\019e6a1f-c0b5-7ee2-9090-578ac0c0e509\ig_07f7b5f953f61e2e016a2300235d908198beb1e4ae71306155.png` | `reboot/assets/generated/mvp_art/scroll_stage_background_source.png`, `reboot/assets/generated/mvp_art/scroll_stage_background.png` | Copied source into workspace and cropped/resized to 2048x512 for runtime stage scrolling. |
+| 2 | Built-in image generation | Wide side-scrolling sunlit forest tower road map with a clean continuous walkable ground band, no characters/UI/text. | `C:\Users\64844\.codex\generated_images\019e6a1f-c0b5-7ee2-9090-578ac0c0e509\ig_075853fc5bb729f7016a2310f0c6448199ae09a024addf252a.png` | `reboot/assets/generated/mvp_art/scroll_stage_forest_tower_source.png`, `reboot/assets/generated/mvp_art/scroll_stage_forest_tower.png` | Copied source into workspace and cropped/resized to 2048x512 as map 1. A later generation attempt for map 2 hit rate limit and produced no saved asset, so it is not counted. |
+
+Additional runtime stage maps added without new image generation on 2026-06-06:
+
+| Source | Workspace Asset | Status |
+|---|---|---|
+| `assets/generated_sources/2026-06-03/art_rework_bg_village_dawn.png` | `reboot/assets/generated/mvp_art/scroll_stage_village_dawn.png` | Reused existing generated source, cropped/resized to 2048x512 as map 2. |
+| `assets/generated_sources/2026-06-03/art_rework_bg_forest_path.png` | `reboot/assets/generated/mvp_art/scroll_stage_memorial_path.png` | Reused existing generated source, cropped/resized to 2048x512 as map 3. |

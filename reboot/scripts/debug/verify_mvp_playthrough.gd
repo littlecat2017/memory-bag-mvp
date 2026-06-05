@@ -23,8 +23,10 @@ func _run() -> void:
 	for encounter_index in range(3):
 		_expect(main.current_mode == "travel", "encounter %d starts from travel" % [encounter_index + 1])
 		_expect(main.opening_travel_active, "encounter %d travel is active" % [encounter_index + 1])
+		_expect(main.current_stage_map_index == encounter_index % main.stage_background_textures.size(), "encounter %d uses expected stage map" % [encounter_index + 1])
 		await _drive_to_battle(main)
 		_expect(main.current_mode == "battle", "encounter %d reaches battle" % [encounter_index + 1])
+		_expect(main.current_stage_map_index == encounter_index % main.stage_background_textures.size(), "encounter %d battle keeps travel stage map" % [encounter_index + 1])
 		_expect(not main.dialogue_panel.visible, "encounter %d never shows dialogue" % [encounter_index + 1])
 		_expect(not main.choice_panel.visible, "encounter %d never shows choices" % [encounter_index + 1])
 		_expect(not main.ending_layer.visible, "encounter %d never shows ending" % [encounter_index + 1])

@@ -8,6 +8,9 @@ const MEMORY_ITEM_INSET := Vector2.ZERO
 const ART_ROOT := "res://assets/generated/mvp_art/"
 const ART_GAMEPLAY_SHELL := ART_ROOT + "gameplay_shell.png"
 const ART_SCROLL_STAGE_BACKGROUND := ART_ROOT + "scroll_stage_background.png"
+const ART_SCROLL_STAGE_FOREST_TOWER := ART_ROOT + "scroll_stage_forest_tower.png"
+const ART_SCROLL_STAGE_VILLAGE_DAWN := ART_ROOT + "scroll_stage_village_dawn.png"
+const ART_SCROLL_STAGE_MEMORIAL_PATH := ART_ROOT + "scroll_stage_memorial_path.png"
 const ART_TITLE_BACKGROUND := ART_ROOT + "title_background.png"
 const ART_DIALOGUE_PANEL := ART_ROOT + "dialogue_panel.png"
 const ART_BUTTON := ART_ROOT + "button.png"
@@ -70,9 +73,17 @@ const GAMEPLAY_REWARD_IDS := [
 	"mem_rain_lamp",
 	"mem_want_to_go_home",
 ]
+const STAGE_MAP_PATHS := [
+	ART_SCROLL_STAGE_FOREST_TOWER,
+	ART_SCROLL_STAGE_VILLAGE_DAWN,
+	ART_SCROLL_STAGE_MEMORIAL_PATH,
+]
 const ART_ASSET_PATHS := [
 	ART_GAMEPLAY_SHELL,
 	ART_SCROLL_STAGE_BACKGROUND,
+	ART_SCROLL_STAGE_FOREST_TOWER,
+	ART_SCROLL_STAGE_VILLAGE_DAWN,
+	ART_SCROLL_STAGE_MEMORIAL_PATH,
 	ART_TITLE_BACKGROUND,
 	ART_DIALOGUE_PANEL,
 	ART_BUTTON,
@@ -225,6 +236,8 @@ var bg_layer: ColorRect
 var screen_background_art: TextureRect
 var stage_background_clip: Control
 var stage_background_tiles: Array[TextureRect] = []
+var stage_background_textures: Array[Texture2D] = []
+var current_stage_map_index := 0
 var stage_panel: PanelContainer
 var stage_label: Label
 var floor_line: ColorRect
@@ -549,6 +562,7 @@ func _perform_enemy_battle_turn() -> void:
 
 func _start_next_travel_segment() -> void:
 	_reset_battle_state()
+	_set_stage_map(gameplay_encounter_count)
 	opening_travel_active = true
 	opening_travel_meters = 0.0
 	current_mode = "travel"
@@ -729,13 +743,14 @@ func _build_ui() -> void:
 	memory_icons_texture = _load_texture(ART_MEMORY_ICONS_ATLAS)
 	_load_memory_item_textures()
 	_load_actor_animation_textures()
+	_load_stage_background_textures()
 
 	stage_background_clip = Control.new()
 	stage_background_clip.clip_contents = true
 	stage_background_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(stage_background_clip)
 	for _tile_index in range(2):
-		var tile := _new_texture_rect(ART_SCROLL_STAGE_BACKGROUND, TextureRect.STRETCH_SCALE)
+		var tile := _new_texture_rect(_current_stage_background_texture(), TextureRect.STRETCH_SCALE)
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stage_background_clip.add_child(tile)
 		stage_background_tiles.append(tile)
@@ -751,6 +766,8 @@ func _build_ui() -> void:
 	stage_panel = _new_panel("stage")
 	stage_panel.gui_input.connect(_on_progress_gui_input)
 	stage_label = _new_label(22, Color(0.18, 0.14, 0.10))
+	stage_label.add_theme_color_override("font_outline_color", Color(1.0, 0.94, 0.78, 0.72))
+	stage_label.add_theme_constant_override("outline_size", 4)
 	add_child(stage_panel)
 
 	stage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -2590,6 +2607,36 @@ func _load_actor_animation_textures() -> void:
 	enemy_hit_frames = _build_sheet_frames(enemy_hit_sheet_texture, ACTOR_ANIM_FRAME_SIZE, ENEMY_HIT_FRAMES)
 	slash_effect_frames = _build_sheet_frames(slash_effect_sheet_texture, SLASH_ANIM_FRAME_SIZE, SLASH_FRAMES)
 	hit_burst_frames = _build_sheet_frames(hit_burst_sheet_texture, HIT_BURST_ANIM_FRAME_SIZE, HIT_BURST_FRAMES)
+
+
+func _load_stage_background_textures() -> void:
+	stage_background_textures.clear()
+	for path in STAGE_MAP_PATHS:
+		var texture := _load_texture(str(path))
+		if texture != null:
+			stage_background_textures.append(texture)
+	if stage_background_textures.is_empty():
+		var fallback := _load_texture(ART_SCROLL_STAGE_BACKGROUND)
+		if fallback != null:
+			stage_background_textures.append(fallback)
+
+
+func _current_stage_background_texture() -> Texture2D:
+	if stage_background_textures.is_empty():
+		return null
+	var index := posmod(current_stage_map_index, stage_background_textures.size())
+	return stage_background_textures[index]
+
+
+func _set_stage_map(index: int) -> void:
+	if stage_background_textures.is_empty():
+		current_stage_map_index = 0
+		return
+	current_stage_map_index = posmod(index, stage_background_textures.size())
+	var texture := _current_stage_background_texture()
+	for tile in stage_background_tiles:
+		tile.texture = texture
+	_layout_stage_background_tiles()
 
 
 func _new_texture_rect(texture_source, stretch_mode := TextureRect.STRETCH_KEEP_ASPECT_CENTERED) -> TextureRect:
