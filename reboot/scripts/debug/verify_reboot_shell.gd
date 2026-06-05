@@ -70,16 +70,21 @@ func _run() -> void:
 	var tray_rect: Rect2 = main.operation_tray.get_global_rect()
 	var stage_rect: Rect2 = main.stage_panel.get_global_rect()
 	var status_rect: Rect2 = main.status_box.get_global_rect()
+	var log_rect: Rect2 = main.battle_log_panel.get_global_rect()
 	_expect(main.enemy_box.visible, "battle shows enemy")
+	_expect(main.battle_log_panel.visible, "battle shows action log")
 	_expect(hero_rect.get_center().x < enemy_rect.get_center().x, "battle hero is left of enemy")
 	_expect(hero_rect.end.y <= tray_rect.position.y, "battle hero stays above tray")
 	_expect(enemy_rect.end.y <= tray_rect.position.y, "battle enemy stays above tray")
 	_expect(status_rect.position.x >= stage_rect.position.x and status_rect.end.x <= stage_rect.end.x, "battle status stays inside stage width")
 	_expect(status_rect.position.x >= enemy_rect.end.x, "battle status stays right of enemy")
+	_expect(log_rect.position.x >= stage_rect.position.x and log_rect.end.x <= stage_rect.end.x, "battle log stays inside stage width")
+	_expect(log_rect.end.y <= tray_rect.position.y, "battle log stays above backpack tray")
 	_expect(main.battle_active, "battle starts active")
 	_expect(not main.battle_resolved, "battle starts unresolved")
 	_expect(main.hero_hp == main.hero_max_hp, "battle initializes hero HP")
 	_expect(main.enemy_hp == main.enemy_max_hp, "battle initializes enemy HP")
+	_expect(main.battle_log_label.text.find("战斗开始") >= 0, "battle log records encounter start")
 	var reward_id := str(main.battle_reward_ids[0])
 	_expect(main.stage_label.text.find("HP") >= 0, "battle stage label shows HP")
 	var battle_scroll_before: float = main.stage_scroll_offset
@@ -99,6 +104,7 @@ func _run() -> void:
 	_expect(main.slash_active and main.slash_effect_art.visible, "player turn shows slash effect")
 	_expect(main.hit_burst_active and main.hit_burst_art.visible, "player turn shows hit burst")
 	_expect(main.enemy_hp == enemy_hp_before - main.BATTLE_PLAYER_DAMAGE, "player attack reduces enemy HP")
+	_expect(main.battle_log_label.text.find("你出剑") >= 0, "battle log records player attack")
 	await process_frame
 	_expect(main.hero_box.get_global_rect().position.x > hero_rect.position.x, "hero lunges forward")
 	_expect(main.enemy_art.modulate != Color.WHITE, "enemy flashes on hit")
@@ -123,6 +129,7 @@ func _run() -> void:
 	_expect(main.enemy_attack_active, "enemy automatically counterattacks")
 	_expect(main.hero_hit_active, "enemy counterattack triggers hero hit feedback")
 	_expect(main.hero_hp == hero_hp_before - main.BATTLE_ENEMY_DAMAGE, "enemy attack reduces hero HP")
+	_expect(main.battle_log_label.text.find("敌人反击") >= 0, "battle log records enemy counterattack")
 	for _enemy_finish_frame in range(20):
 		main._update_actor_animations(0.05)
 		await process_frame
@@ -132,6 +139,8 @@ func _run() -> void:
 
 	await _resolve_current_battle(main)
 	_expect(main.current_mode == "travel", "resolved battle returns to travel")
+	_expect(not main.battle_log_panel.visible, "battle log hides after battle")
+	_expect(main.battle_log_entries.is_empty(), "battle log clears after battle")
 	_expect(main.opening_travel_active, "next travel segment starts")
 	_expect(main.current_event.is_empty(), "battle victory does not advance into story")
 	_expect(main.has_memory(reward_id), "battle reward is added to backpack")

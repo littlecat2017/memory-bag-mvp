@@ -52,6 +52,7 @@ const BATTLE_ENEMY_RESPONSE_DELAY := 0.28
 const BATTLE_VICTORY_CONTINUE_DELAY := 0.75
 const BATTLE_ENEMY_ATTACK_DURATION := 0.42
 const BATTLE_HERO_HIT_DURATION := 0.34
+const BATTLE_LOG_MAX_ENTRIES := 3
 const STAGE_SCROLL_SPEED := 48.0
 const GAMEPLAY_ENEMY_IDS := [
 	"enemy_hollow_wolves",
@@ -202,6 +203,7 @@ var battle_action_text := ""
 var battle_player_response_elapsed := 0.0
 var battle_enemy_response_elapsed := 0.0
 var battle_victory_elapsed := 0.0
+var battle_log_entries: Array[String] = []
 var hero_hp := 0
 var hero_max_hp := BATTLE_HERO_MAX_HP
 var enemy_hp := 0
@@ -236,6 +238,9 @@ var hit_burst_art: TextureRect
 var status_box: ColorRect
 var status_box_art: TextureRect
 var status_box_label: Label
+var battle_log_panel: PanelContainer
+var battle_log_art: TextureRect
+var battle_log_label: Label
 var operation_tray: Control
 var trash_zone: PanelContainer
 var trash_zone_icon: TextureRect
@@ -509,6 +514,7 @@ func _perform_player_battle_turn() -> void:
 		return
 	battle_turns += 1
 	battle_player_response_elapsed = 0.0
+	var damage := mini(BATTLE_PLAYER_DAMAGE, enemy_hp)
 	enemy_hp = maxi(0, enemy_hp - BATTLE_PLAYER_DAMAGE)
 	_start_battle_attack_animation()
 	if enemy_hp <= 0:
@@ -517,10 +523,12 @@ func _perform_player_battle_turn() -> void:
 		battle_active = false
 		battle_action_text = "敌人倒下了"
 		battle_victory_elapsed = 0.0
+		_append_battle_log("你出剑造成%d点伤害，敌人倒下" % damage)
 	else:
 		battle_phase = "enemy"
 		battle_action_text = "敌人准备反击"
 		battle_enemy_response_elapsed = 0.0
+		_append_battle_log("你出剑造成%d点伤害，敌人 HP %d/%d" % [damage, enemy_hp, enemy_max_hp])
 	_refresh_battle_ui()
 
 
@@ -528,12 +536,14 @@ func _perform_enemy_battle_turn() -> void:
 	if not battle_active or battle_resolved:
 		return
 	battle_turns += 1
+	var damage := mini(BATTLE_ENEMY_DAMAGE, hero_hp - 1)
 	hero_hp = maxi(1, hero_hp - BATTLE_ENEMY_DAMAGE)
 	_start_enemy_attack_animation()
 	battle_phase = "enemy_attack"
 	battle_action_text = "敌人正在攻击"
 	battle_player_response_elapsed = 0.0
 	battle_enemy_response_elapsed = 0.0
+	_append_battle_log("敌人反击造成%d点伤害，我方 HP %d/%d" % [damage, hero_hp, hero_max_hp])
 	_refresh_battle_ui()
 
 
@@ -576,6 +586,7 @@ func _finish_gameplay_battle() -> void:
 	var reward_ids := _available_reward_ids(battle_reward_ids)
 	if not reward_ids.is_empty():
 		if _needs_memory_replacement(reward_ids):
+			_clear_battle_log()
 			_begin_memory_replace(reward_ids, "GAMEPLAY_TRAVEL")
 			return
 		_add_memories(reward_ids)
@@ -798,6 +809,31 @@ func _build_ui() -> void:
 	status_box_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_box.add_child(status_box_label)
 	add_child(status_box)
+
+	battle_log_panel = _new_panel("battle_log")
+	battle_log_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	battle_log_art = _new_texture_rect(ART_DIALOGUE_PANEL, TextureRect.STRETCH_SCALE)
+	battle_log_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	battle_log_art.modulate = Color(1, 1, 1, 0.84)
+	battle_log_panel.add_child(battle_log_art)
+
+	var battle_log_margin := MarginContainer.new()
+	battle_log_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	battle_log_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	battle_log_margin.add_theme_constant_override("margin_left", 18)
+	battle_log_margin.add_theme_constant_override("margin_top", 2)
+	battle_log_margin.add_theme_constant_override("margin_right", 18)
+	battle_log_margin.add_theme_constant_override("margin_bottom", 2)
+	battle_log_panel.add_child(battle_log_margin)
+
+	battle_log_label = _new_label(15, Color(0.16, 0.10, 0.06))
+	battle_log_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	battle_log_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	battle_log_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	battle_log_label.clip_text = true
+	battle_log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	battle_log_margin.add_child(battle_log_label)
+	add_child(battle_log_panel)
 
 	operation_tray = Control.new()
 	add_child(operation_tray)
@@ -1182,6 +1218,8 @@ func _begin_battle(event: Dictionary) -> void:
 	battle_player_response_elapsed = 0.0
 	battle_enemy_response_elapsed = 0.0
 	battle_victory_elapsed = 0.0
+	_clear_battle_log()
+	_append_battle_log("遭遇%s，战斗开始" % _battle_enemy_label())
 	_refresh_battle_ui()
 
 
@@ -1200,6 +1238,7 @@ func _reset_battle_state() -> void:
 	hero_max_hp = BATTLE_HERO_MAX_HP
 	enemy_hp = 0
 	enemy_max_hp = BATTLE_ENEMY_MAX_HP
+	_clear_battle_log()
 	_stop_battle_attack_animation()
 
 
@@ -1232,6 +1271,30 @@ func _refresh_battle_ui() -> void:
 		else:
 			status_box_label.text = "%s\n自动结算" % _battle_enemy_label()
 		status_box_label.add_theme_font_size_override("font_size", 13)
+
+
+func _append_battle_log(entry: String) -> void:
+	var clean_entry := entry.strip_edges()
+	if clean_entry.is_empty():
+		return
+	battle_log_entries.append(clean_entry)
+	while battle_log_entries.size() > BATTLE_LOG_MAX_ENTRIES:
+		battle_log_entries.remove_at(0)
+	_refresh_battle_log_ui()
+
+
+func _clear_battle_log() -> void:
+	battle_log_entries.clear()
+	_refresh_battle_log_ui()
+
+
+func _refresh_battle_log_ui() -> void:
+	if battle_log_label == null:
+		return
+	if battle_log_entries.is_empty():
+		battle_log_label.text = "战斗记录：准备接敌"
+	else:
+		battle_log_label.text = "战斗记录：" + " ｜ ".join(battle_log_entries)
 
 
 func _next_playable_event_id(start_index: int) -> String:
@@ -1545,6 +1608,7 @@ func _apply_mode() -> void:
 	hero_box.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
 	enemy_box.visible = current_mode == "battle"
 	status_box.visible = current_mode == "battle"
+	battle_log_panel.visible = current_mode == "battle"
 	operation_tray.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
 	dialogue_panel.visible = false
 	choice_panel.visible = false
@@ -2132,8 +2196,10 @@ func _apply_battle_layout() -> void:
 	_set_rect(hero_box, hero_base_rect)
 	_set_rect(enemy_box, enemy_base_rect)
 	_set_rect(status_box, _screen_rect("battle", "status"))
+	_set_rect(battle_log_panel, _screen_rect("battle", "battle_log"))
 	_set_operation_layout("battle")
 	_refresh_battle_ui()
+	_refresh_battle_log_ui()
 
 
 func _set_operation_layout(screen_id: String) -> void:
