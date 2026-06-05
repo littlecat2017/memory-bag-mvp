@@ -22,6 +22,7 @@ const ART_SLASH_EFFECT_SHEET := ART_ACTOR_ANIM_ROOT + "slash_effect_sheet.png"
 const ART_HIT_BURST_SHEET := ART_ACTOR_ANIM_ROOT + "hit_burst_sheet.png"
 const ART_MEMORY_ICONS_ATLAS := ART_ROOT + "memory_icons_atlas.png"
 const ART_MEMORY_ITEM_ROOT := ART_ROOT + "memory_items/"
+const MEMORY_DATA_PATH := "res://data/memory_defs.jsonl"
 const ACTOR_ANIM_FRAME_SIZE := Vector2i(256, 256)
 const SLASH_ANIM_FRAME_SIZE := Vector2i(256, 160)
 const HIT_BURST_ANIM_FRAME_SIZE := Vector2i(192, 192)
@@ -48,6 +49,22 @@ const BATTLE_ENEMY_DAMAGE := 5
 const BATTLE_ENEMY_RESPONSE_DELAY := 0.28
 const BATTLE_ENEMY_ATTACK_DURATION := 0.42
 const BATTLE_HERO_HIT_DURATION := 0.34
+const GAMEPLAY_ENEMY_IDS := [
+	"enemy_hollow_wolves",
+	"enemy_blank_knight",
+	"enemy_memory_thief",
+	"boss_memory_shell",
+]
+const GAMEPLAY_REWARD_IDS := [
+	"mem_someone_waits",
+	"mem_masters_scolding",
+	"mem_abandoned_afternoon",
+	"mem_no_more_explaining",
+	"mem_empty_nameplate",
+	"mem_rusty_victory",
+	"mem_rain_lamp",
+	"mem_want_to_go_home",
+]
 const ART_ASSET_PATHS := [
 	ART_GAMEPLAY_SHELL,
 	ART_TITLE_BACKGROUND,
@@ -156,7 +173,7 @@ var events_by_id: Dictionary = {}
 var event_index_by_id: Dictionary = {}
 var current_event_index := 0
 var current_event: Dictionary = {}
-var current_mode := "dialogue"
+var current_mode := "title"
 var owned_memory_ids: Array[String] = []
 var memory_grid_positions: Dictionary = {}
 var discarded_memory_ids: Array[String] = []
@@ -169,6 +186,7 @@ var pending_gain_memory_ids: Array[String] = []
 var pending_resume_event_id := ""
 var opening_travel_active := false
 var opening_travel_meters := 0.0
+var gameplay_encounter_count := 0
 var battle_active := false
 var battle_resolved := false
 var battle_turns := 0
@@ -184,7 +202,7 @@ var enemy_max_hp := BATTLE_ENEMY_MAX_HP
 var pointer_hold_active := false
 var pointer_hold_elapsed := 0.0
 var pointer_hold_next_at := 0.0
-var last_story_mode := "dialogue"
+var last_story_mode := "travel"
 var drag_active := false
 var drag_moved := false
 var drag_source_kind := ""
@@ -298,7 +316,7 @@ var hit_burst_target := "enemy"
 func _ready() -> void:
 	size = DESIGN_SIZE
 	_load_layout()
-	_load_source_script()
+	_load_memory_defs()
 	_build_ui()
 	show_mode("title")
 	_refresh_inventory_ui()
@@ -353,7 +371,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				start_script()
 			elif current_mode == "battle":
 				advance_battle()
-			elif current_mode in ["dialogue", "travel", "ending"]:
+			elif current_mode == "travel":
 				advance_script()
 			get_viewport().set_input_as_handled()
 
@@ -371,47 +389,38 @@ func open_bag_detail() -> void:
 
 func return_to_story() -> void:
 	if last_story_mode.is_empty() or last_story_mode == "bag_detail":
-		last_story_mode = "dialogue"
+		last_story_mode = "travel"
 	show_mode(last_story_mode)
 
 
 func jump_to_event(event_id: String) -> void:
-	_go_to_event(event_id)
+	if event_id.begins_with("F") or event_id.begins_with("BATTLE"):
+		_begin_gameplay_battle()
+	else:
+		start_script()
 
 
 func start_script() -> void:
 	_reset_script_state()
 	_grant_standard_opening_memories()
-	opening_travel_active = true
-	opening_travel_meters = 0.0
-	current_mode = "travel"
-	last_story_mode = "travel"
-	current_event = {}
-	current_event_index = int(event_index_by_id.get("F0003", 0))
+	gameplay_encounter_count = 0
+	_start_next_travel_segment()
 	_refresh_inventory_ui()
-	_apply_mode()
 
 
 func start_source_script() -> void:
-	_reset_script_state()
-	_go_to_event(_first_event_id("T0001"))
+	start_script()
 
 
 func advance_script() -> void:
 	if opening_travel_active:
 		return
-	if current_event.is_empty():
+	if current_mode == "title":
 		start_script()
-		return
-	if _event_type(current_event) == "choice":
-		if not available_choice_options.is_empty():
-			choose_option(0)
-		return
-	var next_id := _next_playable_event_id(current_event_index + 1)
-	if next_id.is_empty():
-		show_mode("ending")
-		return
-	_go_to_event(next_id)
+	elif current_mode == "battle":
+		advance_battle()
+	elif current_mode == "travel":
+		_start_next_travel_segment()
 
 
 func advance_battle() -> void:
@@ -420,7 +429,7 @@ func advance_battle() -> void:
 	if _battle_animation_active():
 		return
 	if battle_resolved:
-		advance_script()
+		_finish_gameplay_battle()
 		return
 	if battle_phase == "enemy":
 		_perform_enemy_battle_turn()
@@ -437,7 +446,7 @@ func _update_opening_travel(delta: float) -> void:
 	_refresh_opening_travel_ui()
 	if opening_travel_meters >= OPENING_TRAVEL_TARGET_METERS:
 		opening_travel_active = false
-		jump_to_event("F0003")
+		_begin_gameplay_battle()
 
 
 func _refresh_opening_travel_ui() -> void:
@@ -497,6 +506,68 @@ func _perform_enemy_battle_turn() -> void:
 	battle_action_text = "敌人正在攻击"
 	battle_enemy_response_elapsed = 0.0
 	_refresh_battle_ui()
+
+
+func _start_next_travel_segment() -> void:
+	_reset_battle_state()
+	opening_travel_active = true
+	opening_travel_meters = 0.0
+	current_mode = "travel"
+	last_story_mode = "travel"
+	current_event = {}
+	current_event_index = 0
+	_refresh_inventory_ui()
+	_apply_mode()
+
+
+func _begin_gameplay_battle(enemy_id := "") -> void:
+	var encounter_index := gameplay_encounter_count
+	var chosen_enemy_id := enemy_id
+	if chosen_enemy_id.is_empty():
+		chosen_enemy_id = str(GAMEPLAY_ENEMY_IDS[encounter_index % GAMEPLAY_ENEMY_IDS.size()])
+	var reward_id := _next_gameplay_reward_id()
+	var event := {
+		"id": "GAMEPLAY_BATTLE_%03d" % (encounter_index + 1),
+		"type": "battle",
+		"enemy_id": chosen_enemy_id,
+		"reward": [reward_id] if not reward_id.is_empty() else [],
+	}
+	current_event = event
+	current_event_index = 0
+	current_mode = "battle"
+	last_story_mode = "battle"
+	opening_travel_active = false
+	opening_travel_meters = OPENING_TRAVEL_TARGET_METERS
+	gameplay_encounter_count += 1
+	_begin_battle(event)
+	_apply_mode()
+
+
+func _finish_gameplay_battle() -> void:
+	var reward_ids := _available_reward_ids(battle_reward_ids)
+	if not reward_ids.is_empty():
+		if _needs_memory_replacement(reward_ids):
+			_begin_memory_replace(reward_ids, "GAMEPLAY_TRAVEL")
+			return
+		_add_memories(reward_ids)
+	_reset_battle_state()
+	_start_next_travel_segment()
+
+
+func _available_reward_ids(reward_ids: Array[String]) -> Array[String]:
+	var result: Array[String] = []
+	for reward_id in reward_ids:
+		if not reward_id.is_empty() and memories.has(reward_id) and not owned_memory_ids.has(reward_id):
+			result.append(reward_id)
+	return result
+
+
+func _next_gameplay_reward_id() -> String:
+	for reward_id in GAMEPLAY_REWARD_IDS:
+		var typed_id := str(reward_id)
+		if memories.has(typed_id) and not owned_memory_ids.has(typed_id):
+			return typed_id
+	return ""
 
 
 func choose_option(option_index: int) -> void:
@@ -565,10 +636,10 @@ func _load_layout() -> void:
 		validation_errors.append("layout_contract.json failed to load")
 
 
-func _load_source_script() -> void:
-	var file := FileAccess.open("res://data/source_script.jsonl", FileAccess.READ)
+func _load_memory_defs() -> void:
+	var file := FileAccess.open(MEMORY_DATA_PATH, FileAccess.READ)
 	if file == null:
-		validation_errors.append("source_script.jsonl failed to open")
+		validation_errors.append("%s failed to open" % MEMORY_DATA_PATH)
 		return
 	while not file.eof_reached():
 		var line := file.get_line().strip_edges()
@@ -583,22 +654,13 @@ func _load_source_script() -> void:
 			var memory_id := str(item.get("id", ""))
 			if not memory_id.is_empty():
 				memories[memory_id] = item
-		elif item.has("id"):
-			var event_id := str(item.get("id", ""))
-			if ["T", "P", "F", "M", "C", "K", "E"].has(event_id.left(1)):
-				events.append(item)
-				events_by_id[event_id] = item
-				event_index_by_id[event_id] = events.size() - 1
-	_validate_loaded_source()
+	_validate_loaded_data()
 
 
-func _validate_loaded_source() -> void:
+func _validate_loaded_data() -> void:
 	for memory_id in REQUIRED_MEMORY_IDS:
 		if not memories.has(memory_id):
-			validation_errors.append("missing MVP memory from source script: %s" % memory_id)
-	for event_id in ["T0001", "T0002", "T0003", "P0034", "F0003", "F0010", "F0036"]:
-		if not events_by_id.has(event_id):
-			validation_errors.append("missing required MVP event from source script: %s" % event_id)
+			validation_errors.append("missing MVP memory definition: %s" % memory_id)
 	_validate_art_assets()
 
 
@@ -784,7 +846,7 @@ func _build_ui() -> void:
 	choice_margin.add_child(choice_list)
 
 	source_label = _new_label(16, Color(0.10, 0.10, 0.10, 0.54))
-	source_label.text = "REBOOT MVP | 原始 JSONL 剧本 | 概念图风格资源"
+	source_label.text = "REBOOT MVP | 纯玩法循环 | 概念图风格资源"
 	source_label.position = Vector2(20, 18)
 	source_label.size = Vector2(760, 28)
 	add_child(source_label)
@@ -811,7 +873,7 @@ func _build_title_layer() -> void:
 	title_layer.add_child(title_text_label)
 
 	title_subtitle_label = _new_label(22, Color(0.24, 0.17, 0.10))
-	title_subtitle_label.text = "把关系与承诺装进四格背包"
+	title_subtitle_label.text = "移动、战斗、拾取、整理背包"
 	title_subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_subtitle_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_layer.add_child(title_subtitle_label)
@@ -868,11 +930,11 @@ func _build_bag_detail_layer() -> void:
 	bag_detail_layer.add_child(bag_detail_close_button)
 
 	bag_memory_list = _new_panel("note")
-	bag_memory_list.add_child(_center_label("记忆列表\n来自原始脚本的记忆定义"))
+	bag_memory_list.add_child(_center_label("记忆列表\n战斗奖励与背包整理"))
 	bag_detail_layer.add_child(bag_memory_list)
 
 	bag_detail_panel = _new_panel("dialogue")
-	bag_detail_panel.add_child(_center_label("记忆详情\n关系对象 / 承诺 / 丢弃后世界回应"))
+	bag_detail_panel.add_child(_center_label("记忆详情\n拖动物品调整占格位置"))
 	bag_detail_layer.add_child(bag_detail_panel)
 
 	bag_detail_inventory = GridContainer.new()
@@ -928,17 +990,17 @@ func _build_ending_layer() -> void:
 
 	var title := _new_label(38, Color(0.16, 0.10, 0.05))
 	title.name = "EndingTitle"
-	title.text = "MVP 回顾"
+	title.text = "玩法回顾"
 	ending_layer.add_child(title)
 
 	ending_summary_panel = _new_panel("dialogue")
-	ending_summary_label = _center_label("结局摘要\n名字是否保留\n出发理由是否保留\n世界如何回应")
+	ending_summary_label = _center_label("运行摘要\n战斗次数 / 背包状态 / 丢弃记录")
 	ending_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ending_summary_panel.add_child(ending_summary_label)
 	ending_layer.add_child(ending_summary_panel)
 
 	ending_memory_panel = _new_panel("note")
-	ending_memory_label = _center_label("最终背包\n保留记忆 / 丢弃记忆 / 核心记忆状态")
+	ending_memory_label = _center_label("背包记录\n当前记忆 / 丢弃记忆 / 标签统计")
 	ending_memory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ending_memory_panel.add_child(ending_memory_label)
 	ending_layer.add_child(ending_memory_panel)
@@ -1056,7 +1118,8 @@ func _reset_script_state() -> void:
 	pending_resume_event_id = ""
 	opening_travel_active = false
 	opening_travel_meters = 0.0
-	last_story_mode = "dialogue"
+	gameplay_encounter_count = 0
+	last_story_mode = "travel"
 	_reset_battle_state()
 	_refresh_inventory_ui()
 
@@ -1288,12 +1351,15 @@ func replace_memory_at(slot_index: int, target_grid_position := Vector2i(-1, -1)
 		return
 	var resume_event_id := pending_resume_event_id
 	pending_resume_event_id = ""
-	if resume_event_id == "EVAL_ENDING":
+	if resume_event_id == "GAMEPLAY_TRAVEL":
+		_reset_battle_state()
+		_start_next_travel_segment()
+	elif resume_event_id == "EVAL_ENDING":
 		_select_ending()
 	elif not resume_event_id.is_empty():
 		_go_to_event(resume_event_id)
 	else:
-		advance_script()
+		_start_next_travel_segment()
 
 
 func move_memory_to(memory_id: String, target_grid_position: Vector2i) -> bool:
@@ -1325,12 +1391,15 @@ func accept_pending_memory_at(target_grid_position: Vector2i) -> bool:
 func _resume_after_memory_replace() -> void:
 	var resume_event_id := pending_resume_event_id
 	pending_resume_event_id = ""
-	if resume_event_id == "EVAL_ENDING":
+	if resume_event_id == "GAMEPLAY_TRAVEL":
+		_reset_battle_state()
+		_start_next_travel_segment()
+	elif resume_event_id == "EVAL_ENDING":
 		_select_ending()
 	elif not resume_event_id.is_empty():
 		_go_to_event(resume_event_id)
 	else:
-		advance_script()
+		_start_next_travel_segment()
 
 
 func _conditions_met(condition_text: String) -> bool:
@@ -1433,21 +1502,17 @@ func _apply_mode() -> void:
 	enemy_box.visible = current_mode == "battle"
 	status_box.visible = current_mode == "battle"
 	operation_tray.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
-	dialogue_panel.visible = current_mode == "dialogue" or current_mode == "memory_replace"
-	choice_panel.visible = current_mode == "choice"
+	dialogue_panel.visible = false
+	choice_panel.visible = false
 	title_layer.visible = current_mode == "title"
 	bag_detail_layer.visible = current_mode == "bag_detail"
-	ending_layer.visible = current_mode == "ending"
+	ending_layer.visible = false
 	concept_reference.visible = false
 	source_label.visible = false
 	if current_mode == "title":
 		_apply_title_layout()
-	elif current_mode == "choice":
-		_apply_choice_layout()
 	elif current_mode == "bag_detail":
 		_apply_bag_detail_layout()
-	elif current_mode == "ending":
-		_apply_ending_layout()
 	elif current_mode == "battle":
 		_apply_battle_layout()
 	elif current_mode == "memory_replace":
@@ -1455,14 +1520,14 @@ func _apply_mode() -> void:
 	elif current_mode == "travel":
 		_apply_travel_layout()
 	else:
-		_apply_dialogue_layout()
+		_start_next_travel_segment()
 
 
 func _update_screen_background() -> void:
 	if screen_background_art == null:
 		return
 	match current_mode:
-		"title", "ending":
+		"title":
 			screen_background_art.visible = false
 		_:
 			screen_background_art.visible = true
@@ -1481,7 +1546,6 @@ func _apply_choice_layout() -> void:
 func _apply_memory_replace_layout() -> void:
 	_apply_travel_layout()
 	stage_label.text = "背包替换：新记忆必须落入已解锁格子"
-	_set_rect(dialogue_panel, Rect2(176, 110, 900, 64))
 
 
 func _handle_progress_mouse_event(event: InputEventMouseButton) -> void:
@@ -1579,7 +1643,7 @@ func _stop_pointer_hold() -> void:
 func _can_pointer_advance() -> bool:
 	if opening_travel_active:
 		return false
-	return current_mode in ["title", "dialogue", "travel", "battle", "ending"]
+	return current_mode in ["title", "battle"]
 
 
 func _advance_by_pointer() -> void:
@@ -1589,8 +1653,6 @@ func _advance_by_pointer() -> void:
 		start_script()
 	elif current_mode == "battle":
 		advance_battle()
-	elif current_mode in ["dialogue", "travel", "ending"]:
-		advance_script()
 
 
 func _start_drag(source_kind: String, source_slot: int, memory_id: String, pointer_position: Vector2) -> void:
@@ -1870,9 +1932,9 @@ func _refresh_ending_ui() -> void:
 	var title := ending_layer.get_node("EndingTitle") as Label
 	if title != null:
 		if selected_ending_id.is_empty():
-			title.text = "MVP 回顾灰盒"
+			title.text = "玩法回顾"
 		else:
-			title.text = "结局：%s" % _format_ending_name(selected_ending_id)
+			title.text = "路线记录：%s" % _format_ending_name(selected_ending_id)
 	if ending_summary_label != null:
 		ending_summary_label.add_theme_font_size_override("font_size", 18)
 		ending_summary_label.text = _ending_summary_text()
@@ -1889,8 +1951,8 @@ func _ending_summary_text() -> String:
 		var ending_event := _ending_event_for_selected()
 		source_text = str(ending_event.get("text", ""))
 	if source_text.is_empty():
-		source_text = "尚未进入原脚本结局。"
-	return "%s\n\n路线：%s\n原脚本结局：%s\n出发理由：%s\n我的名字：%s" % [
+		source_text = "当前版本为纯玩法循环。"
+	return "%s\n\n路线：%s\n路线记录：%s\n出发道具：%s\n名字牌：%s" % [
 		source_text,
 		route_id if not route_id.is_empty() else "未选择",
 		selected_ending_id if not selected_ending_id.is_empty() else "未判定",
@@ -1900,10 +1962,10 @@ func _ending_summary_text() -> String:
 
 
 func _ending_memory_text() -> String:
-	return "最终背包\n%s\n\n已丢弃\n%s\n\n温柔记忆分数：%d" % [
+	return "当前背包\n%s\n\n已丢弃\n%s\n\n恢复类记忆分数：%d" % [
 		_memory_names_for_ids(owned_memory_ids),
 		_memory_names_for_ids(discarded_memory_ids),
-		_memory_tag_score("温柔"),
+		_memory_tag_score("恢复"),
 	]
 
 

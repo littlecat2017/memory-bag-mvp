@@ -1,30 +1,9 @@
 extends SceneTree
 
 const MainScene := preload("res://scenes/main.tscn")
-const PROTECTED_MEMORIES := [
-	"mem_mothers_soup",
-	"mem_reason_to_depart",
-	"mem_my_name",
-]
-const CHOICE_TARGETS := {
-	"P0034": "P0035A",
-	"F0010": "F0011A",
-	"F0021": "F0022B",
-	"F0034": "F0035A",
-	"M0010": "M0011B",
-	"M0017": "M0018B",
-	"M0020": "M0021B",
-	"C0011": "C0012D",
-	"C0022": "C0023B",
-	"C0029": "C0030D",
-	"K0020": "K0021A",
-	"K0026": "EVAL_ENDING",
-}
 
 var failed := false
-var visited_event_ids: Array[String] = []
 var battle_count := 0
-var replacement_count := 0
 
 
 func _init() -> void:
@@ -37,93 +16,72 @@ func _run() -> void:
 	get_root().add_child(main)
 	await process_frame
 
+	_expect(main.validation_errors.is_empty(), "no validation errors")
 	main.start_script()
-	for _step in range(1400):
-		var event_id := str(main.current_event.get("id", ""))
-		if not event_id.is_empty() and (visited_event_ids.is_empty() or visited_event_ids[visited_event_ids.size() - 1] != event_id):
-			visited_event_ids.append(event_id)
-		if main.current_mode == "ending" and event_id.begins_with("E"):
-			break
-		match main.current_mode:
-			"battle":
-				if main._battle_animation_active():
-					main._update_actor_animations(0.05)
-				elif main.battle_phase == "enemy_attack":
-					main._update_battle_turn_flow(0.05)
-				elif main.battle_phase == "enemy":
-					main._update_battle_turn_flow(0.30)
-				elif not main.battle_resolved:
-					battle_count += 1
-					main.advance_battle()
-				else:
-					main.advance_battle()
-			"choice":
-				_choose_mvp_option(main)
-			"memory_replace":
-				replacement_count += 1
-				main.replace_memory_at(_replacement_slot(main))
-			"dialogue":
-				main.advance_script()
-			"travel":
-				if main.opening_travel_active:
-					main._update_opening_travel(1.0)
-				else:
-					main.advance_script()
-			"ending":
-				break
-			_:
-				main.advance_script()
-		await process_frame
+	await process_frame
 
-	_expect(main.current_mode == "ending", "playthrough reaches ending mode")
-	_expect(str(main.current_event.get("id", "")) == "E0001", "playthrough reaches hero ending event E0001")
-	_expect(main.selected_ending_id == "hero", "playthrough selects hero ending")
-	_expect(main.route_id == "kill_demon", "playthrough records kill_demon route")
-	_expect(main.has_memory("mem_reason_to_depart"), "playthrough preserves reason to depart")
-	_expect(main.has_memory("mem_my_name"), "playthrough preserves hero name")
-	_expect(battle_count >= 8, "playthrough resolves major source-script battles")
-	_expect(main._memory_grid_size("mem_wooden_sword") == Vector2i(4, 1), "playthrough uses spatial inventory item sizes")
-	_expect(main.memory_grid_positions.size() == main.owned_memory_count(), "playthrough keeps grid positions for owned memories")
-	_expect(visited_event_ids.has("K0026"), "playthrough reaches final choice")
-	_expect(visited_event_ids.has("M0032"), "playthrough reaches mountain reward memory")
-	_expect(visited_event_ids.has("C0034"), "playthrough reaches city reward memory")
-	_expect(main.ending_summary_label.text.find("英雄结局") >= 0, "ending summary shows source-script hero ending text")
-	_expect(main.ending_memory_label.text.find("最终背包") >= 0, "ending memory panel shows final backpack")
+	for encounter_index in range(3):
+		_expect(main.current_mode == "travel", "encounter %d starts from travel" % [encounter_index + 1])
+		_expect(main.opening_travel_active, "encounter %d travel is active" % [encounter_index + 1])
+		await _drive_to_battle(main)
+		_expect(main.current_mode == "battle", "encounter %d reaches battle" % [encounter_index + 1])
+		_expect(not main.dialogue_panel.visible, "encounter %d never shows dialogue" % [encounter_index + 1])
+		_expect(not main.choice_panel.visible, "encounter %d never shows choices" % [encounter_index + 1])
+		_expect(not main.ending_layer.visible, "encounter %d never shows ending" % [encounter_index + 1])
+		var reward_id := str(main.battle_reward_ids[0]) if not main.battle_reward_ids.is_empty() else ""
+		await _resolve_battle(main)
+		_expect(main.battle_resolved, "encounter %d battle resolves" % [encounter_index + 1])
+		main.advance_by_pointer()
+		await process_frame
+		_expect(main.current_mode == "travel", "encounter %d victory returns to travel" % [encounter_index + 1])
+		_expect(main.opening_travel_active, "encounter %d starts next travel segment" % [encounter_index + 1])
+		if not reward_id.is_empty():
+			_expect(main.has_memory(reward_id), "encounter %d reward enters backpack" % [encounter_index + 1])
+		_expect(main.memory_grid_positions.size() == main.owned_memory_count(), "encounter %d keeps grid positions for owned memories" % [encounter_index + 1])
+		battle_count += 1
+
+	_expect(battle_count == 3, "playthrough resolves three gameplay battles")
+	_expect(main.owned_memory_count() >= 7, "playthrough gains battle rewards")
+	_expect(main.has_memory("mem_someone_waits"), "first reward memory is present")
+	_expect(main.has_memory("mem_masters_scolding"), "second reward memory is present")
+	_expect(main.has_memory("mem_abandoned_afternoon"), "third reward memory is present")
+	_expect(main.current_event.is_empty(), "playthrough ends in travel without story event")
+	_expect(main.selected_ending_id.is_empty(), "playthrough does not select story ending")
+	_expect(main.route_id.is_empty(), "playthrough does not set story route")
 
 	main.queue_free()
 	if failed:
 		quit(1)
 		return
 	print("verify_mvp_playthrough: ok")
-	print("verify_mvp_playthrough: events=%d battles=%d replacements=%d ending=%s" % [
-		visited_event_ids.size(),
+	print("verify_mvp_playthrough: battles=%d memories=%d" % [
 		battle_count,
-		replacement_count,
-		main.selected_ending_id,
+		main.owned_memory_count(),
 	])
 	quit(0)
 
 
-func _choose_mvp_option(main: Control) -> void:
-	var event_id := str(main.current_event.get("id", ""))
-	var target := str(CHOICE_TARGETS.get(event_id, ""))
-	if target.is_empty():
-		main.choose_option(0)
-		return
-	for index in range(main.available_choice_options.size()):
-		var option: Dictionary = main.available_choice_options[index]
-		if str(option.get("target", "")) == target:
-			main.choose_option(index)
+func _drive_to_battle(main: Control) -> void:
+	for _step in range(24):
+		if main.current_mode == "battle":
 			return
-	main.choose_option(0)
+		main._update_opening_travel(0.5)
+		await process_frame
 
 
-func _replacement_slot(main: Control) -> int:
-	for index in range(main.owned_memory_ids.size()):
-		var memory_id := str(main.owned_memory_ids[index])
-		if not PROTECTED_MEMORIES.has(memory_id):
-			return index
-	return 0
+func _resolve_battle(main: Control) -> void:
+	for _step in range(160):
+		if main.battle_resolved and not main._battle_animation_active():
+			return
+		if main._battle_animation_active():
+			main._update_actor_animations(0.05)
+		elif main.battle_phase == "enemy_attack":
+			main._update_battle_turn_flow(0.05)
+		elif main.battle_phase == "enemy":
+			main._update_battle_turn_flow(0.30)
+		else:
+			main.advance_battle()
+		await process_frame
 
 
 func _expect(condition: bool, message: String) -> void:

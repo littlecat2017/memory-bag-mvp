@@ -1,0 +1,16 @@
+{"type":"memory_def","id":"mem_mothers_soup","name":"热汤","tags":["恢复","故乡"],"effect_text":"营火恢复量提升。"}
+{"type":"memory_def","id":"mem_wooden_sword","name":"木剑","tags":["战斗","攻击"],"effect_text":"普通攻击提升。"}
+{"type":"memory_def","id":"mem_reason_to_depart","name":"出发日记","tags":["核心","目标"],"effect_text":"保留核心目标。"}
+{"type":"memory_def","id":"mem_my_name","name":"名字牌","tags":["核心","稳定"],"effect_text":"保留自我稳定性。"}
+{"type":"memory_def","id":"mem_someone_waits","name":"等待","tags":["恢复","支援"],"effect_text":"每前进一段距离恢复少量生命。"}
+{"type":"memory_def","id":"mem_abandoned_afternoon","name":"孤独下午","tags":["伤口","攻击"],"effect_text":"独自战斗时攻击提升。"}
+{"type":"memory_def","id":"mem_no_more_explaining","name":"沉默","tags":["伤口","攻击"],"effect_text":"攻击提升。"}
+{"type":"memory_def","id":"mem_empty_nameplate","name":"空名牌","tags":["名字","攻击"],"effect_text":"对无名敌人伤害提升。"}
+{"type":"memory_def","id":"mem_masters_scolding","name":"训斥","tags":["战斗","防御"],"effect_text":"防御后下一击伤害提升。"}
+{"type":"memory_def","id":"mem_battle_instinct","name":"战斗本能","tags":["战斗","合成"],"effect_text":"攻击和暴击提升。"}
+{"type":"memory_def","id":"mem_prove_with_wound","name":"伤口证明","tags":["伤口","合成"],"effect_text":"低血量时伤害提升。"}
+{"type":"memory_def","id":"mem_rusty_victory","name":"生锈胜利","tags":["战斗","伤口"],"effect_text":"Boss 战伤害提升。"}
+{"type":"memory_def","id":"mem_rain_lamp","name":"雨夜灯","tags":["恢复","故乡"],"effect_text":"低血时获得一次保护。"}
+{"type":"memory_def","id":"mem_want_to_go_home","name":"想回家","tags":["恢复","合成"],"effect_text":"恢复提升。"}
+{"type":"memory_def","id":"mem_crown_without_name","name":"无名王冠","tags":["名字","防御"],"effect_text":"免疫一次遗忘类负面效果。"}
+{"type":"memory_def","id":"mem_not_let_go","name":"不放手","tags":["执念","防御"],"effect_text":"抵消一次强制丢弃。"}
