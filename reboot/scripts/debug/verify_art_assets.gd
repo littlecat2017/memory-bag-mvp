@@ -28,13 +28,19 @@ func _run() -> void:
 	_expect(main.enemy_hit_sheet_texture != null, "enemy hit animation sheet texture")
 	_expect(main.slash_effect_sheet_texture != null, "slash effect animation sheet texture")
 	_expect(main.hit_burst_sheet_texture != null, "hit burst animation sheet texture")
-	_expect(main.hero_walk_frames.size() == 8, "hero walk animation frames are cached")
+	_expect(main.hero_walk_frames.size() == 9, "hero walk animation frames are cached")
+	var walk_frame_1 := main.hero_walk_frames[0] as AtlasTexture
+	var walk_frame_3 := main.hero_walk_frames[2] as AtlasTexture
+	var walk_frame_4 := main.hero_walk_frames[3] as AtlasTexture
+	_expect(walk_frame_1.region.position == Vector2(0, 0), "walk frame 1 is top-left")
+	_expect(walk_frame_3.region.position == Vector2(512, 0), "walk frame 3 is top-right")
+	_expect(walk_frame_4.region.position == Vector2(0, 256), "walk frame 4 starts second row")
 	_expect(main.hero_attack_frames.size() == 8, "hero attack animation frames are cached")
 	_expect(main.enemy_idle_frames.size() == 8, "enemy idle animation frames are cached")
 	_expect(main.enemy_hit_frames.size() == 6, "enemy hit animation frames are cached")
 	_expect(main.slash_effect_frames.size() == 6, "slash effect animation frames are cached")
 	_expect(main.hit_burst_frames.size() == 8, "hit burst animation frames are cached")
-	_expect(main.hero_walk_sheet_texture.get_width() == 2048 and main.hero_walk_sheet_texture.get_height() == 256, "hero walk sheet has 8 256px frames")
+	_expect(main.hero_walk_sheet_texture.get_width() == 768 and main.hero_walk_sheet_texture.get_height() == 768, "hero walk sheet has ordered 3x3 256px frames")
 	_expect(main.hero_attack_sheet_texture.get_width() == 2048 and main.hero_attack_sheet_texture.get_height() == 256, "hero attack sheet has 8 256px frames")
 	_expect(main.enemy_hit_sheet_texture.get_width() == 1536 and main.enemy_hit_sheet_texture.get_height() == 256, "enemy hit sheet has 6 256px frames")
 	_expect(main.slash_effect_sheet_texture.get_width() == 1536 and main.slash_effect_sheet_texture.get_height() == 160, "slash sheet has 6 256x160 frames")

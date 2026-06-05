@@ -31,6 +31,8 @@ const ENEMY_IDLE_FRAME_TIME := 0.13
 const ENEMY_HIT_FRAME_TIME := 0.07
 const SLASH_FRAME_TIME := 0.055
 const HIT_BURST_FRAME_TIME := 0.045
+const HERO_WALK_FRAMES := 9
+const HERO_WALK_SHEET_COLUMNS := 3
 const HERO_ATTACK_FRAMES := 8
 const ENEMY_HIT_FRAMES := 6
 const ACTOR_LOOP_FRAMES := 8
@@ -2063,7 +2065,7 @@ func _update_actor_animations(delta: float) -> void:
 	elif hero_hit_active:
 		_update_hero_hit_animation(delta)
 	elif current_mode == "travel" or current_mode == "memory_replace":
-		hero_art.texture = _frame_texture(hero_walk_frames, _loop_frame(hero_animation_elapsed, WALK_FRAME_TIME, ACTOR_LOOP_FRAMES), hero_static_texture)
+		hero_art.texture = _frame_texture(hero_walk_frames, _loop_frame(hero_animation_elapsed, WALK_FRAME_TIME, HERO_WALK_FRAMES), hero_static_texture)
 		hero_box.position = hero_base_rect.position + Vector2(0, sin(hero_animation_elapsed * TAU * 2.0) * 3.0)
 	elif current_mode == "battle":
 		hero_art.texture = hero_static_texture
@@ -2271,15 +2273,21 @@ func _frame_texture(frames: Array[Texture2D], frame_index: int, fallback: Textur
 	return frames[safe_index]
 
 
-func _build_sheet_frames(sheet: Texture2D, frame_size: Vector2i, frame_count: int) -> Array[Texture2D]:
+func _build_sheet_frames(sheet: Texture2D, frame_size: Vector2i, frame_count: int, sheet_columns := 0) -> Array[Texture2D]:
 	var frames: Array[Texture2D] = []
 	if sheet == null or frame_size.x <= 0 or frame_size.y <= 0 or frame_count <= 0:
 		return frames
-	var available_frames := mini(frame_count, int(floor(float(sheet.get_width()) / float(frame_size.x))))
+	var columns := sheet_columns
+	if columns <= 0:
+		columns = int(floor(float(sheet.get_width()) / float(frame_size.x)))
+	var rows := int(floor(float(sheet.get_height()) / float(frame_size.y)))
+	var available_frames := mini(frame_count, columns * rows)
 	for frame_index in range(available_frames):
+		var column := frame_index % columns
+		var row := int(floor(float(frame_index) / float(columns)))
 		var atlas := AtlasTexture.new()
 		atlas.atlas = sheet
-		atlas.region = Rect2(Vector2(float(frame_size.x * frame_index), 0.0), Vector2(float(frame_size.x), float(frame_size.y)))
+		atlas.region = Rect2(Vector2(float(frame_size.x * column), float(frame_size.y * row)), Vector2(float(frame_size.x), float(frame_size.y)))
 		frames.append(atlas)
 	return frames
 
@@ -2372,7 +2380,7 @@ func _load_actor_animation_textures() -> void:
 	enemy_hit_sheet_texture = _load_texture(ART_ENEMY_HIT_SHEET)
 	slash_effect_sheet_texture = _load_texture(ART_SLASH_EFFECT_SHEET)
 	hit_burst_sheet_texture = _load_texture(ART_HIT_BURST_SHEET)
-	hero_walk_frames = _build_sheet_frames(hero_walk_sheet_texture, ACTOR_ANIM_FRAME_SIZE, ACTOR_LOOP_FRAMES)
+	hero_walk_frames = _build_sheet_frames(hero_walk_sheet_texture, ACTOR_ANIM_FRAME_SIZE, HERO_WALK_FRAMES, HERO_WALK_SHEET_COLUMNS)
 	hero_attack_frames = _build_sheet_frames(hero_attack_sheet_texture, ACTOR_ANIM_FRAME_SIZE, HERO_ATTACK_FRAMES)
 	enemy_idle_frames = _build_sheet_frames(enemy_idle_sheet_texture, ACTOR_ANIM_FRAME_SIZE, ACTOR_LOOP_FRAMES)
 	enemy_hit_frames = _build_sheet_frames(enemy_hit_sheet_texture, ACTOR_ANIM_FRAME_SIZE, ENEMY_HIT_FRAMES)

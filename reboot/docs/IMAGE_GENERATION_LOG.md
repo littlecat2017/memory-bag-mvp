@@ -19,8 +19,9 @@ Total generated today for this MVP art fill: 8 / 50.
 
 ## 2026-06-05
 
-Total generated today for this MVP art fill: 1 / 50.
+Total generated today for this MVP art fill: 2 / 50.
 
 | # | Tool | Prompt Summary | Source Output | Workspace Asset | Status |
 |---|---|---|---|---|---|
 | 1 | Built-in image generation | 4x4 spatial memory backpack item sticker sheet: soup, sword, diary, tags, map, charm, ribbon, medal, lantern, wreath, glove; no text or grid lines. | `C:\Users\64844\.codex\generated_images\019e6a1f-c0b5-7ee2-9090-578ac0c0e509\ig_0f2aa71b89fd36df016a2249500ccc819885993bfac3f045e5.png` | `reboot/assets/generated/mvp_art/memory_item_sheet.png`, `reboot/assets/generated/mvp_art/memory_items/*.png` | Copied source sheet into workspace, cropped into 16 spatial item assets, and used by runtime before atlas fallback. |
+| 2 | Built-in image generation | 3x3 ordered chibi hero walking spritesheet on flat green chroma key; frames ordered left-to-right, top-to-bottom. | `C:\Users\64844\.codex\generated_images\019e6a1f-c0b5-7ee2-9090-578ac0c0e509\ig_061327b67d142201016a22f184045881989d6d1497e6bb097a.png` | `reboot/assets/generated/mvp_art/actor_anim/hero_walk_sheet_chroma.png`, `reboot/assets/generated/mvp_art/actor_anim/hero_walk_sheet.png` | Chroma key removed locally, normalized to 768x768 3x3 grid, and runtime updated to read row-major frame order. |
