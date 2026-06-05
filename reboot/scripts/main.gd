@@ -19,19 +19,23 @@ const ART_HERO_ATTACK_SHEET := ART_ACTOR_ANIM_ROOT + "hero_attack_sheet.png"
 const ART_ENEMY_IDLE_SHEET := ART_ACTOR_ANIM_ROOT + "enemy_idle_sheet.png"
 const ART_ENEMY_HIT_SHEET := ART_ACTOR_ANIM_ROOT + "enemy_hit_sheet.png"
 const ART_SLASH_EFFECT_SHEET := ART_ACTOR_ANIM_ROOT + "slash_effect_sheet.png"
+const ART_HIT_BURST_SHEET := ART_ACTOR_ANIM_ROOT + "hit_burst_sheet.png"
 const ART_MEMORY_ICONS_ATLAS := ART_ROOT + "memory_icons_atlas.png"
 const ART_MEMORY_ITEM_ROOT := ART_ROOT + "memory_items/"
 const ACTOR_ANIM_FRAME_SIZE := Vector2i(256, 256)
 const SLASH_ANIM_FRAME_SIZE := Vector2i(256, 160)
+const HIT_BURST_ANIM_FRAME_SIZE := Vector2i(192, 192)
 const WALK_FRAME_TIME := 0.11
 const ATTACK_FRAME_TIME := 0.075
 const ENEMY_IDLE_FRAME_TIME := 0.13
 const ENEMY_HIT_FRAME_TIME := 0.07
 const SLASH_FRAME_TIME := 0.055
+const HIT_BURST_FRAME_TIME := 0.045
 const HERO_ATTACK_FRAMES := 8
 const ENEMY_HIT_FRAMES := 6
 const ACTOR_LOOP_FRAMES := 8
 const SLASH_FRAMES := 6
+const HIT_BURST_FRAMES := 8
 const ART_ASSET_PATHS := [
 	ART_GAMEPLAY_SHELL,
 	ART_TITLE_BACKGROUND,
@@ -45,6 +49,7 @@ const ART_ASSET_PATHS := [
 	ART_ENEMY_IDLE_SHEET,
 	ART_ENEMY_HIT_SHEET,
 	ART_SLASH_EFFECT_SHEET,
+	ART_HIT_BURST_SHEET,
 	ART_MEMORY_ICONS_ATLAS,
 ]
 const REQUIRED_MEMORY_IDS := [
@@ -179,6 +184,7 @@ var enemy_box: PanelContainer
 var enemy_art: TextureRect
 var enemy_box_label: Label
 var slash_effect_art: TextureRect
+var hit_burst_art: TextureRect
 var status_box: ColorRect
 var status_box_art: TextureRect
 var status_box_label: Label
@@ -240,11 +246,13 @@ var hero_attack_sheet_texture: Texture2D
 var enemy_idle_sheet_texture: Texture2D
 var enemy_hit_sheet_texture: Texture2D
 var slash_effect_sheet_texture: Texture2D
+var hit_burst_sheet_texture: Texture2D
 var hero_walk_frames: Array[Texture2D] = []
 var hero_attack_frames: Array[Texture2D] = []
 var enemy_idle_frames: Array[Texture2D] = []
 var enemy_hit_frames: Array[Texture2D] = []
 var slash_effect_frames: Array[Texture2D] = []
+var hit_burst_frames: Array[Texture2D] = []
 var hero_base_rect := Rect2()
 var enemy_base_rect := Rect2()
 var hero_animation_elapsed := 0.0
@@ -252,9 +260,11 @@ var enemy_animation_elapsed := 0.0
 var hero_attack_elapsed := 0.0
 var enemy_hit_elapsed := 0.0
 var slash_elapsed := 0.0
+var hit_burst_elapsed := 0.0
 var hero_attack_active := false
 var enemy_hit_active := false
 var slash_active := false
+var hit_burst_active := false
 
 
 func _ready() -> void:
@@ -545,6 +555,11 @@ func _build_ui() -> void:
 	slash_effect_art.visible = false
 	slash_effect_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(slash_effect_art)
+
+	hit_burst_art = _new_texture_rect(null, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	hit_burst_art.visible = false
+	hit_burst_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(hit_burst_art)
 
 	status_box = ColorRect.new()
 	status_box.color = Color(1, 1, 1, 0)
@@ -1873,6 +1888,9 @@ func _update_actor_animations(delta: float) -> void:
 		enemy_box.position = enemy_base_rect.position
 	if slash_active:
 		_update_slash_animation(delta)
+	if hit_burst_active:
+		_update_hit_burst_animation(delta)
+	_update_battle_impact_feedback()
 
 
 func _update_hero_attack_animation(delta: float) -> void:
@@ -1894,10 +1912,13 @@ func _update_enemy_hit_animation(delta: float) -> void:
 	enemy_art.texture = _frame_texture(enemy_hit_frames, frame, enemy_static_texture)
 	var shake := Vector2(sin(enemy_hit_elapsed * 68.0) * 9.0, sin(enemy_hit_elapsed * 43.0) * 4.0)
 	enemy_box.position = enemy_base_rect.position + shake
+	var flash_strength: float = clamp(1.0 - enemy_hit_elapsed / (ENEMY_HIT_FRAME_TIME * float(ENEMY_HIT_FRAMES)), 0.0, 1.0)
+	enemy_art.modulate = Color(1.0, 0.46 + 0.38 * (1.0 - flash_strength), 0.38 + 0.52 * (1.0 - flash_strength), 1.0)
 	if frame >= ENEMY_HIT_FRAMES - 1:
 		enemy_hit_active = false
 		enemy_hit_elapsed = 0.0
 		enemy_box.position = enemy_base_rect.position
+		enemy_art.modulate = Color.WHITE
 
 
 func _update_slash_animation(delta: float) -> void:
@@ -1915,32 +1936,80 @@ func _update_slash_animation(delta: float) -> void:
 		slash_effect_art.modulate = Color.WHITE
 
 
+func _update_hit_burst_animation(delta: float) -> void:
+	hit_burst_elapsed += delta
+	var frame := mini(HIT_BURST_FRAMES - 1, int(floor(hit_burst_elapsed / HIT_BURST_FRAME_TIME)))
+	hit_burst_art.texture = _frame_texture(hit_burst_frames, frame, null)
+	var progress: float = clamp(hit_burst_elapsed / (HIT_BURST_FRAME_TIME * float(HIT_BURST_FRAMES)), 0.0, 1.0)
+	var burst_size := Vector2(178.0 + progress * 64.0, 178.0 + progress * 64.0)
+	var burst_center := enemy_base_rect.get_center() + Vector2(-18.0, -24.0)
+	_set_rect(hit_burst_art, Rect2(burst_center - burst_size * 0.5, burst_size))
+	hit_burst_art.visible = true
+	hit_burst_art.modulate = Color(1, 1, 1, clamp(1.0 - progress * 0.78, 0.0, 1.0))
+	if frame >= HIT_BURST_FRAMES - 1:
+		hit_burst_active = false
+		hit_burst_elapsed = 0.0
+		hit_burst_art.visible = false
+		hit_burst_art.modulate = Color.WHITE
+
+
+func _update_battle_impact_feedback() -> void:
+	var offset := Vector2.ZERO
+	if current_mode == "battle" and _battle_animation_active():
+		var impact_elapsed: float = max(enemy_hit_elapsed, slash_elapsed)
+		var impact_duration: float = max(SLASH_FRAME_TIME * float(SLASH_FRAMES), HIT_BURST_FRAME_TIME * float(HIT_BURST_FRAMES))
+		var strength: float = clamp(1.0 - impact_elapsed / impact_duration, 0.0, 1.0)
+		offset = Vector2(sin(impact_elapsed * 92.0) * 5.0, sin(impact_elapsed * 71.0) * 3.0) * strength
+	if current_mode == "battle":
+		stage_panel.position = _screen_rect("battle", "stage").position + offset
+		floor_line.position = _screen_rect("battle", "floor_baseline").position + offset
+		hero_box.position += offset
+		enemy_box.position += offset
+		if slash_effect_art != null and slash_effect_art.visible:
+			slash_effect_art.position += offset
+		if hit_burst_art != null and hit_burst_art.visible:
+			hit_burst_art.position += offset
+	elif current_mode == "travel":
+		stage_panel.position = _screen_rect("travel", "stage").position
+		floor_line.position = _screen_rect("travel", "floor_baseline").position
+
+
 func _start_battle_attack_animation() -> void:
 	if current_mode != "battle":
 		return
 	hero_attack_active = true
 	enemy_hit_active = true
 	slash_active = true
+	hit_burst_active = true
 	hero_attack_elapsed = 0.0
 	enemy_hit_elapsed = 0.0
 	slash_elapsed = 0.0
+	hit_burst_elapsed = 0.0
 	if slash_effect_art != null:
 		slash_effect_art.visible = true
+	if hit_burst_art != null:
+		hit_burst_art.visible = true
 
 
 func _stop_battle_attack_animation() -> void:
 	hero_attack_active = false
 	enemy_hit_active = false
 	slash_active = false
+	hit_burst_active = false
 	hero_attack_elapsed = 0.0
 	enemy_hit_elapsed = 0.0
 	slash_elapsed = 0.0
+	hit_burst_elapsed = 0.0
 	if slash_effect_art != null:
 		slash_effect_art.visible = false
+	if hit_burst_art != null:
+		hit_burst_art.visible = false
+	if enemy_art != null:
+		enemy_art.modulate = Color.WHITE
 
 
 func _battle_animation_active() -> bool:
-	return hero_attack_active or enemy_hit_active or slash_active
+	return hero_attack_active or enemy_hit_active or slash_active or hit_burst_active
 
 
 func _loop_frame(elapsed: float, frame_time: float, frame_count: int) -> int:
@@ -2056,11 +2125,13 @@ func _load_actor_animation_textures() -> void:
 	enemy_idle_sheet_texture = _load_texture(ART_ENEMY_IDLE_SHEET)
 	enemy_hit_sheet_texture = _load_texture(ART_ENEMY_HIT_SHEET)
 	slash_effect_sheet_texture = _load_texture(ART_SLASH_EFFECT_SHEET)
+	hit_burst_sheet_texture = _load_texture(ART_HIT_BURST_SHEET)
 	hero_walk_frames = _build_sheet_frames(hero_walk_sheet_texture, ACTOR_ANIM_FRAME_SIZE, ACTOR_LOOP_FRAMES)
 	hero_attack_frames = _build_sheet_frames(hero_attack_sheet_texture, ACTOR_ANIM_FRAME_SIZE, HERO_ATTACK_FRAMES)
 	enemy_idle_frames = _build_sheet_frames(enemy_idle_sheet_texture, ACTOR_ANIM_FRAME_SIZE, ACTOR_LOOP_FRAMES)
 	enemy_hit_frames = _build_sheet_frames(enemy_hit_sheet_texture, ACTOR_ANIM_FRAME_SIZE, ENEMY_HIT_FRAMES)
 	slash_effect_frames = _build_sheet_frames(slash_effect_sheet_texture, SLASH_ANIM_FRAME_SIZE, SLASH_FRAMES)
+	hit_burst_frames = _build_sheet_frames(hit_burst_sheet_texture, HIT_BURST_ANIM_FRAME_SIZE, HIT_BURST_FRAMES)
 
 
 func _new_texture_rect(texture_source, stretch_mode := TextureRect.STRETCH_KEEP_ASPECT_CENTERED) -> TextureRect:

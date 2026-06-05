@@ -70,8 +70,11 @@ func _run() -> void:
 	_expect(main.hero_attack_active, "battle advance triggers hero attack animation")
 	_expect(main.enemy_hit_active, "battle advance triggers enemy hit animation")
 	_expect(main.slash_active and main.slash_effect_art.visible, "battle advance shows slash effect")
+	_expect(main.hit_burst_active and main.hit_burst_art.visible, "battle advance shows hit burst effect")
 	await process_frame
 	_expect(main.hero_box.get_global_rect().position.x > hero_rect.position.x, "hero lunges forward during attack animation")
+	_expect(main.enemy_art.modulate != Color.WHITE, "enemy flashes during hit animation")
+	_expect(main.stage_panel.get_global_rect().position != stage_rect.position, "battle impact shakes stage art")
 	_expect(main.battle_resolved, "battle resolves after advance")
 	_expect(main.status_box_label.text.find("胜利") >= 0, "battle status shows victory")
 	main.advance_by_pointer()

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageEnhance
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,6 +11,7 @@ ART_ROOT = ROOT / "assets" / "generated" / "mvp_art"
 OUT_DIR = ART_ROOT / "actor_anim"
 FRAME_SIZE = (256, 256)
 SLASH_FRAME_SIZE = (256, 160)
+HIT_BURST_FRAME_SIZE = (192, 192)
 
 
 def trim_alpha(image: Image.Image) -> Image.Image:
@@ -126,14 +127,74 @@ def make_slash_sheet() -> Image.Image:
     for index in range(6):
         frame = Image.new("RGBA", SLASH_FRAME_SIZE, (0, 0, 0, 0))
         draw = ImageDraw.Draw(frame)
-        alpha = int(235 * (1.0 - abs(index - 2.5) / 3.2))
-        alpha = max(60, alpha)
-        spread = 14 + index * 5
-        draw.arc((22, 18 + spread, 238, 150 - spread // 2), 204, 338, fill=(255, 250, 216, alpha), width=18)
-        draw.arc((34, 28 + spread, 224, 140 - spread // 2), 206, 336, fill=(114, 184, 255, int(alpha * 0.55)), width=6)
-        draw.line((60 + index * 8, 112, 218, 42 + index * 3), fill=(255, 255, 255, int(alpha * 0.62)), width=4)
-        frame = ImageEnhance.Sharpness(frame).enhance(1.3)
+        alpha = int(255 * (1.0 - abs(index - 2.2) / 3.4))
+        alpha = max(70, alpha)
+        spread = 8 + index * 7
+        glow = Image.new("RGBA", SLASH_FRAME_SIZE, (0, 0, 0, 0))
+        glow_draw = ImageDraw.Draw(glow)
+        glow_draw.arc((12, 8 + spread, 244, 154 - spread // 2), 202, 340, fill=(255, 246, 181, int(alpha * 0.58)), width=28)
+        glow_draw.arc((34, 24 + spread, 226, 142 - spread // 2), 206, 336, fill=(126, 207, 255, int(alpha * 0.40)), width=12)
+        glow = glow.filter(ImageFilter.GaussianBlur(4.2))
+        frame.alpha_composite(glow)
+        draw.arc((20, 18 + spread, 240, 150 - spread // 2), 204, 338, fill=(255, 250, 216, alpha), width=16)
+        draw.arc((42, 31 + spread, 218, 138 - spread // 2), 207, 336, fill=(126, 205, 255, int(alpha * 0.72)), width=5)
+        draw.line((52 + index * 9, 118, 224, 36 + index * 3), fill=(255, 255, 255, int(alpha * 0.92)), width=5)
+        draw.line((72 + index * 6, 125, 175, 78), fill=(255, 232, 166, int(alpha * 0.48)), width=3)
+        frame = ImageEnhance.Sharpness(frame).enhance(1.55)
         sheet.alpha_composite(frame, (index * SLASH_FRAME_SIZE[0], 0))
+    return sheet
+
+
+def make_hit_burst_sheet() -> Image.Image:
+    frame_count = 8
+    width = HIT_BURST_FRAME_SIZE[0] * frame_count
+    sheet = Image.new("RGBA", (width, HIT_BURST_FRAME_SIZE[1]), (0, 0, 0, 0))
+    for index in range(frame_count):
+        frame = Image.new("RGBA", HIT_BURST_FRAME_SIZE, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(frame)
+        progress = index / float(frame_count - 1)
+        center = (92 + round(progress * 12), 88 - round(progress * 5))
+        radius = 18 + round(progress * 58)
+        alpha = max(0, round(255 * (1.0 - progress)))
+
+        glow = Image.new("RGBA", HIT_BURST_FRAME_SIZE, (0, 0, 0, 0))
+        glow_draw = ImageDraw.Draw(glow)
+        glow_draw.ellipse(
+            (center[0] - radius, center[1] - radius, center[0] + radius, center[1] + radius),
+            fill=(255, 216, 118, int(alpha * 0.30)),
+        )
+        glow = glow.filter(ImageFilter.GaussianBlur(7.0))
+        frame.alpha_composite(glow)
+
+        ring_width = max(2, round(8 * (1.0 - progress)))
+        draw.ellipse(
+            (center[0] - radius, center[1] - radius, center[0] + radius, center[1] + radius),
+            outline=(255, 244, 190, int(alpha * 0.85)),
+            width=ring_width,
+        )
+        for ray_index in range(12):
+            angle = (ray_index / 12.0) * math.tau + progress * 0.55
+            inner = 12 + progress * 18
+            outer = radius + 12 + ray_index % 3 * 5
+            start = (center[0] + math.cos(angle) * inner, center[1] + math.sin(angle) * inner)
+            end = (center[0] + math.cos(angle) * outer, center[1] + math.sin(angle) * outer)
+            color = (255, 247, 215, int(alpha * (0.88 if ray_index % 2 == 0 else 0.55)))
+            draw.line((start[0], start[1], end[0], end[1]), fill=color, width=max(1, round(4 * (1.0 - progress))))
+        for spark_index in range(9):
+            angle = (spark_index / 9.0) * math.tau - 0.45 + progress
+            distance = 26 + progress * (46 + spark_index % 4 * 7)
+            point = (center[0] + math.cos(angle) * distance, center[1] + math.sin(angle) * distance)
+            spark_radius = max(1, round(4 * (1.0 - progress)))
+            draw.ellipse(
+                (point[0] - spark_radius, point[1] - spark_radius, point[0] + spark_radius, point[1] + spark_radius),
+                fill=(117, 208, 255, int(alpha * 0.72)),
+            )
+        if index <= 2:
+            draw.polygon(
+                [(center[0] - 16, center[1] + 3), (center[0] + 36, center[1] - 26), (center[0] + 18, center[1] + 15)],
+                fill=(255, 255, 255, int(alpha * 0.85)),
+            )
+        sheet.alpha_composite(frame, (index * HIT_BURST_FRAME_SIZE[0], 0))
     return sheet
 
 
@@ -147,6 +208,7 @@ def main() -> None:
         "enemy_idle_sheet.png": make_enemy_idle_sheet(enemy),
         "enemy_hit_sheet.png": make_enemy_hit_sheet(enemy),
         "slash_effect_sheet.png": make_slash_sheet(),
+        "hit_burst_sheet.png": make_hit_burst_sheet(),
     }
     for name, image in outputs.items():
         path = OUT_DIR / name
