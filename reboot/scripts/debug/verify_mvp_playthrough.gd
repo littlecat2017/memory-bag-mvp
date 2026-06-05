@@ -38,7 +38,7 @@ func _run() -> void:
 	await process_frame
 
 	main.start_script()
-	for _step in range(600):
+	for _step in range(1400):
 		var event_id := str(main.current_event.get("id", ""))
 		if not event_id.is_empty() and (visited_event_ids.is_empty() or visited_event_ids[visited_event_ids.size() - 1] != event_id):
 			visited_event_ids.append(event_id)
@@ -48,6 +48,10 @@ func _run() -> void:
 			"battle":
 				if main._battle_animation_active():
 					main._update_actor_animations(0.05)
+				elif main.battle_phase == "enemy_attack":
+					main._update_battle_turn_flow(0.05)
+				elif main.battle_phase == "enemy":
+					main._update_battle_turn_flow(0.30)
 				elif not main.battle_resolved:
 					battle_count += 1
 					main.advance_battle()
@@ -58,8 +62,13 @@ func _run() -> void:
 			"memory_replace":
 				replacement_count += 1
 				main.replace_memory_at(_replacement_slot(main))
-			"dialogue", "travel":
+			"dialogue":
 				main.advance_script()
+			"travel":
+				if main.opening_travel_active:
+					main._update_opening_travel(1.0)
+				else:
+					main.advance_script()
 			"ending":
 				break
 			_:

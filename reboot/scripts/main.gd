@@ -36,6 +36,16 @@ const ENEMY_HIT_FRAMES := 6
 const ACTOR_LOOP_FRAMES := 8
 const SLASH_FRAMES := 6
 const HIT_BURST_FRAMES := 8
+const OPENING_TRAVEL_TARGET_METERS := 100.0
+const OPENING_TRAVEL_SPEED_METERS := 22.0
+const BATTLE_HERO_MAX_HP := 30
+const BATTLE_ENEMY_MAX_HP := 24
+const BATTLE_BOSS_MAX_HP := 36
+const BATTLE_PLAYER_DAMAGE := 10
+const BATTLE_ENEMY_DAMAGE := 5
+const BATTLE_ENEMY_RESPONSE_DELAY := 0.28
+const BATTLE_ENEMY_ATTACK_DURATION := 0.42
+const BATTLE_HERO_HIT_DURATION := 0.34
 const ART_ASSET_PATHS := [
 	ART_GAMEPLAY_SHELL,
 	ART_TITLE_BACKGROUND,
@@ -155,11 +165,20 @@ var applied_event_effect_ids: Array[String] = []
 var available_choice_options: Array[Dictionary] = []
 var pending_gain_memory_ids: Array[String] = []
 var pending_resume_event_id := ""
+var opening_travel_active := false
+var opening_travel_meters := 0.0
 var battle_active := false
 var battle_resolved := false
 var battle_turns := 0
 var battle_enemy_id := ""
 var battle_reward_ids: Array[String] = []
+var battle_phase := ""
+var battle_action_text := ""
+var battle_enemy_response_elapsed := 0.0
+var hero_hp := 0
+var hero_max_hp := BATTLE_HERO_MAX_HP
+var enemy_hp := 0
+var enemy_max_hp := BATTLE_ENEMY_MAX_HP
 var pointer_hold_active := false
 var pointer_hold_elapsed := 0.0
 var pointer_hold_next_at := 0.0
@@ -209,6 +228,8 @@ var choice_panel_art: TextureRect
 var choice_list: VBoxContainer
 var source_label: Label
 var concept_reference: TextureRect
+var travel_progress_back: ColorRect
+var travel_progress_fill: ColorRect
 var title_layer: Control
 var title_background_art: TextureRect
 var title_text_label: Label
@@ -261,10 +282,15 @@ var hero_attack_elapsed := 0.0
 var enemy_hit_elapsed := 0.0
 var slash_elapsed := 0.0
 var hit_burst_elapsed := 0.0
+var enemy_attack_elapsed := 0.0
+var hero_hit_elapsed := 0.0
 var hero_attack_active := false
 var enemy_hit_active := false
+var enemy_attack_active := false
+var hero_hit_active := false
 var slash_active := false
 var hit_burst_active := false
+var hit_burst_target := "enemy"
 
 
 func _ready() -> void:
@@ -278,6 +304,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_actor_animations(delta)
+	_update_battle_turn_flow(delta)
+	_update_opening_travel(delta)
 	if drag_active:
 		var pointer_position := get_viewport().get_mouse_position()
 		drag_moved = drag_moved or pointer_position.distance_to(drag_start_position) >= DRAG_START_THRESHOLD
@@ -351,10 +379,25 @@ func jump_to_event(event_id: String) -> void:
 
 func start_script() -> void:
 	_reset_script_state()
+	_grant_standard_opening_memories()
+	opening_travel_active = true
+	opening_travel_meters = 0.0
+	current_mode = "travel"
+	last_story_mode = "travel"
+	current_event = {}
+	current_event_index = int(event_index_by_id.get("F0003", 0))
+	_refresh_inventory_ui()
+	_apply_mode()
+
+
+func start_source_script() -> void:
+	_reset_script_state()
 	_go_to_event(_first_event_id("T0001"))
 
 
 func advance_script() -> void:
+	if opening_travel_active:
+		return
 	if current_event.is_empty():
 		start_script()
 		return
@@ -374,14 +417,84 @@ func advance_battle() -> void:
 		return
 	if _battle_animation_active():
 		return
-	if not battle_resolved:
-		_start_battle_attack_animation()
-		battle_turns += 3
+	if battle_resolved:
+		advance_script()
+		return
+	if battle_phase == "enemy":
+		_perform_enemy_battle_turn()
+	elif battle_phase == "player":
+		_perform_player_battle_turn()
+	else:
+		return
+
+
+func _update_opening_travel(delta: float) -> void:
+	if not opening_travel_active or current_mode != "travel":
+		return
+	opening_travel_meters = min(OPENING_TRAVEL_TARGET_METERS, opening_travel_meters + OPENING_TRAVEL_SPEED_METERS * delta)
+	_refresh_opening_travel_ui()
+	if opening_travel_meters >= OPENING_TRAVEL_TARGET_METERS:
+		opening_travel_active = false
+		jump_to_event("F0003")
+
+
+func _refresh_opening_travel_ui() -> void:
+	if stage_label != null and current_mode == "travel":
+		stage_label.text = "前进 %d / %d 米" % [
+			int(round(opening_travel_meters)),
+			int(OPENING_TRAVEL_TARGET_METERS),
+		]
+	if travel_progress_fill != null and travel_progress_back != null:
+		var progress: float = clamp(opening_travel_meters / OPENING_TRAVEL_TARGET_METERS, 0.0, 1.0)
+		travel_progress_fill.size.x = travel_progress_back.size.x * progress
+
+
+func _update_battle_turn_flow(delta: float) -> void:
+	if current_mode != "battle" or battle_resolved:
+		return
+	if battle_phase == "enemy_attack":
+		if not _battle_animation_active():
+			battle_phase = "player"
+			battle_action_text = "你的回合：点击出剑"
+			_refresh_battle_ui()
+		return
+	if battle_phase != "enemy":
+		return
+	if _battle_animation_active():
+		return
+	battle_enemy_response_elapsed += delta
+	if battle_enemy_response_elapsed >= BATTLE_ENEMY_RESPONSE_DELAY:
+		_perform_enemy_battle_turn()
+
+
+func _perform_player_battle_turn() -> void:
+	if not battle_active or battle_resolved:
+		return
+	battle_turns += 1
+	enemy_hp = maxi(0, enemy_hp - BATTLE_PLAYER_DAMAGE)
+	_start_battle_attack_animation()
+	if enemy_hp <= 0:
+		battle_phase = "victory"
 		battle_resolved = true
 		battle_active = false
-		_refresh_battle_ui()
+		battle_action_text = "敌人倒下了"
+	else:
+		battle_phase = "enemy"
+		battle_action_text = "敌人准备反击"
+		battle_enemy_response_elapsed = 0.0
+	_refresh_battle_ui()
+
+
+func _perform_enemy_battle_turn() -> void:
+	if not battle_active or battle_resolved:
 		return
-	advance_script()
+	battle_turns += 1
+	hero_hp = maxi(1, hero_hp - BATTLE_ENEMY_DAMAGE)
+	_start_enemy_attack_animation()
+	battle_phase = "enemy_attack"
+	battle_action_text = "敌人正在攻击"
+	battle_enemy_response_elapsed = 0.0
+	_refresh_battle_ui()
 
 
 func choose_option(option_index: int) -> void:
@@ -529,6 +642,16 @@ func _build_ui() -> void:
 	stage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	stage_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	add_child(stage_label)
+
+	travel_progress_back = ColorRect.new()
+	travel_progress_back.color = Color(0.12, 0.10, 0.08, 0.46)
+	travel_progress_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(travel_progress_back)
+
+	travel_progress_fill = ColorRect.new()
+	travel_progress_fill.color = Color(0.92, 0.62, 0.26, 0.88)
+	travel_progress_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(travel_progress_fill)
 
 	floor_line = ColorRect.new()
 	floor_line.color = Color(0.20, 0.17, 0.12, 0.55)
@@ -885,6 +1008,7 @@ func _build_drag_preview() -> void:
 
 
 func _go_to_event(event_id: String) -> void:
+	opening_travel_active = false
 	var event: Dictionary = events_by_id.get(event_id, {})
 	if event.is_empty():
 		return
@@ -901,8 +1025,8 @@ func _go_to_event(event_id: String) -> void:
 		_rebuild_choice_list()
 		current_mode = "choice"
 	elif event_type == "battle":
-		_begin_battle(event)
 		current_mode = "battle"
+		_begin_battle(event)
 	elif event_type == "ending":
 		_reset_battle_state()
 		current_mode = "ending"
@@ -928,6 +1052,8 @@ func _reset_script_state() -> void:
 	available_choice_options.clear()
 	pending_gain_memory_ids.clear()
 	pending_resume_event_id = ""
+	opening_travel_active = false
+	opening_travel_meters = 0.0
 	last_story_mode = "dialogue"
 	_reset_battle_state()
 	_refresh_inventory_ui()
@@ -943,6 +1069,13 @@ func _begin_battle(event: Dictionary) -> void:
 	battle_turns = 0
 	battle_enemy_id = str(event.get("enemy_id", "unknown_enemy"))
 	battle_reward_ids = _string_array(event.get("reward", []))
+	hero_max_hp = BATTLE_HERO_MAX_HP
+	hero_hp = hero_max_hp
+	enemy_max_hp = _battle_enemy_max_hp(battle_enemy_id)
+	enemy_hp = enemy_max_hp
+	battle_phase = "player"
+	battle_action_text = "你的回合：点击出剑"
+	battle_enemy_response_elapsed = 0.0
 	_refresh_battle_ui()
 
 
@@ -952,6 +1085,13 @@ func _reset_battle_state() -> void:
 	battle_turns = 0
 	battle_enemy_id = ""
 	battle_reward_ids.clear()
+	battle_phase = ""
+	battle_action_text = ""
+	battle_enemy_response_elapsed = 0.0
+	hero_hp = 0
+	hero_max_hp = BATTLE_HERO_MAX_HP
+	enemy_hp = 0
+	enemy_max_hp = BATTLE_ENEMY_MAX_HP
 	_stop_battle_attack_animation()
 
 
@@ -959,7 +1099,26 @@ func _refresh_battle_ui() -> void:
 	if enemy_box_label != null:
 		enemy_box_label.text = ""
 		enemy_box_label.add_theme_font_size_override("font_size", 15)
+	if stage_label != null and current_mode == "battle":
+		stage_label.text = "我方 HP %d/%d    敌人 HP %d/%d" % [
+			maxi(hero_hp, 0),
+			hero_max_hp,
+			maxi(enemy_hp, 0),
+			enemy_max_hp,
+		]
 	if status_box_label != null:
+		if battle_resolved:
+			status_box_label.text = "胜利\n点击继续"
+		elif battle_phase == "enemy":
+			status_box_label.text = "敌人回合\n准备反击"
+		elif battle_phase == "enemy_attack":
+			status_box_label.text = "%s\n请等待" % battle_action_text
+		elif not battle_action_text.is_empty():
+			status_box_label.text = "%s\n点击攻击" % battle_action_text
+		else:
+			status_box_label.text = "%s\n点击攻击" % _battle_enemy_label()
+		status_box_label.add_theme_font_size_override("font_size", 12)
+		return
 		if battle_resolved:
 			status_box_label.text = "胜利\n点击继续"
 		else:
@@ -1040,6 +1199,15 @@ func _add_memories(memory_ids: Array[String]) -> void:
 			continue
 		owned_memory_ids.append(memory_id)
 		memory_grid_positions[memory_id] = placement
+
+
+func _grant_standard_opening_memories() -> void:
+	_add_memories([
+		"mem_mothers_soup",
+		"mem_wooden_sword",
+		"mem_reason_to_depart",
+		"mem_my_name",
+	])
 
 
 func _discard_memories(memory_ids: Array[String], mark_discarded := true) -> void:
@@ -1256,6 +1424,8 @@ func _apply_mode() -> void:
 	_update_screen_background()
 	stage_panel.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
 	stage_label.visible = stage_panel.visible
+	travel_progress_back.visible = current_mode == "travel" and opening_travel_active
+	travel_progress_fill.visible = current_mode == "travel" and opening_travel_active
 	floor_line.visible = stage_panel.visible
 	hero_box.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
 	enemy_box.visible = current_mode == "battle"
@@ -1405,10 +1575,14 @@ func _stop_pointer_hold() -> void:
 
 
 func _can_pointer_advance() -> bool:
+	if opening_travel_active:
+		return false
 	return current_mode in ["title", "dialogue", "travel", "battle", "ending"]
 
 
 func _advance_by_pointer() -> void:
+	if opening_travel_active:
+		return
 	if current_mode == "title":
 		start_script()
 	elif current_mode == "battle":
@@ -1776,6 +1950,14 @@ func _battle_enemy_label() -> String:
 	return "敌群"
 
 
+func _battle_enemy_max_hp(enemy_id: String) -> int:
+	if enemy_id.begins_with("boss_"):
+		return BATTLE_BOSS_MAX_HP
+	if enemy_id.find(",") >= 0:
+		return BATTLE_ENEMY_MAX_HP + 8
+	return BATTLE_ENEMY_MAX_HP
+
+
 func _format_rewards(reward_ids: Array[String]) -> String:
 	if reward_ids.is_empty():
 		return "无奖励"
@@ -1816,16 +1998,24 @@ func _apply_ending_layout() -> void:
 func _apply_travel_layout() -> void:
 	_set_rect(stage_panel, _screen_rect("travel", "stage"))
 	_set_rect(stage_label, Rect2(_screen_rect("travel", "stage").position + Vector2(26, 16), Vector2(620, 34)))
+	var progress_rect := Rect2(_screen_rect("travel", "stage").position + Vector2(26, 58), Vector2(360, 10))
+	_set_rect(travel_progress_back, progress_rect)
+	_set_rect(travel_progress_fill, Rect2(progress_rect.position, Vector2(0, progress_rect.size.y)))
 	_set_rect(floor_line, _screen_rect("travel", "floor_baseline"))
 	hero_base_rect = _grounded_actor_rect(_screen_rect("travel", "hero"), _screen_rect("travel", "floor_baseline"), 188.0)
 	_set_rect(hero_box, hero_base_rect)
 	_set_operation_layout("travel")
-	stage_label.text = ""
+	if opening_travel_active:
+		_refresh_opening_travel_ui()
+	else:
+		stage_label.text = ""
 
 
 func _apply_battle_layout() -> void:
 	_set_rect(stage_panel, _screen_rect("battle", "stage"))
 	_set_rect(stage_label, Rect2(_screen_rect("battle", "stage").position + Vector2(26, 16), Vector2(620, 34)))
+	travel_progress_back.visible = false
+	travel_progress_fill.visible = false
 	_set_rect(floor_line, _screen_rect("battle", "floor_baseline"))
 	hero_base_rect = _grounded_actor_rect(_screen_rect("battle", "hero"), _screen_rect("battle", "floor_baseline"), 188.0)
 	enemy_base_rect = _grounded_actor_rect(_screen_rect("battle", "enemy"), _screen_rect("battle", "floor_baseline"), 190.0)
@@ -1833,7 +2023,7 @@ func _apply_battle_layout() -> void:
 	_set_rect(enemy_box, enemy_base_rect)
 	_set_rect(status_box, _screen_rect("battle", "status"))
 	_set_operation_layout("battle")
-	stage_label.text = ""
+	_refresh_battle_ui()
 
 
 func _set_operation_layout(screen_id: String) -> void:
@@ -1870,6 +2060,8 @@ func _update_actor_animations(delta: float) -> void:
 	enemy_animation_elapsed += delta
 	if hero_attack_active:
 		_update_hero_attack_animation(delta)
+	elif hero_hit_active:
+		_update_hero_hit_animation(delta)
 	elif current_mode == "travel" or current_mode == "memory_replace":
 		hero_art.texture = _frame_texture(hero_walk_frames, _loop_frame(hero_animation_elapsed, WALK_FRAME_TIME, ACTOR_LOOP_FRAMES), hero_static_texture)
 		hero_box.position = hero_base_rect.position + Vector2(0, sin(hero_animation_elapsed * TAU * 2.0) * 3.0)
@@ -1882,6 +2074,8 @@ func _update_actor_animations(delta: float) -> void:
 	if current_mode == "battle":
 		if enemy_hit_active:
 			_update_enemy_hit_animation(delta)
+		elif enemy_attack_active:
+			_update_enemy_attack_animation(delta)
 		else:
 			enemy_art.texture = _frame_texture(enemy_idle_frames, _loop_frame(enemy_animation_elapsed, ENEMY_IDLE_FRAME_TIME, ACTOR_LOOP_FRAMES), enemy_static_texture)
 			enemy_box.position = enemy_base_rect.position + Vector2(sin(enemy_animation_elapsed * TAU * 1.6) * 3.0, sin(enemy_animation_elapsed * TAU * 1.1) * 2.0)
@@ -1908,6 +2102,20 @@ func _update_hero_attack_animation(delta: float) -> void:
 		hero_box.position = hero_base_rect.position
 
 
+func _update_hero_hit_animation(delta: float) -> void:
+	hero_hit_elapsed += delta
+	hero_art.texture = hero_static_texture
+	var shake := Vector2(sin(hero_hit_elapsed * 74.0) * 7.0, sin(hero_hit_elapsed * 51.0) * 4.0)
+	hero_box.position = hero_base_rect.position + shake
+	var progress: float = clamp(hero_hit_elapsed / BATTLE_HERO_HIT_DURATION, 0.0, 1.0)
+	hero_art.modulate = Color(1.0, 0.48 + 0.52 * progress, 0.42 + 0.58 * progress, 1.0)
+	if progress >= 1.0:
+		hero_hit_active = false
+		hero_hit_elapsed = 0.0
+		hero_box.position = hero_base_rect.position
+		hero_art.modulate = Color.WHITE
+
+
 func _update_enemy_hit_animation(delta: float) -> void:
 	enemy_hit_elapsed += delta
 	var frame := mini(ENEMY_HIT_FRAMES - 1, int(floor(enemy_hit_elapsed / ENEMY_HIT_FRAME_TIME)))
@@ -1921,6 +2129,18 @@ func _update_enemy_hit_animation(delta: float) -> void:
 		enemy_hit_elapsed = 0.0
 		enemy_box.position = enemy_base_rect.position
 		enemy_art.modulate = Color.WHITE
+
+
+func _update_enemy_attack_animation(delta: float) -> void:
+	enemy_attack_elapsed += delta
+	enemy_art.texture = _frame_texture(enemy_idle_frames, _loop_frame(enemy_animation_elapsed, ENEMY_IDLE_FRAME_TIME, ACTOR_LOOP_FRAMES), enemy_static_texture)
+	var progress: float = clamp(enemy_attack_elapsed / BATTLE_ENEMY_ATTACK_DURATION, 0.0, 1.0)
+	var lunge: float = sin(progress * PI) * -82.0
+	enemy_box.position = enemy_base_rect.position + Vector2(lunge, -sin(progress * PI * 2.0) * 5.0)
+	if progress >= 1.0:
+		enemy_attack_active = false
+		enemy_attack_elapsed = 0.0
+		enemy_box.position = enemy_base_rect.position
 
 
 func _update_slash_animation(delta: float) -> void:
@@ -1945,6 +2165,8 @@ func _update_hit_burst_animation(delta: float) -> void:
 	var progress: float = clamp(hit_burst_elapsed / (HIT_BURST_FRAME_TIME * float(HIT_BURST_FRAMES)), 0.0, 1.0)
 	var burst_size := Vector2(178.0 + progress * 64.0, 178.0 + progress * 64.0)
 	var burst_center := enemy_base_rect.get_center() + Vector2(-18.0, -24.0)
+	if hit_burst_target == "hero":
+		burst_center = hero_base_rect.get_center() + Vector2(10.0, -20.0)
 	_set_rect(hit_burst_art, Rect2(burst_center - burst_size * 0.5, burst_size))
 	hit_burst_art.visible = true
 	hit_burst_art.modulate = Color(1, 1, 1, clamp(1.0 - progress * 0.78, 0.0, 1.0))
@@ -1958,8 +2180,8 @@ func _update_hit_burst_animation(delta: float) -> void:
 func _update_battle_impact_feedback() -> void:
 	var offset := Vector2.ZERO
 	if current_mode == "battle" and _battle_animation_active():
-		var impact_elapsed: float = max(enemy_hit_elapsed, slash_elapsed)
-		var impact_duration: float = max(SLASH_FRAME_TIME * float(SLASH_FRAMES), HIT_BURST_FRAME_TIME * float(HIT_BURST_FRAMES))
+		var impact_elapsed: float = max(max(enemy_hit_elapsed, slash_elapsed), max(hero_hit_elapsed, enemy_attack_elapsed))
+		var impact_duration: float = max(max(SLASH_FRAME_TIME * float(SLASH_FRAMES), HIT_BURST_FRAME_TIME * float(HIT_BURST_FRAMES)), BATTLE_ENEMY_ATTACK_DURATION)
 		var strength: float = clamp(1.0 - impact_elapsed / impact_duration, 0.0, 1.0)
 		offset = Vector2(sin(impact_elapsed * 92.0) * 5.0, sin(impact_elapsed * 71.0) * 3.0) * strength
 	if current_mode == "battle":
@@ -1983,6 +2205,7 @@ func _start_battle_attack_animation() -> void:
 	enemy_hit_active = true
 	slash_active = true
 	hit_burst_active = true
+	hit_burst_target = "enemy"
 	hero_attack_elapsed = 0.0
 	enemy_hit_elapsed = 0.0
 	slash_elapsed = 0.0
@@ -1993,13 +2216,32 @@ func _start_battle_attack_animation() -> void:
 		hit_burst_art.visible = true
 
 
+func _start_enemy_attack_animation() -> void:
+	if current_mode != "battle":
+		return
+	enemy_attack_active = true
+	hero_hit_active = true
+	hit_burst_active = true
+	hit_burst_target = "hero"
+	enemy_attack_elapsed = 0.0
+	hero_hit_elapsed = 0.0
+	hit_burst_elapsed = 0.0
+	if hit_burst_art != null:
+		hit_burst_art.visible = true
+
+
 func _stop_battle_attack_animation() -> void:
 	hero_attack_active = false
 	enemy_hit_active = false
+	enemy_attack_active = false
+	hero_hit_active = false
 	slash_active = false
 	hit_burst_active = false
+	hit_burst_target = "enemy"
 	hero_attack_elapsed = 0.0
 	enemy_hit_elapsed = 0.0
+	enemy_attack_elapsed = 0.0
+	hero_hit_elapsed = 0.0
 	slash_elapsed = 0.0
 	hit_burst_elapsed = 0.0
 	if slash_effect_art != null:
@@ -2008,10 +2250,12 @@ func _stop_battle_attack_animation() -> void:
 		hit_burst_art.visible = false
 	if enemy_art != null:
 		enemy_art.modulate = Color.WHITE
+	if hero_art != null:
+		hero_art.modulate = Color.WHITE
 
 
 func _battle_animation_active() -> bool:
-	return hero_attack_active or enemy_hit_active or slash_active or hit_burst_active
+	return hero_attack_active or enemy_hit_active or enemy_attack_active or hero_hit_active or slash_active or hit_burst_active
 
 
 func _loop_frame(elapsed: float, frame_time: float, frame_count: int) -> int:

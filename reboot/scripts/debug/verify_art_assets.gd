@@ -44,11 +44,6 @@ func _run() -> void:
 	_expect(main._memory_item_texture("mem_wooden_sword") != main._memory_icon_texture("mem_wooden_sword"), "wooden sword uses dedicated spatial item art")
 
 	main.start_script()
-	for _index in range(38):
-		if str(main.current_event.get("id", "")) == "P0034":
-			break
-		main.advance_script()
-	main.choose_option(0)
 	await process_frame
 	_expect(main.inventory_cell_icons.size() == 36, "inventory has icon holders")
 	_expect(main.inventory_item_layer.get_child_count() == 4, "owned memories render as item overlays")

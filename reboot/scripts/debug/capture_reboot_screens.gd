@@ -35,6 +35,12 @@ func _run() -> void:
 	if not _save_snapshot("01_dialogue_art.png"):
 		return
 
+	main.start_script()
+	main._update_opening_travel(1.2)
+	await _settle(4)
+	if not _save_snapshot("01a_opening_walk_art.png"):
+		return
+
 	await _prepare_standard_opening(main)
 	main.jump_to_event("P0035A")
 	main.show_mode("travel")
@@ -51,6 +57,10 @@ func _run() -> void:
 	await _settle(2)
 	if not _save_snapshot("03a_battle_attack_art.png"):
 		return
+	if not await _save_enemy_counter_snapshot(main, "03b_battle_enemy_counter_art.png"):
+		return
+	if not await _resolve_current_battle(main):
+		return
 	await _settle(4)
 	if not _save_snapshot("03b_battle_resolved_art.png"):
 		return
@@ -65,7 +75,7 @@ func _run() -> void:
 	if not _save_snapshot("05_ending_art.png"):
 		return
 
-	main.start_script()
+	main.start_source_script()
 	for _index in range(38):
 		if str(main.current_event.get("id", "")) == "P0034":
 			break
@@ -132,7 +142,7 @@ func _settle(frames: int) -> void:
 
 
 func _prepare_standard_opening(main: Control) -> void:
-	main.start_script()
+	main.start_source_script()
 	for _index in range(38):
 		if str(main.current_event.get("id", "")) == "P0034":
 			break
@@ -143,27 +153,65 @@ func _prepare_standard_opening(main: Control) -> void:
 
 func _run_hero_playthrough(main: Control) -> bool:
 	main.start_script()
-	for _step in range(600):
+	for _step in range(1400):
 		if main.current_mode == "ending" and str(main.current_event.get("id", "")).begins_with("E"):
 			return true
 		match main.current_mode:
 			"battle":
 				if main._battle_animation_active():
 					main._update_actor_animations(0.05)
+				elif main.battle_phase == "enemy_attack":
+					main._update_battle_turn_flow(0.05)
+				elif main.battle_phase == "enemy":
+					main._update_battle_turn_flow(0.30)
 				else:
 					main.advance_battle()
 			"choice":
 				_choose_hero_option(main)
 			"memory_replace":
 				main.replace_memory_at(_replacement_slot(main))
-			"dialogue", "travel":
+			"dialogue":
 				main.advance_script()
+			"travel":
+				if main.opening_travel_active:
+					main._update_opening_travel(1.0)
+				else:
+					main.advance_script()
 			"ending":
 				return true
 			_:
 				main.advance_script()
 		await process_frame
 	return _fail("hero playthrough did not reach an ending")
+
+
+func _save_enemy_counter_snapshot(main: Control, file_name: String) -> bool:
+	for _frame in range(40):
+		main._update_actor_animations(0.05)
+		main._update_battle_turn_flow(0.05)
+		await process_frame
+		if main.enemy_attack_active:
+			return _save_snapshot(file_name)
+	return _save_snapshot(file_name)
+
+
+func _resolve_current_battle(main: Control) -> bool:
+	for _step in range(80):
+		if main.battle_resolved:
+			if main._battle_animation_active():
+				main._update_actor_animations(0.05)
+			else:
+				return true
+		elif main._battle_animation_active():
+			main._update_actor_animations(0.05)
+		elif main.battle_phase == "enemy_attack":
+			main._update_battle_turn_flow(0.05)
+		elif main.battle_phase == "enemy":
+			main._update_battle_turn_flow(0.30)
+		else:
+			main.advance_battle()
+		await process_frame
+	return _fail("battle did not resolve")
 
 
 func _choose_hero_option(main: Control) -> void:
