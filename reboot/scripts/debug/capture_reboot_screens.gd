@@ -48,6 +48,9 @@ func _run() -> void:
 		return
 
 	main.advance_battle()
+	await _settle(2)
+	if not _save_snapshot("03a_battle_attack_art.png"):
+		return
 	await _settle(4)
 	if not _save_snapshot("03b_battle_resolved_art.png"):
 		return
@@ -145,7 +148,10 @@ func _run_hero_playthrough(main: Control) -> bool:
 			return true
 		match main.current_mode:
 			"battle":
-				main.advance_battle()
+				if main._battle_animation_active():
+					main._update_actor_animations(0.05)
+				else:
+					main.advance_battle()
 			"choice":
 				_choose_hero_option(main)
 			"memory_replace":

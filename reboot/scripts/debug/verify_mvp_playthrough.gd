@@ -46,9 +46,13 @@ func _run() -> void:
 			break
 		match main.current_mode:
 			"battle":
-				if not main.battle_resolved:
+				if main._battle_animation_active():
+					main._update_actor_animations(0.05)
+				elif not main.battle_resolved:
 					battle_count += 1
-				main.advance_battle()
+					main.advance_battle()
+				else:
+					main.advance_battle()
 			"choice":
 				_choose_mvp_option(main)
 			"memory_replace":

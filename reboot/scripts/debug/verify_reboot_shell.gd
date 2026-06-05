@@ -67,8 +67,21 @@ func _run() -> void:
 	_expect(main.battle_active, "battle starts active")
 	_expect(not main.battle_resolved, "battle starts unresolved")
 	main.advance_by_pointer()
+	_expect(main.hero_attack_active, "battle advance triggers hero attack animation")
+	_expect(main.enemy_hit_active, "battle advance triggers enemy hit animation")
+	_expect(main.slash_active and main.slash_effect_art.visible, "battle advance shows slash effect")
+	await process_frame
+	_expect(main.hero_box.get_global_rect().position.x > hero_rect.position.x, "hero lunges forward during attack animation")
 	_expect(main.battle_resolved, "battle resolves after advance")
 	_expect(main.status_box_label.text.find("胜利") >= 0, "battle status shows victory")
+	main.advance_by_pointer()
+	_expect(str(main.current_event.get("id", "")) == "F0003", "battle ignores progress while attack animation is still playing")
+	for _frame_index in range(20):
+		main._update_actor_animations(0.05)
+		await process_frame
+		if not main._battle_animation_active():
+			break
+	_expect(not main._battle_animation_active(), "battle attack animation completes")
 	main.advance_by_pointer()
 	_expect(str(main.current_event.get("id", "")) == "F0004", "resolved battle advances to next script event")
 
