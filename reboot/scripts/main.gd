@@ -13,6 +13,7 @@ const ART_ENDING_BACKGROUND := ART_ROOT + "ending_background.png"
 const ART_HERO := ART_ROOT + "hero.png"
 const ART_ENEMY := ART_ROOT + "enemy.png"
 const ART_MEMORY_ICONS_ATLAS := ART_ROOT + "memory_icons_atlas.png"
+const ART_MEMORY_ITEM_ROOT := ART_ROOT + "memory_items/"
 const ART_ASSET_PATHS := [
 	ART_GAMEPLAY_SHELL,
 	ART_TITLE_BACKGROUND,
@@ -70,6 +71,24 @@ const MEMORY_GRID_SIZES := {
 	"mem_want_to_go_home": Vector2i(2, 2),
 	"mem_crown_without_name": Vector2i(1, 1),
 	"mem_not_let_go": Vector2i(2, 2),
+}
+const MEMORY_ITEM_ART_PATHS := {
+	"mem_mothers_soup": ART_MEMORY_ITEM_ROOT + "mem_mothers_soup.png",
+	"mem_wooden_sword": ART_MEMORY_ITEM_ROOT + "mem_wooden_sword.png",
+	"mem_reason_to_depart": ART_MEMORY_ITEM_ROOT + "mem_reason_to_depart.png",
+	"mem_my_name": ART_MEMORY_ITEM_ROOT + "mem_my_name.png",
+	"mem_someone_waits": ART_MEMORY_ITEM_ROOT + "mem_someone_waits.png",
+	"mem_abandoned_afternoon": ART_MEMORY_ITEM_ROOT + "mem_abandoned_afternoon.png",
+	"mem_no_more_explaining": ART_MEMORY_ITEM_ROOT + "mem_no_more_explaining.png",
+	"mem_empty_nameplate": ART_MEMORY_ITEM_ROOT + "mem_empty_nameplate.png",
+	"mem_masters_scolding": ART_MEMORY_ITEM_ROOT + "mem_masters_scolding.png",
+	"mem_battle_instinct": ART_MEMORY_ITEM_ROOT + "mem_battle_instinct.png",
+	"mem_prove_with_wound": ART_MEMORY_ITEM_ROOT + "mem_prove_with_wound.png",
+	"mem_rusty_victory": ART_MEMORY_ITEM_ROOT + "mem_rusty_victory.png",
+	"mem_rain_lamp": ART_MEMORY_ITEM_ROOT + "mem_rain_lamp.png",
+	"mem_want_to_go_home": ART_MEMORY_ITEM_ROOT + "mem_want_to_go_home.png",
+	"mem_crown_without_name": ART_MEMORY_ITEM_ROOT + "mem_crown_without_name.png",
+	"mem_not_let_go": ART_MEMORY_ITEM_ROOT + "mem_not_let_go.png",
 }
 const MEMORY_DEFAULT_POSITIONS := {
 	"mem_mothers_soup": Vector2i(0, 0),
@@ -189,6 +208,7 @@ var drag_preview: PanelContainer
 var drag_preview_icon: TextureRect
 var drag_preview_label: Label
 var memory_icons_texture: Texture2D
+var memory_item_textures: Dictionary = {}
 
 
 func _ready() -> void:
@@ -411,6 +431,10 @@ func _validate_art_assets() -> void:
 	for path in ART_ASSET_PATHS:
 		if not FileAccess.file_exists(path):
 			validation_errors.append("missing MVP art asset: %s" % path)
+	for memory_id in MEMORY_GRID_SIZES.keys():
+		var item_path := str(MEMORY_ITEM_ART_PATHS.get(str(memory_id), ""))
+		if item_path.is_empty() or not FileAccess.file_exists(item_path):
+			validation_errors.append("missing memory item art asset: %s" % memory_id)
 
 
 func _build_ui() -> void:
@@ -426,6 +450,7 @@ func _build_ui() -> void:
 	add_child(screen_background_art)
 
 	memory_icons_texture = _load_texture(ART_MEMORY_ICONS_ATLAS)
+	_load_memory_item_textures()
 
 	concept_reference = TextureRect.new()
 	_set_rect(concept_reference, Rect2(16, 80, 220, 124))
@@ -1481,7 +1506,7 @@ func _update_drag_preview(label_text: String) -> void:
 	var preview_rect := _inventory_item_rect(inventory_grid.size, Vector2i.ZERO, _memory_grid_size(drag_memory_id))
 	drag_preview.size = preview_rect.size
 	if drag_preview_icon != null:
-		drag_preview_icon.texture = _memory_icon_texture(drag_memory_id)
+		drag_preview_icon.texture = _memory_item_texture(drag_memory_id)
 		drag_preview_icon.visible = true
 		drag_preview_icon.stretch_mode = TextureRect.STRETCH_SCALE
 	drag_preview_label.text = label_text
@@ -1575,14 +1600,11 @@ func _rebuild_memory_item_layer(item_layer: Control) -> void:
 		item.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		item.position = item_rect.position
 		item.size = item_rect.size
-		var icon := _new_texture_rect(_memory_icon_texture(typed_id), TextureRect.STRETCH_SCALE)
+		var icon := _new_texture_rect(_memory_item_texture(typed_id), TextureRect.STRETCH_SCALE)
 		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 		icon.modulate = Color(1, 1, 1, 0.96)
 		item.add_child(icon)
-		var label := _center_label(_short_memory_name(typed_id))
-		label.add_theme_font_size_override("font_size", 10)
-		label.modulate = Color(1, 1, 1, 0.94)
-		item.add_child(label)
+		item.tooltip_text = _memory_name(typed_id)
 		item_layer.add_child(item)
 
 
@@ -1830,6 +1852,14 @@ func _load_texture(path: String) -> Texture2D:
 	return ImageTexture.create_from_image(image)
 
 
+func _load_memory_item_textures() -> void:
+	memory_item_textures.clear()
+	for memory_id in MEMORY_ITEM_ART_PATHS.keys():
+		var texture := _load_texture(str(MEMORY_ITEM_ART_PATHS[memory_id]))
+		if texture != null:
+			memory_item_textures[str(memory_id)] = texture
+
+
 func _new_texture_rect(texture_source, stretch_mode := TextureRect.STRETCH_KEEP_ASPECT_CENTERED) -> TextureRect:
 	var texture_rect := TextureRect.new()
 	texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -1847,6 +1877,12 @@ func _add_button_art(button: Control) -> void:
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	art.modulate = Color(1, 1, 1, 0.96)
 	button.add_child(art)
+
+
+func _memory_item_texture(memory_id: String) -> Texture2D:
+	if memory_item_textures.has(memory_id):
+		return memory_item_textures[memory_id]
+	return _memory_icon_texture(memory_id)
 
 
 func _memory_icon_texture(memory_id: String) -> Texture2D:

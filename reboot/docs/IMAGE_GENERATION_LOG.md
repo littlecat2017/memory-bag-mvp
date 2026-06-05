@@ -17,3 +17,10 @@ Total generated today for this MVP art fill: 8 / 50.
 | 7 | Built-in image generation | Chibi paper-memory enemy sprite on flat `#00ff00` chroma-key background, matching concept style. | `C:\Users\64844\.codex\generated_images\019e6a1f-c0b5-7ee2-9090-578ac0c0e509\ig_061a6194021e32d7016a21273ba8e88195b8f388d5135a43d9.png` | `reboot/assets/generated/mvp_art/enemy_chroma.png`, `reboot/assets/generated/mvp_art/enemy.png` | Chroma key removed locally; transparent corners verified. |
 | 8 | Built-in image generation | 4x4 memory item icon atlas in stitched parchment, cloth, wood, leaf and keepsake materials. | `C:\Users\64844\.codex\generated_images\019e6a1f-c0b5-7ee2-9090-578ac0c0e509\ig_061a6194021e32d7016a21278437dc8195a183dd87c8de8987.png` | `reboot/assets/generated/mvp_art/memory_icons_atlas.png` | Normalized to 1024x1024 and used through `AtlasTexture`. |
 
+## 2026-06-05
+
+Total generated today for this MVP art fill: 1 / 50.
+
+| # | Tool | Prompt Summary | Source Output | Workspace Asset | Status |
+|---|---|---|---|---|---|
+| 1 | Built-in image generation | 4x4 spatial memory backpack item sticker sheet: soup, sword, diary, tags, map, charm, ribbon, medal, lantern, wreath, glove; no text or grid lines. | `C:\Users\64844\.codex\generated_images\019e6a1f-c0b5-7ee2-9090-578ac0c0e509\ig_0f2aa71b89fd36df016a2249500ccc819885993bfac3f045e5.png` | `reboot/assets/generated/mvp_art/memory_item_sheet.png`, `reboot/assets/generated/mvp_art/memory_items/*.png` | Copied source sheet into workspace, cropped into 16 spatial item assets, and used by runtime before atlas fallback. |

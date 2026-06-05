@@ -127,9 +127,9 @@ func _run() -> void:
 	main.show_mode("bag_detail")
 	_expect(main.bag_detail_layer.visible, "bag detail mode shows detail layer")
 	_expect(main.bag_memory_list.get_global_rect().end.x < main.bag_detail_panel.get_global_rect().position.x, "bag list should be left of detail panel")
-	_expect(main.bag_detail_panel.get_global_rect().end.x < main.bag_detail_inventory.get_global_rect().position.x, "bag detail should be left of inventory board")
+	_expect(main.bag_detail_panel.get_global_rect().end.y < main.bag_detail_inventory.get_global_rect().position.y, "bag detail should be above the full inventory board")
 	_expect(main.bag_detail_layer.get_node("BagDetailClose").get_global_rect().end.y + 72.0 <= main.bag_detail_inventory.get_global_rect().position.y, "bag detail inventory should stay visually separated from close button")
-	_expect(main.bag_detail_inventory.get_global_rect().end.y <= main.bag_detail_panel.get_global_rect().end.y, "bag detail inventory should stay within detail screen height")
+	_expect(main.bag_detail_inventory.get_global_rect().end.y <= 720.0, "bag detail inventory should stay within detail screen height")
 	_expect(main.bag_detail_cells.size() == 28, "bag detail should reuse full 7x4 grid")
 
 	main.show_mode("ending")

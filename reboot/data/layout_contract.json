@@ -44,9 +44,9 @@
     },
     "bag_detail": {
       "title": [72, 54, 420, 50],
-      "memory_list": [72, 130, 342, 520],
-      "detail_panel": [452, 130, 420, 520],
-      "inventory_board": [908, 190, 300, 190],
+      "memory_list": [72, 130, 342, 210],
+      "detail_panel": [452, 130, 420, 210],
+      "inventory_board": [256, 386, 734, 298],
       "close_button": [1040, 54, 168, 50]
     },
     "ending": {

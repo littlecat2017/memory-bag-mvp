@@ -23,6 +23,8 @@ func _run() -> void:
 	_expect(main.hero_art.texture != null, "hero texture")
 	_expect(main.enemy_art.texture != null, "enemy texture")
 	_expect(main.memory_icons_texture != null, "memory icon atlas texture")
+	_expect(main.memory_item_textures.size() == main.MEMORY_GRID_SIZES.size(), "all spatial memory item textures load")
+	_expect(main._memory_item_texture("mem_wooden_sword") != main._memory_icon_texture("mem_wooden_sword"), "wooden sword uses dedicated spatial item art")
 
 	main.start_script()
 	for _index in range(38):
@@ -34,6 +36,8 @@ func _run() -> void:
 	_expect(main.inventory_cell_icons.size() == 28, "inventory has icon holders")
 	_expect(main.inventory_item_layer.get_child_count() == 4, "owned memories render as item overlays")
 	_expect(main._memory_grid_size("mem_wooden_sword") == Vector2i(4, 1), "wooden sword uses a multi-cell footprint")
+	var sword_texture: Texture2D = main._memory_item_texture("mem_wooden_sword")
+	_expect(sword_texture != null and sword_texture.get_width() > sword_texture.get_height() * 3, "wooden sword item art matches its horizontal footprint")
 
 	main.queue_free()
 	if failed:
