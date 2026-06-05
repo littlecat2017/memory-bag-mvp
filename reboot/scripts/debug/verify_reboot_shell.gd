@@ -80,6 +80,7 @@ func _run() -> void:
 	_expect(not main.battle_resolved, "battle starts unresolved")
 	_expect(main.hero_hp == main.hero_max_hp, "battle initializes hero HP")
 	_expect(main.enemy_hp == main.enemy_max_hp, "battle initializes enemy HP")
+	var reward_id := str(main.battle_reward_ids[0])
 	_expect(main.stage_label.text.find("HP") >= 0, "battle stage label shows HP")
 	var battle_scroll_before: float = main.stage_scroll_offset
 	main._update_stage_background_scroll(1.0)
@@ -87,7 +88,12 @@ func _run() -> void:
 	_expect(not main.dialogue_panel.visible, "battle hides dialogue panel")
 
 	var enemy_hp_before: int = main.enemy_hp
-	main.advance_by_pointer()
+	for _auto_player_wait in range(20):
+		main._update_battle_turn_flow(0.05)
+		main._update_actor_animations(0.05)
+		await process_frame
+		if main.hero_attack_active:
+			break
 	_expect(main.hero_attack_active, "player turn triggers hero attack animation")
 	_expect(main.enemy_hit_active, "player turn triggers enemy hit animation")
 	_expect(main.slash_active and main.slash_effect_art.visible, "player turn shows slash effect")
@@ -99,8 +105,6 @@ func _run() -> void:
 	_expect(main.stage_panel.get_global_rect().position != stage_rect.position, "battle impact shakes stage art")
 	_expect(not main.battle_resolved, "battle remains unresolved after first hit")
 	_expect(main.battle_phase == "enemy", "battle moves to enemy response phase")
-	main.advance_by_pointer()
-	_expect(str(main.current_event.get("id", "")).begins_with("GAMEPLAY_BATTLE"), "battle ignores progress while attack animation plays")
 
 	for _frame_index in range(20):
 		main._update_actor_animations(0.05)
@@ -127,10 +131,6 @@ func _run() -> void:
 	_expect(not main._battle_animation_active(), "enemy counterattack animation completes")
 
 	await _resolve_current_battle(main)
-	_expect(main.battle_resolved, "battle resolves after enough player turns")
-	_expect(main.status_box_label.text.find("胜利") >= 0, "battle status reaches victory state")
-	var reward_id := str(main.battle_reward_ids[0])
-	main.advance_by_pointer()
 	_expect(main.current_mode == "travel", "resolved battle returns to travel")
 	_expect(main.opening_travel_active, "next travel segment starts")
 	_expect(main.current_event.is_empty(), "battle victory does not advance into story")
@@ -181,17 +181,13 @@ func _run() -> void:
 
 
 func _resolve_current_battle(main: Control) -> void:
-	for _turn_index in range(160):
-		if main.battle_resolved and not main._battle_animation_active():
+	for _turn_index in range(240):
+		if main.current_mode == "travel":
 			return
 		if main._battle_animation_active():
 			main._update_actor_animations(0.05)
-		elif main.battle_phase == "enemy_attack":
-			main._update_battle_turn_flow(0.05)
-		elif main.battle_phase == "enemy":
-			main._update_battle_turn_flow(0.30)
 		else:
-			main.advance_battle()
+			main._update_battle_turn_flow(0.05)
 		await process_frame
 
 

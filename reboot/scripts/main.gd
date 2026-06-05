@@ -47,7 +47,9 @@ const BATTLE_ENEMY_MAX_HP := 24
 const BATTLE_BOSS_MAX_HP := 36
 const BATTLE_PLAYER_DAMAGE := 10
 const BATTLE_ENEMY_DAMAGE := 5
+const BATTLE_PLAYER_RESPONSE_DELAY := 0.34
 const BATTLE_ENEMY_RESPONSE_DELAY := 0.28
+const BATTLE_VICTORY_CONTINUE_DELAY := 0.75
 const BATTLE_ENEMY_ATTACK_DURATION := 0.42
 const BATTLE_HERO_HIT_DURATION := 0.34
 const STAGE_SCROLL_SPEED := 48.0
@@ -197,7 +199,9 @@ var battle_enemy_id := ""
 var battle_reward_ids: Array[String] = []
 var battle_phase := ""
 var battle_action_text := ""
+var battle_player_response_elapsed := 0.0
 var battle_enemy_response_elapsed := 0.0
+var battle_victory_elapsed := 0.0
 var hero_hp := 0
 var hero_max_hp := BATTLE_HERO_MAX_HP
 var enemy_hp := 0
@@ -468,13 +472,28 @@ func _refresh_opening_travel_ui() -> void:
 
 
 func _update_battle_turn_flow(delta: float) -> void:
-	if current_mode != "battle" or battle_resolved:
+	if current_mode != "battle":
+		return
+	if battle_resolved:
+		if _battle_animation_active():
+			return
+		battle_victory_elapsed += delta
+		if battle_victory_elapsed >= BATTLE_VICTORY_CONTINUE_DELAY:
+			_finish_gameplay_battle()
 		return
 	if battle_phase == "enemy_attack":
 		if not _battle_animation_active():
 			battle_phase = "player"
-			battle_action_text = "你的回合：点击出剑"
+			battle_action_text = "你的回合：自动出剑"
+			battle_player_response_elapsed = 0.0
 			_refresh_battle_ui()
+		return
+	if battle_phase == "player":
+		if _battle_animation_active():
+			return
+		battle_player_response_elapsed += delta
+		if battle_player_response_elapsed >= BATTLE_PLAYER_RESPONSE_DELAY:
+			_perform_player_battle_turn()
 		return
 	if battle_phase != "enemy":
 		return
@@ -489,6 +508,7 @@ func _perform_player_battle_turn() -> void:
 	if not battle_active or battle_resolved:
 		return
 	battle_turns += 1
+	battle_player_response_elapsed = 0.0
 	enemy_hp = maxi(0, enemy_hp - BATTLE_PLAYER_DAMAGE)
 	_start_battle_attack_animation()
 	if enemy_hp <= 0:
@@ -496,6 +516,7 @@ func _perform_player_battle_turn() -> void:
 		battle_resolved = true
 		battle_active = false
 		battle_action_text = "敌人倒下了"
+		battle_victory_elapsed = 0.0
 	else:
 		battle_phase = "enemy"
 		battle_action_text = "敌人准备反击"
@@ -511,6 +532,7 @@ func _perform_enemy_battle_turn() -> void:
 	_start_enemy_attack_animation()
 	battle_phase = "enemy_attack"
 	battle_action_text = "敌人正在攻击"
+	battle_player_response_elapsed = 0.0
 	battle_enemy_response_elapsed = 0.0
 	_refresh_battle_ui()
 
@@ -1156,8 +1178,10 @@ func _begin_battle(event: Dictionary) -> void:
 	enemy_max_hp = _battle_enemy_max_hp(battle_enemy_id)
 	enemy_hp = enemy_max_hp
 	battle_phase = "player"
-	battle_action_text = "你的回合：点击出剑"
+	battle_action_text = "你的回合：自动出剑"
+	battle_player_response_elapsed = 0.0
 	battle_enemy_response_elapsed = 0.0
+	battle_victory_elapsed = 0.0
 	_refresh_battle_ui()
 
 
@@ -1169,7 +1193,9 @@ func _reset_battle_state() -> void:
 	battle_reward_ids.clear()
 	battle_phase = ""
 	battle_action_text = ""
+	battle_player_response_elapsed = 0.0
 	battle_enemy_response_elapsed = 0.0
+	battle_victory_elapsed = 0.0
 	hero_hp = 0
 	hero_max_hp = BATTLE_HERO_MAX_HP
 	enemy_hp = 0
@@ -1190,21 +1216,21 @@ func _refresh_battle_ui() -> void:
 		]
 	if status_box_label != null:
 		if battle_resolved:
-			status_box_label.text = "胜利\n点击继续"
+			status_box_label.text = "胜利\n自动继续"
 		elif battle_phase == "enemy":
 			status_box_label.text = "敌人回合\n准备反击"
 		elif battle_phase == "enemy_attack":
 			status_box_label.text = "%s\n请等待" % battle_action_text
 		elif not battle_action_text.is_empty():
-			status_box_label.text = "%s\n点击攻击" % battle_action_text
+			status_box_label.text = "%s\n自动攻击" % battle_action_text
 		else:
-			status_box_label.text = "%s\n点击攻击" % _battle_enemy_label()
+			status_box_label.text = "%s\n自动攻击" % _battle_enemy_label()
 		status_box_label.add_theme_font_size_override("font_size", 12)
 		return
 		if battle_resolved:
-			status_box_label.text = "胜利\n点击继续"
+			status_box_label.text = "胜利\n自动继续"
 		else:
-			status_box_label.text = "%s\n点击结算" % _battle_enemy_label()
+			status_box_label.text = "%s\n自动结算" % _battle_enemy_label()
 		status_box_label.add_theme_font_size_override("font_size", 13)
 
 

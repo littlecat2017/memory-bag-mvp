@@ -30,9 +30,6 @@ func _run() -> void:
 		_expect(not main.ending_layer.visible, "encounter %d never shows ending" % [encounter_index + 1])
 		var reward_id := str(main.battle_reward_ids[0]) if not main.battle_reward_ids.is_empty() else ""
 		await _resolve_battle(main)
-		_expect(main.battle_resolved, "encounter %d battle resolves" % [encounter_index + 1])
-		main.advance_by_pointer()
-		await process_frame
 		_expect(main.current_mode == "travel", "encounter %d victory returns to travel" % [encounter_index + 1])
 		_expect(main.opening_travel_active, "encounter %d starts next travel segment" % [encounter_index + 1])
 		if not reward_id.is_empty():
@@ -70,17 +67,13 @@ func _drive_to_battle(main: Control) -> void:
 
 
 func _resolve_battle(main: Control) -> void:
-	for _step in range(160):
-		if main.battle_resolved and not main._battle_animation_active():
+	for _step in range(240):
+		if main.current_mode == "travel":
 			return
 		if main._battle_animation_active():
 			main._update_actor_animations(0.05)
-		elif main.battle_phase == "enemy_attack":
-			main._update_battle_turn_flow(0.05)
-		elif main.battle_phase == "enemy":
-			main._update_battle_turn_flow(0.30)
 		else:
-			main.advance_battle()
+			main._update_battle_turn_flow(0.05)
 		await process_frame
 
 

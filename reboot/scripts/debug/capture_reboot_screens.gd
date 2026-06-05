@@ -41,19 +41,19 @@ func _run() -> void:
 	if not _save_snapshot("02_battle_idle_art.png"):
 		return
 
-	main.advance_battle()
+	await _wait_for_player_attack(main)
 	await _settle(2)
 	if not _save_snapshot("03_battle_attack_art.png"):
 		return
 	if not await _save_enemy_counter_snapshot(main, "04_battle_enemy_counter_art.png"):
 		return
-	if not await _resolve_current_battle(main):
+	if not await _wait_for_victory_snapshot(main):
 		return
 	await _settle(4)
 	if not _save_snapshot("05_battle_victory_art.png"):
 		return
 
-	main.advance_battle()
+	await _wait_for_travel(main)
 	await _settle(4)
 	if not _save_snapshot("06_reward_travel_art.png"):
 		return
@@ -120,20 +120,47 @@ func _save_enemy_counter_snapshot(main: Control, file_name: String) -> bool:
 	return _save_snapshot(file_name)
 
 
-func _resolve_current_battle(main: Control) -> bool:
-	for _step in range(160):
-		if main.battle_resolved:
-			if main._battle_animation_active():
-				main._update_actor_animations(0.05)
-			else:
-				return true
-		elif main._battle_animation_active():
+func _wait_for_player_attack(main: Control) -> void:
+	for _frame in range(40):
+		main._update_battle_turn_flow(0.05)
+		main._update_actor_animations(0.05)
+		await process_frame
+		if main.hero_attack_active:
+			return
+
+
+func _wait_for_travel(main: Control) -> void:
+	for _frame in range(80):
+		if main.current_mode == "travel":
+			return
+		if main._battle_animation_active():
 			main._update_actor_animations(0.05)
-		elif main.battle_phase == "enemy_attack":
-			main._update_battle_turn_flow(0.05)
-		elif main.battle_phase == "enemy":
-			main._update_battle_turn_flow(0.30)
 		else:
-			main.advance_battle()
+			main._update_battle_turn_flow(0.05)
+		await process_frame
+
+
+func _wait_for_victory_snapshot(main: Control) -> bool:
+	for _step in range(240):
+		if main.current_mode == "travel":
+			return _fail("battle auto-continued before victory snapshot")
+		if main.battle_resolved and not main._battle_animation_active():
+			return true
+		if main._battle_animation_active():
+			main._update_actor_animations(0.05)
+		else:
+			main._update_battle_turn_flow(0.05)
+		await process_frame
+	return _fail("battle did not reach victory")
+
+
+func _resolve_current_battle(main: Control) -> bool:
+	for _step in range(240):
+		if main.current_mode == "travel":
+			return true
+		if main._battle_animation_active():
+			main._update_actor_animations(0.05)
+		else:
+			main._update_battle_turn_flow(0.05)
 		await process_frame
 	return _fail("battle did not resolve")
