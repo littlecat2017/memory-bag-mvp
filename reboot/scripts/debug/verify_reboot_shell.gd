@@ -31,7 +31,9 @@ func _run() -> void:
 	_expect(main.title_layer.visible, "title mode shows title layer")
 	_expect(not main.operation_tray.visible, "title mode hides operation tray")
 	_expect(not main.dialogue_panel.visible, "title mode hides dialogue panel")
-	_expect(main.title_text_label.get_global_rect().position.x < main.title_concept_preview.get_global_rect().position.x, "title text should stay left of concept preview")
+	_expect(abs(main.title_start_button.get_global_rect().get_center().x - 640.0) <= 1.0, "title start button is centered on screen")
+	_expect(abs(main.title_quit_button.get_global_rect().get_center().x - 640.0) <= 1.0, "title quit button is centered on screen")
+	_expect(main.title_start_button.get_global_rect().end.y < main.title_quit_button.get_global_rect().position.y, "title buttons stack vertically")
 	main.advance_by_pointer()
 	_expect(str(main.current_event.get("id", "")) == "T0001", "mouse pointer advance starts script from title")
 

@@ -4,12 +4,12 @@
   "concept_reference": "res://assets/reference/concept_memory_backpack.png",
   "screens": {
     "title": {
-      "title_text": [120, 88, 560, 82],
-      "subtitle_text": [124, 178, 620, 54],
+      "title_text": [360, 88, 560, 82],
+      "subtitle_text": [330, 178, 620, 54],
       "concept_preview": [760, 72, 380, 214],
-      "primary_button": [124, 310, 260, 58],
-      "quit_button": [124, 386, 260, 58],
-      "note_panel": [124, 496, 680, 118]
+      "primary_button": [510, 310, 260, 58],
+      "quit_button": [510, 386, 260, 58],
+      "note_panel": [300, 496, 680, 118]
     },
     "dialogue": {
       "background": [0, 0, 1280, 720],

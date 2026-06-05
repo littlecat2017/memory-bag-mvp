@@ -681,11 +681,13 @@ func _build_title_layer() -> void:
 
 	title_text_label = _new_label(44, Color(0.16, 0.10, 0.05))
 	title_text_label.text = "记忆背包"
+	title_text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_text_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_layer.add_child(title_text_label)
 
 	title_subtitle_label = _new_label(22, Color(0.24, 0.17, 0.10))
 	title_subtitle_label.text = "把关系与承诺装进四格背包"
+	title_subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_subtitle_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_layer.add_child(title_subtitle_label)
 
@@ -707,7 +709,7 @@ func _build_title_layer() -> void:
 	title_quit_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	title_quit_button.gui_input.connect(_on_title_quit_gui_input)
 	_add_button_art(title_quit_button)
-	title_quit_button.add_child(_center_label("退出游戏"))
+	title_quit_button.add_child(_center_label("结束游戏"))
 	title_layer.add_child(title_quit_button)
 
 	title_note_panel = _new_panel("note")
