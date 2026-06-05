@@ -4,6 +4,7 @@ const DESIGN_SIZE := Vector2(1280, 720)
 const POINTER_HOLD_INITIAL_DELAY := 0.35
 const POINTER_HOLD_REPEAT_INTERVAL := 0.16
 const DRAG_START_THRESHOLD := 8.0
+const MEMORY_ITEM_INSET := Vector2.ZERO
 const ART_ROOT := "res://assets/generated/mvp_art/"
 const ART_GAMEPLAY_SHELL := ART_ROOT + "gameplay_shell.png"
 const ART_TITLE_BACKGROUND := ART_ROOT + "title_background.png"
@@ -800,16 +801,13 @@ func _build_inventory_cells() -> void:
 
 
 func _build_drag_preview() -> void:
-	drag_preview = _new_panel("cell_unlocked")
+	drag_preview = _new_panel("item_preview")
 	drag_preview.visible = false
 	drag_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	drag_preview.modulate = Color(1.0, 1.0, 1.0, 0.86)
 	drag_preview_icon = _new_texture_rect(null, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
 	drag_preview_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 	drag_preview.add_child(drag_preview_icon)
-	drag_preview_label = _center_label("")
-	drag_preview_label.add_theme_font_size_override("font_size", 13)
-	drag_preview.add_child(drag_preview_label)
 	add_child(drag_preview)
 	drag_preview.z_index = 100
 
@@ -1509,8 +1507,7 @@ func _update_drag_preview(label_text: String) -> void:
 		drag_preview_icon.texture = _memory_item_texture(drag_memory_id)
 		drag_preview_icon.visible = true
 		drag_preview_icon.stretch_mode = TextureRect.STRETCH_SCALE
-	drag_preview_label.text = label_text
-	drag_preview_label.add_theme_font_size_override("font_size", 10)
+	drag_preview.tooltip_text = label_text
 
 
 func _update_drag_preview_position(pointer_position: Vector2) -> void:
@@ -1595,14 +1592,14 @@ func _rebuild_memory_item_layer(item_layer: Control) -> void:
 		var position := _memory_grid_position(typed_id)
 		if position.x < 0:
 			continue
-		var item_rect := _inventory_item_rect(item_layer.size, position, _memory_grid_size(typed_id))
-		var item := _new_panel("cell_unlocked")
+		var item_rect := _memory_item_visual_rect(item_layer.size, position, _memory_grid_size(typed_id))
+		var item := Control.new()
 		item.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		item.position = item_rect.position
 		item.size = item_rect.size
 		var icon := _new_texture_rect(_memory_item_texture(typed_id), TextureRect.STRETCH_SCALE)
 		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
-		icon.modulate = Color(1, 1, 1, 0.96)
+		icon.modulate = Color(1, 1, 1, 1)
 		item.add_child(icon)
 		item.tooltip_text = _memory_name(typed_id)
 		item_layer.add_child(item)
@@ -1811,6 +1808,15 @@ func _inventory_item_rect(board_size: Vector2, grid_position: Vector2i, item_siz
 		float(item_size.y) * cell_size.y + float(max(0, item_size.y - 1)) * gap.y
 	)
 	return Rect2(position, size)
+
+
+func _memory_item_visual_rect(board_size: Vector2, grid_position: Vector2i, item_size: Vector2i) -> Rect2:
+	var rect := _inventory_item_rect(board_size, grid_position, item_size)
+	var inset := Vector2(
+		min(MEMORY_ITEM_INSET.x, max(0.0, rect.size.x * 0.08)),
+		min(MEMORY_ITEM_INSET.y, max(0.0, rect.size.y * 0.08))
+	)
+	return Rect2(rect.position + inset, rect.size - inset * 2.0)
 
 
 func _rect_from_array(values) -> Rect2:
