@@ -18,6 +18,9 @@ func _run() -> void:
 
 	_expect(main.validation_errors.is_empty(), "no validation errors")
 	_expect(main.screen_background_art.texture != null, "gameplay shell texture")
+	_expect(not main.stage_background_tiles.is_empty(), "stage background tiles exist")
+	_expect(main.stage_background_tiles[0].texture != null, "scrolling stage background texture")
+	_expect(main.stage_background_tiles[0].texture.get_width() == 2048 and main.stage_background_tiles[0].texture.get_height() == 512, "scrolling stage background is normalized")
 	_expect(main.title_background_art.texture != null, "title background texture")
 	_expect(main.dialogue_panel_art.texture != null, "dialogue panel texture")
 	_expect(main.hero_art.texture != null, "hero texture")

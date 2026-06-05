@@ -43,8 +43,16 @@ func _run() -> void:
 	_expect(main.owned_memory_count() == 4, "new run grants standard memories")
 	_expect(main.stage_label.text.find("100") >= 0, "travel shows 100 meter goal")
 	_expect(main.operation_tray.visible, "travel shows operation tray")
+	_expect(main.stage_background_clip.visible, "travel shows scrolling stage background")
+	_expect(main.stage_background_tiles[0].texture != null, "travel uses stage background art")
 	_expect(not main.dialogue_panel.visible, "travel hides dialogue panel")
 	_expect(not main.choice_panel.visible, "travel hides choice panel")
+	var scroll_before: float = main.stage_scroll_offset
+	var hero_y_before: float = main.hero_box.position.y
+	main._update_stage_background_scroll(0.5)
+	main._update_actor_animations(0.5)
+	_expect(main.stage_scroll_offset > scroll_before, "travel scroll offset advances")
+	_expect(abs(main.hero_box.position.y - hero_y_before) <= 0.1, "travel hero keeps fixed foot baseline")
 	main.advance_by_pointer()
 	_expect(main.current_mode == "travel" and main.opening_travel_active, "travel ignores pointer skip")
 
@@ -73,6 +81,9 @@ func _run() -> void:
 	_expect(main.hero_hp == main.hero_max_hp, "battle initializes hero HP")
 	_expect(main.enemy_hp == main.enemy_max_hp, "battle initializes enemy HP")
 	_expect(main.stage_label.text.find("HP") >= 0, "battle stage label shows HP")
+	var battle_scroll_before: float = main.stage_scroll_offset
+	main._update_stage_background_scroll(1.0)
+	_expect(abs(main.stage_scroll_offset - battle_scroll_before) <= 0.1, "battle stops stage scrolling")
 	_expect(not main.dialogue_panel.visible, "battle hides dialogue panel")
 
 	var enemy_hp_before: int = main.enemy_hp

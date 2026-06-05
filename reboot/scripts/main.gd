@@ -7,6 +7,7 @@ const DRAG_START_THRESHOLD := 8.0
 const MEMORY_ITEM_INSET := Vector2.ZERO
 const ART_ROOT := "res://assets/generated/mvp_art/"
 const ART_GAMEPLAY_SHELL := ART_ROOT + "gameplay_shell.png"
+const ART_SCROLL_STAGE_BACKGROUND := ART_ROOT + "scroll_stage_background.png"
 const ART_TITLE_BACKGROUND := ART_ROOT + "title_background.png"
 const ART_DIALOGUE_PANEL := ART_ROOT + "dialogue_panel.png"
 const ART_BUTTON := ART_ROOT + "button.png"
@@ -49,6 +50,7 @@ const BATTLE_ENEMY_DAMAGE := 5
 const BATTLE_ENEMY_RESPONSE_DELAY := 0.28
 const BATTLE_ENEMY_ATTACK_DURATION := 0.42
 const BATTLE_HERO_HIT_DURATION := 0.34
+const STAGE_SCROLL_SPEED := 48.0
 const GAMEPLAY_ENEMY_IDS := [
 	"enemy_hollow_wolves",
 	"enemy_blank_knight",
@@ -67,6 +69,7 @@ const GAMEPLAY_REWARD_IDS := [
 ]
 const ART_ASSET_PATHS := [
 	ART_GAMEPLAY_SHELL,
+	ART_SCROLL_STAGE_BACKGROUND,
 	ART_TITLE_BACKGROUND,
 	ART_DIALOGUE_PANEL,
 	ART_BUTTON,
@@ -214,6 +217,8 @@ var validation_errors: Array[String] = []
 
 var bg_layer: ColorRect
 var screen_background_art: TextureRect
+var stage_background_clip: Control
+var stage_background_tiles: Array[TextureRect] = []
 var stage_panel: PanelContainer
 var stage_label: Label
 var floor_line: ColorRect
@@ -311,6 +316,7 @@ var hero_hit_active := false
 var slash_active := false
 var hit_burst_active := false
 var hit_burst_target := "enemy"
+var stage_scroll_offset := 0.0
 
 
 func _ready() -> void:
@@ -323,6 +329,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_stage_background_scroll(delta)
 	_update_actor_animations(delta)
 	_update_battle_turn_flow(delta)
 	_update_opening_travel(delta)
@@ -689,6 +696,16 @@ func _build_ui() -> void:
 	memory_icons_texture = _load_texture(ART_MEMORY_ICONS_ATLAS)
 	_load_memory_item_textures()
 	_load_actor_animation_textures()
+
+	stage_background_clip = Control.new()
+	stage_background_clip.clip_contents = true
+	stage_background_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(stage_background_clip)
+	for _tile_index in range(2):
+		var tile := _new_texture_rect(ART_SCROLL_STAGE_BACKGROUND, TextureRect.STRETCH_SCALE)
+		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stage_background_clip.add_child(tile)
+		stage_background_tiles.append(tile)
 
 	concept_reference = TextureRect.new()
 	_set_rect(concept_reference, Rect2(16, 80, 220, 124))
@@ -1494,6 +1511,7 @@ func _select_ending() -> void:
 func _apply_mode() -> void:
 	_update_screen_background()
 	stage_panel.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
+	stage_background_clip.visible = stage_panel.visible
 	stage_label.visible = stage_panel.visible
 	travel_progress_back.visible = current_mode == "travel" and opening_travel_active
 	travel_progress_fill.visible = current_mode == "travel" and opening_travel_active
@@ -2061,6 +2079,7 @@ func _apply_ending_layout() -> void:
 
 func _apply_travel_layout() -> void:
 	_set_rect(stage_panel, _screen_rect("travel", "stage"))
+	_set_stage_background_rect(_screen_rect("travel", "stage"))
 	_set_rect(stage_label, Rect2(_screen_rect("travel", "stage").position + Vector2(26, 16), Vector2(620, 34)))
 	var progress_rect := Rect2(_screen_rect("travel", "stage").position + Vector2(26, 58), Vector2(360, 10))
 	_set_rect(travel_progress_back, progress_rect)
@@ -2077,6 +2096,7 @@ func _apply_travel_layout() -> void:
 
 func _apply_battle_layout() -> void:
 	_set_rect(stage_panel, _screen_rect("battle", "stage"))
+	_set_stage_background_rect(_screen_rect("battle", "stage"))
 	_set_rect(stage_label, Rect2(_screen_rect("battle", "stage").position + Vector2(26, 16), Vector2(620, 34)))
 	travel_progress_back.visible = false
 	travel_progress_fill.visible = false
@@ -2099,6 +2119,36 @@ func _set_operation_layout(screen_id: String) -> void:
 	_set_rect(inventory_grid, inventory_rect)
 	_set_rect(inventory_item_layer, inventory_rect)
 	_refresh_inventory_ui()
+
+
+func _set_stage_background_rect(rect: Rect2) -> void:
+	if stage_background_clip == null:
+		return
+	_set_rect(stage_background_clip, rect)
+	_layout_stage_background_tiles()
+
+
+func _layout_stage_background_tiles() -> void:
+	if stage_background_clip == null or stage_background_tiles.is_empty():
+		return
+	var tile_height := stage_background_clip.size.y
+	if stage_background_clip.size.x <= 0.0 or tile_height <= 0.0:
+		return
+	var first_texture := stage_background_tiles[0].texture
+	var tile_width := stage_background_clip.size.x
+	if first_texture != null and first_texture.get_height() > 0:
+		tile_width = max(stage_background_clip.size.x, tile_height * float(first_texture.get_width()) / float(first_texture.get_height()))
+	var wrapped_offset := fposmod(stage_scroll_offset, tile_width)
+	for index in range(stage_background_tiles.size()):
+		var tile := stage_background_tiles[index]
+		tile.position = Vector2(float(index) * tile_width - wrapped_offset, 0)
+		tile.size = Vector2(tile_width, tile_height)
+
+
+func _update_stage_background_scroll(delta: float) -> void:
+	if current_mode == "travel" and opening_travel_active:
+		stage_scroll_offset += STAGE_SCROLL_SPEED * delta
+	_layout_stage_background_tiles()
 
 
 func _screen_rect(screen_id: String, section_id: String) -> Rect2:
@@ -2128,7 +2178,7 @@ func _update_actor_animations(delta: float) -> void:
 		_update_hero_hit_animation(delta)
 	elif current_mode == "travel" or current_mode == "memory_replace":
 		hero_art.texture = _frame_texture(hero_walk_frames, _loop_frame(hero_animation_elapsed, WALK_FRAME_TIME, HERO_WALK_FRAMES), hero_static_texture)
-		hero_box.position = hero_base_rect.position + Vector2(0, sin(hero_animation_elapsed * TAU * 2.0) * 3.0)
+		hero_box.position = hero_base_rect.position
 	elif current_mode == "battle":
 		hero_art.texture = hero_static_texture
 		hero_box.position = hero_base_rect.position
