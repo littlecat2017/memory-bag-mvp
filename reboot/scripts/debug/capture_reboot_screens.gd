@@ -35,6 +35,10 @@ func _run() -> void:
 	await _settle(4)
 	if not _save_snapshot("01_opening_walk_art.png"):
 		return
+	main.cycle_stage_map(1)
+	await _settle(4)
+	if not _save_snapshot("01b_manual_map_switch_art.png"):
+		return
 
 	await _drive_to_battle(main)
 	await _settle(4)

@@ -45,6 +45,14 @@ func _run() -> void:
 	_expect(main.operation_tray.visible, "travel shows operation tray")
 	_expect(main.stage_background_clip.visible, "travel shows scrolling stage background")
 	_expect(main.stage_background_tiles[0].texture != null, "travel uses stage background art")
+	_expect(main.prev_map_button.visible and main.next_map_button.visible, "travel shows map switch buttons")
+	_expect(main.prev_map_button.get_global_rect().end.x < main.next_map_button.get_global_rect().position.x, "map switch buttons are ordered")
+	var initial_map_index: int = main.current_stage_map_index
+	main.cycle_stage_map(1)
+	_expect(main.current_stage_map_index == (initial_map_index + 1) % main.stage_background_textures.size(), "next map button cycles stage map")
+	_expect(main.stage_background_tiles[0].texture == main.stage_background_textures[main.current_stage_map_index], "stage tile texture updates after next map")
+	main.cycle_stage_map(-1)
+	_expect(main.current_stage_map_index == initial_map_index, "previous map button cycles back")
 	_expect(not main.dialogue_panel.visible, "travel hides dialogue panel")
 	_expect(not main.choice_panel.visible, "travel hides choice panel")
 	var scroll_before: float = main.stage_scroll_offset
@@ -64,6 +72,7 @@ func _run() -> void:
 	_expect(main.current_mode == "battle", "travel reaches battle at 100 meters")
 	_expect(str(main.current_event.get("id", "")).begins_with("GAMEPLAY_BATTLE"), "battle uses gameplay event shell")
 	_expect(main.battle_reward_ids.size() == 1, "battle has one gameplay reward")
+	_expect(not main.prev_map_button.visible and not main.next_map_button.visible, "battle hides map switch buttons")
 
 	var hero_rect: Rect2 = main.hero_box.get_global_rect()
 	var enemy_rect: Rect2 = main.enemy_box.get_global_rect()

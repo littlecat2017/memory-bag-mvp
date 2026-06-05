@@ -277,6 +277,8 @@ var source_label: Label
 var concept_reference: TextureRect
 var travel_progress_back: ColorRect
 var travel_progress_fill: ColorRect
+var prev_map_button: PanelContainer
+var next_map_button: PanelContainer
 var title_layer: Control
 var title_background_art: TextureRect
 var title_text_label: Label
@@ -573,6 +575,14 @@ func _start_next_travel_segment() -> void:
 	_apply_mode()
 
 
+func cycle_stage_map(direction: int) -> void:
+	if current_mode != "travel" or stage_background_textures.is_empty() or direction == 0:
+		return
+	_set_stage_map(current_stage_map_index + direction)
+	stage_scroll_offset = 0.0
+	_layout_stage_background_tiles()
+
+
 func _begin_gameplay_battle(enemy_id := "") -> void:
 	var encounter_index := gameplay_encounter_count
 	var chosen_enemy_id := enemy_id
@@ -783,6 +793,20 @@ func _build_ui() -> void:
 	travel_progress_fill.color = Color(0.92, 0.62, 0.26, 0.88)
 	travel_progress_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(travel_progress_fill)
+
+	prev_map_button = _new_panel("button")
+	prev_map_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	prev_map_button.gui_input.connect(_on_prev_map_gui_input)
+	_add_button_art(prev_map_button)
+	prev_map_button.add_child(_center_label("上一张地图"))
+	add_child(prev_map_button)
+
+	next_map_button = _new_panel("button")
+	next_map_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	next_map_button.gui_input.connect(_on_next_map_gui_input)
+	_add_button_art(next_map_button)
+	next_map_button.add_child(_center_label("下一张地图"))
+	add_child(next_map_button)
 
 	floor_line = ColorRect.new()
 	floor_line.color = Color(0.20, 0.17, 0.12, 0.55)
@@ -1621,6 +1645,8 @@ func _apply_mode() -> void:
 	stage_label.visible = stage_panel.visible
 	travel_progress_back.visible = current_mode == "travel" and opening_travel_active
 	travel_progress_fill.visible = current_mode == "travel" and opening_travel_active
+	prev_map_button.visible = current_mode == "travel"
+	next_map_button.visible = current_mode == "travel"
 	floor_line.visible = stage_panel.visible
 	hero_box.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
 	enemy_box.visible = current_mode == "battle"
@@ -1714,6 +1740,18 @@ func _on_title_quit_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		get_viewport().set_input_as_handled()
 		get_tree().quit()
+
+
+func _on_prev_map_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		cycle_stage_map(-1)
+		get_viewport().set_input_as_handled()
+
+
+func _on_next_map_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		cycle_stage_map(1)
+		get_viewport().set_input_as_handled()
 
 
 func _on_bag_detail_close_gui_input(event: InputEvent) -> void:
@@ -2188,6 +2226,8 @@ func _apply_travel_layout() -> void:
 	_set_rect(stage_panel, _screen_rect("travel", "stage"))
 	_set_stage_background_rect(_screen_rect("travel", "stage"))
 	_set_rect(stage_label, Rect2(_screen_rect("travel", "stage").position + Vector2(26, 16), Vector2(620, 34)))
+	_set_rect(prev_map_button, _screen_rect("travel", "prev_map_button"))
+	_set_rect(next_map_button, _screen_rect("travel", "next_map_button"))
 	var progress_rect := Rect2(_screen_rect("travel", "stage").position + Vector2(26, 58), Vector2(360, 10))
 	_set_rect(travel_progress_back, progress_rect)
 	_set_rect(travel_progress_fill, Rect2(progress_rect.position, Vector2(0, progress_rect.size.y)))
