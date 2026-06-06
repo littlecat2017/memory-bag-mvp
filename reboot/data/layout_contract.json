@@ -29,7 +29,8 @@
       "prev_map_button": [848, 72, 112, 42],
       "next_map_button": [976, 72, 112, 42],
       "operation_tray": [52, 386, 1176, 322],
-      "inventory_board": [52, 386, 1176, 322]
+      "skill_box": [72, 406, 186, 278],
+      "inventory_board": [282, 386, 946, 322]
     },
     "battle": {
       "stage": [150, 60, 980, 300],
@@ -39,13 +40,15 @@
       "status": [990, 198, 130, 70],
       "battle_log": [190, 360, 900, 26],
       "operation_tray": [52, 386, 1176, 322],
-      "inventory_board": [52, 386, 1176, 322]
+      "skill_box": [72, 406, 186, 278],
+      "inventory_board": [282, 386, 946, 322]
     },
     "bag_detail": {
       "title": [72, 54, 420, 50],
       "memory_list": [72, 130, 342, 210],
       "detail_panel": [452, 130, 420, 210],
-      "inventory_board": [52, 386, 1176, 322],
+      "skill_box": [72, 406, 186, 278],
+      "inventory_board": [282, 386, 946, 322],
       "close_button": [1040, 54, 168, 50]
     },
     "ending": {

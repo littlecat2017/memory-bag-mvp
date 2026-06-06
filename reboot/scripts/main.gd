@@ -63,6 +63,7 @@ const BATTLE_PLAYER_DAMAGE := 10
 const BATTLE_ENEMY_DAMAGE := 5
 const SKILL_TRIGGER_NORMAL_ATTACKS := 2
 const SKILL_BANNER_DURATION := 0.72
+const SKILL_COOLDOWN_SECONDS := 2.0
 const BATTLE_PLAYER_RESPONSE_DELAY := 0.34
 const BATTLE_ENEMY_RESPONSE_DELAY := 0.28
 const BATTLE_VICTORY_CONTINUE_DELAY := 0.75
@@ -296,6 +297,7 @@ var current_attack_is_skill := false
 var current_skill: Dictionary = {}
 var current_slash_frames: Array[Texture2D] = []
 var skill_banner_elapsed := 0.0
+var skill_cooldowns: Dictionary = {}
 var battle_player_response_elapsed := 0.0
 var battle_enemy_response_elapsed := 0.0
 var battle_victory_elapsed := 0.0
@@ -342,6 +344,12 @@ var battle_log_art: TextureRect
 var battle_log_label: Label
 var operation_tray: Control
 var operation_tray_art: TextureRect
+var skill_box_panel: PanelContainer
+var skill_box_art: TextureRect
+var skill_box_title: Label
+var skill_row_panels: Array[PanelContainer] = []
+var skill_name_labels: Array[Label] = []
+var skill_cd_labels: Array[Label] = []
 var inventory_grid: GridContainer
 var inventory_item_layer: Control
 var inventory_cells: Array[PanelContainer] = []
@@ -440,6 +448,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_stage_background_scroll(delta)
+	_update_skill_cooldowns(delta)
 	_update_skill_banner(delta)
 	_update_actor_animations(delta)
 	_update_battle_turn_flow(delta)
@@ -624,22 +633,42 @@ func _update_skill_banner(delta: float) -> void:
 		skill_banner_label.modulate = Color.WHITE
 
 
+func _update_skill_cooldowns(delta: float) -> void:
+	if delta <= 0.0 or skill_cooldowns.is_empty():
+		return
+	var changed := false
+	for skill_id in skill_cooldowns.keys():
+		var remaining: float = float(skill_cooldowns.get(skill_id, 0.0))
+		if remaining <= 0.0:
+			continue
+		remaining = max(0.0, remaining - delta)
+		skill_cooldowns[skill_id] = remaining
+		changed = true
+	if changed:
+		_refresh_skill_box_ui()
+
+
 func _next_player_attack() -> Dictionary:
 	if normal_attack_counter >= SKILL_TRIGGER_NORMAL_ATTACKS and not PLAYER_SKILLS.is_empty():
-		var skill: Dictionary = PLAYER_SKILLS[randi() % PLAYER_SKILLS.size()]
-		normal_attack_counter = 0
-		current_attack_is_skill = true
-		current_skill = skill
-		_show_skill_banner(str(skill.get("name", "")))
-		return {
-			"type": "skill",
-			"id": str(skill.get("id", "")),
-			"name": str(skill.get("name", "")),
-			"log_name": str(skill.get("name", "技能")),
-			"damage": int(skill.get("damage", BATTLE_PLAYER_DAMAGE)),
-			"slash_frames": _skill_slash_frames(str(skill.get("id", ""))),
-		}
-	normal_attack_counter += 1
+		var available_skills: Array[Dictionary] = _available_player_skills()
+		if not available_skills.is_empty():
+			var skill: Dictionary = available_skills[randi() % available_skills.size()]
+			_set_skill_cooldown(str(skill.get("id", "")), SKILL_COOLDOWN_SECONDS)
+			normal_attack_counter = 0
+			current_attack_is_skill = true
+			current_skill = skill
+			_show_skill_banner(str(skill.get("name", "")))
+			return {
+				"type": "skill",
+				"id": str(skill.get("id", "")),
+				"name": str(skill.get("name", "")),
+				"log_name": str(skill.get("name", "技能")),
+				"damage": int(skill.get("damage", BATTLE_PLAYER_DAMAGE)),
+				"slash_frames": _skill_slash_frames(str(skill.get("id", ""))),
+			}
+		normal_attack_counter = SKILL_TRIGGER_NORMAL_ATTACKS
+	else:
+		normal_attack_counter += 1
 	current_attack_is_skill = false
 	current_skill = {}
 	skill_banner_elapsed = 0.0
@@ -651,6 +680,46 @@ func _next_player_attack() -> Dictionary:
 		"damage": BATTLE_PLAYER_DAMAGE,
 		"slash_frames": slash_effect_frames,
 	}
+
+
+func _available_player_skills() -> Array[Dictionary]:
+	var available: Array[Dictionary] = []
+	for skill in PLAYER_SKILLS:
+		var skill_id := str(skill.get("id", ""))
+		if skill_id.is_empty() or _skill_cooldown_remaining(skill_id) > 0.0:
+			continue
+		available.append(skill)
+	return available
+
+
+func _skill_cooldown_remaining(skill_id: String) -> float:
+	return max(0.0, float(skill_cooldowns.get(skill_id, 0.0)))
+
+
+func _set_skill_cooldown(skill_id: String, cooldown: float) -> void:
+	if skill_id.is_empty():
+		return
+	skill_cooldowns[skill_id] = max(0.0, cooldown)
+	_refresh_skill_box_ui()
+
+
+func _refresh_skill_box_ui() -> void:
+	if skill_box_panel == null:
+		return
+	for index in range(skill_row_panels.size()):
+		if index >= PLAYER_SKILLS.size():
+			continue
+		var skill: Dictionary = PLAYER_SKILLS[index]
+		var skill_id := str(skill.get("id", ""))
+		var remaining := _skill_cooldown_remaining(skill_id)
+		var ready := remaining <= 0.0
+		var row := skill_row_panels[index]
+		var name_label := skill_name_labels[index]
+		var cd_label := skill_cd_labels[index]
+		row.modulate = Color(1, 1, 1, 1) if ready else Color(0.55, 0.55, 0.55, 0.72)
+		name_label.add_theme_color_override("font_color", Color(0.17, 0.10, 0.04) if ready else Color(0.34, 0.34, 0.34))
+		cd_label.add_theme_color_override("font_color", Color(0.18, 0.34, 0.13) if ready else Color(0.36, 0.36, 0.36))
+		cd_label.text = "就绪" if ready else "%.1fs" % remaining
 
 
 func _show_skill_banner(skill_name: String) -> void:
@@ -1037,6 +1106,8 @@ func _build_ui() -> void:
 	operation_tray_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	operation_tray.add_child(operation_tray_art)
 
+	_build_skill_box()
+
 	inventory_grid = GridContainer.new()
 	inventory_grid.mouse_filter = Control.MOUSE_FILTER_STOP
 	inventory_grid.gui_input.connect(_on_inventory_grid_gui_input)
@@ -1311,6 +1382,81 @@ func _build_inventory_cells() -> void:
 	_refresh_inventory_ui()
 
 
+func _build_skill_box() -> void:
+	skill_row_panels.clear()
+	skill_name_labels.clear()
+	skill_cd_labels.clear()
+	skill_box_panel = _new_panel("skill_box")
+	skill_box_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	operation_tray.add_child(skill_box_panel)
+
+	skill_box_art = _new_texture_rect(ART_DIALOGUE_PANEL, TextureRect.STRETCH_SCALE)
+	skill_box_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	skill_box_art.modulate = Color(1, 1, 1, 0.88)
+	skill_box_panel.add_child(skill_box_art)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	skill_box_panel.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 8)
+	margin.add_child(stack)
+
+	skill_box_title = _new_label(18, Color(0.20, 0.12, 0.05))
+	skill_box_title.text = "技能"
+	skill_box_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	skill_box_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	skill_box_title.custom_minimum_size = Vector2(0, 28)
+	stack.add_child(skill_box_title)
+
+	for index in range(PLAYER_SKILLS.size()):
+		var skill: Dictionary = PLAYER_SKILLS[index]
+		var row := _new_panel("skill_row")
+		row.custom_minimum_size = Vector2(0, 58)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var row_art := _new_texture_rect(ART_BUTTON, TextureRect.STRETCH_SCALE)
+		row_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		row_art.modulate = Color(1, 1, 1, 0.82)
+		row.add_child(row_art)
+
+		var row_margin := MarginContainer.new()
+		row_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+		row_margin.add_theme_constant_override("margin_left", 9)
+		row_margin.add_theme_constant_override("margin_top", 4)
+		row_margin.add_theme_constant_override("margin_right", 9)
+		row_margin.add_theme_constant_override("margin_bottom", 4)
+		row.add_child(row_margin)
+
+		var row_stack := VBoxContainer.new()
+		row_stack.add_theme_constant_override("separation", 0)
+		row_margin.add_child(row_stack)
+
+		var name_label := _new_label(16, Color(0.17, 0.10, 0.04))
+		name_label.text = str(skill.get("name", "技能"))
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		name_label.clip_text = true
+		row_stack.add_child(name_label)
+
+		var cd_label := _new_label(13, Color(0.32, 0.19, 0.08))
+		cd_label.text = "就绪"
+		cd_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cd_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row_stack.add_child(cd_label)
+
+		stack.add_child(row)
+		skill_row_panels.append(row)
+		skill_name_labels.append(name_label)
+		skill_cd_labels.append(cd_label)
+	_refresh_skill_box_ui()
+
+
 func _build_drag_preview() -> void:
 	drag_preview = _new_panel("item_preview")
 	drag_preview.visible = false
@@ -1414,8 +1560,10 @@ func _reset_battle_state() -> void:
 	current_skill = {}
 	current_slash_frames.clear()
 	skill_banner_elapsed = 0.0
+	skill_cooldowns.clear()
 	if skill_banner_label != null:
 		skill_banner_label.visible = false
+	_refresh_skill_box_ui()
 	battle_player_response_elapsed = 0.0
 	battle_enemy_response_elapsed = 0.0
 	battle_victory_elapsed = 0.0
@@ -1798,6 +1946,8 @@ func _apply_mode() -> void:
 	status_box.visible = current_mode == "battle"
 	battle_log_panel.visible = current_mode == "battle"
 	operation_tray.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
+	if skill_box_panel != null:
+		skill_box_panel.visible = operation_tray.visible
 	dialogue_panel.visible = false
 	choice_panel.visible = false
 	title_layer.visible = current_mode == "title"
@@ -2369,9 +2519,11 @@ func _apply_battle_layout() -> void:
 func _set_operation_layout(screen_id: String) -> void:
 	var tray_rect := _screen_rect(screen_id, "operation_tray")
 	_set_rect(operation_tray, tray_rect)
+	_set_rect(skill_box_panel, _relative_rect(_screen_rect(screen_id, "skill_box"), tray_rect.position))
 	var inventory_rect := _relative_rect(_screen_rect(screen_id, "inventory_board"), tray_rect.position)
 	_set_rect(inventory_grid, inventory_rect)
 	_set_rect(inventory_item_layer, inventory_rect)
+	_refresh_skill_box_ui()
 	_refresh_inventory_ui()
 
 

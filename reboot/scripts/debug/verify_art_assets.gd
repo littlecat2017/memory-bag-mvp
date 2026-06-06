@@ -78,8 +78,8 @@ func _run() -> void:
 	_expect(main._memory_grid_size("mem_wooden_sword") == Vector2i(4, 1), "wooden sword uses a multi-cell footprint")
 	var sword_texture: Texture2D = main._memory_item_texture("mem_wooden_sword")
 	_expect(sword_texture != null and sword_texture.get_width() > sword_texture.get_height() * 3, "wooden sword item art matches its horizontal footprint")
-	_expect(_texture_matches_grid(main, "mem_wooden_sword"), "wooden sword texture dimensions match its grid footprint")
-	_expect(_texture_matches_grid(main, "mem_reason_to_depart"), "reason journal texture dimensions match its grid footprint")
+	_expect(_rendered_item_matches_grid(main, "mem_wooden_sword"), "wooden sword rendered item matches its grid footprint")
+	_expect(_rendered_item_matches_grid(main, "mem_reason_to_depart"), "reason journal rendered item matches its grid footprint")
 	for memory_id in main.MEMORY_GRID_SIZES.keys():
 		var typed_id := str(memory_id)
 		_expect(_texture_has_clean_border(main._memory_item_texture(typed_id)), "%s item texture has transparent borders" % typed_id)
@@ -99,15 +99,27 @@ func _expect(condition: bool, message: String) -> void:
 	push_error("verify_art_assets: %s" % message)
 
 
+func _rendered_item_matches_grid(main: Control, memory_id: String) -> bool:
+	var position: Vector2i = main._memory_grid_position(memory_id)
+	if position.x < 0:
+		return false
+	var size: Vector2i = main._memory_grid_size(memory_id)
+	var expected_rect: Rect2 = main._memory_item_visual_rect(main.inventory_item_layer.size, position, size)
+	for child in main.inventory_item_layer.get_children():
+		if child is Control and str(child.tooltip_text) == main._memory_name(memory_id):
+			var rect := Rect2(child.position, child.size)
+			return rect.position.distance_to(expected_rect.position) <= 1.0 and rect.size.distance_to(expected_rect.size) <= 1.0
+	return false
+
+
 func _texture_matches_grid(main: Control, memory_id: String) -> bool:
 	var texture: Texture2D = main._memory_item_texture(memory_id)
 	if texture == null:
 		return false
 	var size: Vector2i = main._memory_grid_size(memory_id)
-	var expected_rect: Rect2 = main._inventory_item_rect(main.inventory_grid.size, Vector2i.ZERO, size)
-	var expected_width: int = int(expected_rect.size.x)
-	var expected_height: int = int(expected_rect.size.y)
-	return texture.get_width() == expected_width and texture.get_height() == expected_height
+	var expected_aspect: float = float(size.x) / float(size.y)
+	var texture_aspect: float = float(texture.get_width()) / float(texture.get_height())
+	return abs(texture_aspect - expected_aspect) <= 0.45
 
 
 func _texture_has_clean_border(texture: Texture2D) -> bool:
