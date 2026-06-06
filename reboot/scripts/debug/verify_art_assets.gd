@@ -40,6 +40,7 @@ func _run() -> void:
 	_expect(main.enemy_idle_sheet_texture != null, "enemy idle animation sheet texture")
 	_expect(main.enemy_hit_sheet_texture != null, "enemy hit animation sheet texture")
 	_expect(main.slash_effect_sheet_texture != null, "slash effect animation sheet texture")
+	_expect(main.skill_slash_sheet_textures.size() == main.PLAYER_SKILLS.size(), "skill slash sheet textures are loaded")
 	_expect(main.hit_burst_sheet_texture != null, "hit burst animation sheet texture")
 	_expect(main.hero_walk_frames.size() == 9, "hero walk animation frames are cached")
 	var walk_frame_1 := main.hero_walk_frames[0] as AtlasTexture
@@ -52,11 +53,19 @@ func _run() -> void:
 	_expect(main.enemy_idle_frames.size() == 8, "enemy idle animation frames are cached")
 	_expect(main.enemy_hit_frames.size() == 6, "enemy hit animation frames are cached")
 	_expect(main.slash_effect_frames.size() == 6, "slash effect animation frames are cached")
+	for skill in main.PLAYER_SKILLS:
+		var skill_id := str(skill.get("id", ""))
+		var frames: Array[Texture2D] = main._skill_slash_frames(skill_id)
+		_expect(frames.size() == 6, "%s skill slash frames are cached" % skill_id)
 	_expect(main.hit_burst_frames.size() == 8, "hit burst animation frames are cached")
 	_expect(main.hero_walk_sheet_texture.get_width() == 768 and main.hero_walk_sheet_texture.get_height() == 768, "hero walk sheet has ordered 3x3 256px frames")
 	_expect(main.hero_attack_sheet_texture.get_width() == 2048 and main.hero_attack_sheet_texture.get_height() == 256, "hero attack sheet has 8 256px frames")
 	_expect(main.enemy_hit_sheet_texture.get_width() == 1536 and main.enemy_hit_sheet_texture.get_height() == 256, "enemy hit sheet has 6 256px frames")
 	_expect(main.slash_effect_sheet_texture.get_width() == 1536 and main.slash_effect_sheet_texture.get_height() == 160, "slash sheet has 6 256x160 frames")
+	for skill in main.PLAYER_SKILLS:
+		var skill_id := str(skill.get("id", ""))
+		var texture: Texture2D = main.skill_slash_sheet_textures.get(skill_id, null)
+		_expect(texture != null and texture.get_width() == 1536 and texture.get_height() == 160, "%s skill slash sheet has 6 256x160 frames" % skill_id)
 	_expect(main.hit_burst_sheet_texture.get_width() == 1536 and main.hit_burst_sheet_texture.get_height() == 192, "hit burst sheet has 8 192px frames")
 	_expect(main.memory_icons_texture != null, "memory icon atlas texture")
 	_expect(main.memory_item_textures.size() == main.MEMORY_GRID_SIZES.size(), "all spatial memory item textures load")

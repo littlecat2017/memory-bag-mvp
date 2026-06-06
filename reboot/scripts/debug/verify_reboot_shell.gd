@@ -120,6 +120,22 @@ func _run() -> void:
 	_expect(main.stage_panel.get_global_rect().position != stage_rect.position, "battle impact shakes stage art")
 	_expect(not main.battle_resolved, "battle remains unresolved after first hit")
 	_expect(main.battle_phase == "enemy", "battle moves to enemy response phase")
+	main._stop_battle_attack_animation()
+	main.battle_resolved = false
+	main.battle_active = true
+	main.battle_phase = "player"
+	main.enemy_hp = main.enemy_max_hp
+	main.normal_attack_counter = main.SKILL_TRIGGER_NORMAL_ATTACKS
+	var skill_enemy_hp_before: int = main.enemy_hp
+	main._perform_player_battle_turn()
+	_expect(main.current_attack_is_skill, "third player attack triggers a skill")
+	_expect(not main.current_skill.is_empty(), "skill attack records current skill")
+	_expect(main.skill_banner_label.visible, "skill attack shows skill name banner")
+	_expect(main.skill_banner_label.text == str(main.current_skill.get("name", "")), "skill banner shows current skill name")
+	_expect(main.slash_active and main.current_slash_frames.size() == 6, "skill attack uses skill slash frames")
+	_expect(main.current_slash_frames[0] != main.slash_effect_frames[0], "skill slash differs from normal slash")
+	_expect(main.enemy_hp <= skill_enemy_hp_before - main.BATTLE_PLAYER_DAMAGE, "skill attack deals at least normal damage")
+	_expect(main.battle_log_label.text.find(str(main.current_skill.get("name", ""))) >= 0, "battle log records skill name")
 
 	for _frame_index in range(20):
 		main._update_actor_animations(0.05)

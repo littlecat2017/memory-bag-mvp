@@ -31,6 +31,9 @@ const ART_HERO_ATTACK_SHEET := ART_ACTOR_ANIM_ROOT + "hero_attack_sheet.png"
 const ART_ENEMY_IDLE_SHEET := ART_ACTOR_ANIM_ROOT + "enemy_idle_sheet.png"
 const ART_ENEMY_HIT_SHEET := ART_ACTOR_ANIM_ROOT + "enemy_hit_sheet.png"
 const ART_SLASH_EFFECT_SHEET := ART_ACTOR_ANIM_ROOT + "slash_effect_sheet.png"
+const ART_SKILL_SLASH_DAWN_SHEET := ART_ACTOR_ANIM_ROOT + "skills/skill_slash_dawn_sheet.png"
+const ART_SKILL_SLASH_PAPER_RAIN_SHEET := ART_ACTOR_ANIM_ROOT + "skills/skill_slash_paper_rain_sheet.png"
+const ART_SKILL_SLASH_LANTERN_SPIN_SHEET := ART_ACTOR_ANIM_ROOT + "skills/skill_slash_lantern_spin_sheet.png"
 const ART_HIT_BURST_SHEET := ART_ACTOR_ANIM_ROOT + "hit_burst_sheet.png"
 const ART_MEMORY_ICONS_ATLAS := ART_ROOT + "memory_icons_atlas.png"
 const ART_MEMORY_ITEM_ROOT := ART_ROOT + "memory_items/"
@@ -58,6 +61,8 @@ const BATTLE_ENEMY_MAX_HP := 24
 const BATTLE_BOSS_MAX_HP := 36
 const BATTLE_PLAYER_DAMAGE := 10
 const BATTLE_ENEMY_DAMAGE := 5
+const SKILL_TRIGGER_NORMAL_ATTACKS := 2
+const SKILL_BANNER_DURATION := 0.72
 const BATTLE_PLAYER_RESPONSE_DELAY := 0.34
 const BATTLE_ENEMY_RESPONSE_DELAY := 0.28
 const BATTLE_VICTORY_CONTINUE_DELAY := 0.75
@@ -101,6 +106,26 @@ const ENEMY_DISPLAY_NAMES := {
 	"enemy_bellroot_imp": "铃根小鬼",
 	"enemy_memory_shell": "记忆空壳",
 }
+const PLAYER_SKILLS := [
+	{
+		"id": "dawn_slash",
+		"name": "破晓斩",
+		"damage": 16,
+		"slash_sheet": ART_SKILL_SLASH_DAWN_SHEET,
+	},
+	{
+		"id": "paper_rain",
+		"name": "纸雨连斩",
+		"damage": 14,
+		"slash_sheet": ART_SKILL_SLASH_PAPER_RAIN_SHEET,
+	},
+	{
+		"id": "lantern_spin",
+		"name": "青灯回旋",
+		"damage": 15,
+		"slash_sheet": ART_SKILL_SLASH_LANTERN_SPIN_SHEET,
+	},
+]
 const GAMEPLAY_REWARD_IDS := [
 	"mem_someone_waits",
 	"mem_masters_scolding",
@@ -147,6 +172,9 @@ const ART_ASSET_PATHS := [
 	ART_ENEMY_IDLE_SHEET,
 	ART_ENEMY_HIT_SHEET,
 	ART_SLASH_EFFECT_SHEET,
+	ART_SKILL_SLASH_DAWN_SHEET,
+	ART_SKILL_SLASH_PAPER_RAIN_SHEET,
+	ART_SKILL_SLASH_LANTERN_SPIN_SHEET,
 	ART_HIT_BURST_SHEET,
 	ART_MEMORY_ICONS_ATLAS,
 ]
@@ -263,6 +291,11 @@ var battle_enemy_id := ""
 var battle_reward_ids: Array[String] = []
 var battle_phase := ""
 var battle_action_text := ""
+var normal_attack_counter := 0
+var current_attack_is_skill := false
+var current_skill: Dictionary = {}
+var current_slash_frames: Array[Texture2D] = []
+var skill_banner_elapsed := 0.0
 var battle_player_response_elapsed := 0.0
 var battle_enemy_response_elapsed := 0.0
 var battle_victory_elapsed := 0.0
@@ -292,6 +325,7 @@ var stage_background_textures: Array[Texture2D] = []
 var current_stage_map_index := 0
 var stage_panel: PanelContainer
 var stage_label: Label
+var skill_banner_label: Label
 var floor_line: ColorRect
 var hero_box: PanelContainer
 var hero_art: TextureRect
@@ -366,12 +400,14 @@ var hero_attack_sheet_texture: Texture2D
 var enemy_idle_sheet_texture: Texture2D
 var enemy_hit_sheet_texture: Texture2D
 var slash_effect_sheet_texture: Texture2D
+var skill_slash_sheet_textures: Dictionary = {}
 var hit_burst_sheet_texture: Texture2D
 var hero_walk_frames: Array[Texture2D] = []
 var hero_attack_frames: Array[Texture2D] = []
 var enemy_idle_frames: Array[Texture2D] = []
 var enemy_hit_frames: Array[Texture2D] = []
 var slash_effect_frames: Array[Texture2D] = []
+var skill_slash_frames_by_id: Dictionary = {}
 var hit_burst_frames: Array[Texture2D] = []
 var hero_base_rect := Rect2()
 var enemy_base_rect := Rect2()
@@ -404,6 +440,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_stage_background_scroll(delta)
+	_update_skill_banner(delta)
 	_update_actor_animations(delta)
 	_update_battle_turn_flow(delta)
 	_update_opening_travel(delta)
@@ -574,26 +611,79 @@ func _update_battle_turn_flow(delta: float) -> void:
 		_perform_enemy_battle_turn()
 
 
+func _update_skill_banner(delta: float) -> void:
+	if skill_banner_label == null:
+		return
+	if skill_banner_elapsed > 0.0:
+		skill_banner_elapsed = max(0.0, skill_banner_elapsed - delta)
+	skill_banner_label.visible = current_mode == "battle" and skill_banner_elapsed > 0.0
+	if skill_banner_label.visible:
+		var alpha: float = clamp(skill_banner_elapsed / SKILL_BANNER_DURATION, 0.0, 1.0)
+		skill_banner_label.modulate = Color(1, 1, 1, min(1.0, alpha * 1.35))
+	else:
+		skill_banner_label.modulate = Color.WHITE
+
+
+func _next_player_attack() -> Dictionary:
+	if normal_attack_counter >= SKILL_TRIGGER_NORMAL_ATTACKS and not PLAYER_SKILLS.is_empty():
+		var skill: Dictionary = PLAYER_SKILLS[randi() % PLAYER_SKILLS.size()]
+		normal_attack_counter = 0
+		current_attack_is_skill = true
+		current_skill = skill
+		_show_skill_banner(str(skill.get("name", "")))
+		return {
+			"type": "skill",
+			"id": str(skill.get("id", "")),
+			"name": str(skill.get("name", "")),
+			"log_name": str(skill.get("name", "技能")),
+			"damage": int(skill.get("damage", BATTLE_PLAYER_DAMAGE)),
+			"slash_frames": _skill_slash_frames(str(skill.get("id", ""))),
+		}
+	normal_attack_counter += 1
+	current_attack_is_skill = false
+	current_skill = {}
+	skill_banner_elapsed = 0.0
+	return {
+		"type": "normal",
+		"id": "normal_slash",
+		"name": "普通攻击",
+		"log_name": "你出剑",
+		"damage": BATTLE_PLAYER_DAMAGE,
+		"slash_frames": slash_effect_frames,
+	}
+
+
+func _show_skill_banner(skill_name: String) -> void:
+	if skill_banner_label == null or skill_name.is_empty():
+		return
+	skill_banner_label.text = skill_name
+	skill_banner_elapsed = SKILL_BANNER_DURATION
+	skill_banner_label.visible = true
+	skill_banner_label.modulate = Color.WHITE
+
+
 func _perform_player_battle_turn() -> void:
 	if not battle_active or battle_resolved:
 		return
 	battle_turns += 1
 	battle_player_response_elapsed = 0.0
-	var damage := mini(BATTLE_PLAYER_DAMAGE, enemy_hp)
-	enemy_hp = maxi(0, enemy_hp - BATTLE_PLAYER_DAMAGE)
-	_start_battle_attack_animation()
+	var attack: Dictionary = _next_player_attack()
+	var damage_value: int = int(attack.get("damage", BATTLE_PLAYER_DAMAGE))
+	var damage: int = mini(damage_value, enemy_hp)
+	enemy_hp = maxi(0, enemy_hp - damage_value)
+	_start_battle_attack_animation(attack)
 	if enemy_hp <= 0:
 		battle_phase = "victory"
 		battle_resolved = true
 		battle_active = false
 		battle_action_text = "敌人倒下了"
 		battle_victory_elapsed = 0.0
-		_append_battle_log("你出剑造成%d点伤害，敌人倒下" % damage)
+		_append_battle_log("%s造成%d点伤害，敌人倒下" % [str(attack.get("log_name", "你出剑")), damage])
 	else:
 		battle_phase = "enemy"
 		battle_action_text = "敌人准备反击"
 		battle_enemy_response_elapsed = 0.0
-		_append_battle_log("你出剑造成%d点伤害，敌人 HP %d/%d" % [damage, enemy_hp, enemy_max_hp])
+		_append_battle_log("%s造成%d点伤害，敌人 HP %d/%d" % [str(attack.get("log_name", "你出剑")), damage, enemy_hp, enemy_max_hp])
 	_refresh_battle_ui()
 
 
@@ -837,6 +927,15 @@ func _build_ui() -> void:
 	stage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	stage_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	add_child(stage_label)
+
+	skill_banner_label = _new_label(28, Color(0.22, 0.12, 0.04))
+	skill_banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	skill_banner_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	skill_banner_label.add_theme_color_override("font_outline_color", Color(1.0, 0.91, 0.58, 0.90))
+	skill_banner_label.add_theme_constant_override("outline_size", 5)
+	skill_banner_label.visible = false
+	skill_banner_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(skill_banner_label)
 
 	travel_progress_back = ColorRect.new()
 	travel_progress_back.color = Color(0.12, 0.10, 0.08, 0.46)
@@ -1310,6 +1409,13 @@ func _reset_battle_state() -> void:
 	battle_reward_ids.clear()
 	battle_phase = ""
 	battle_action_text = ""
+	normal_attack_counter = 0
+	current_attack_is_skill = false
+	current_skill = {}
+	current_slash_frames.clear()
+	skill_banner_elapsed = 0.0
+	if skill_banner_label != null:
+		skill_banner_label.visible = false
 	battle_player_response_elapsed = 0.0
 	battle_enemy_response_elapsed = 0.0
 	battle_victory_elapsed = 0.0
@@ -1681,6 +1787,7 @@ func _apply_mode() -> void:
 	stage_panel.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
 	stage_background_clip.visible = stage_panel.visible
 	stage_label.visible = stage_panel.visible
+	skill_banner_label.visible = current_mode == "battle" and skill_banner_elapsed > 0.0
 	travel_progress_back.visible = current_mode == "travel" and opening_travel_active
 	travel_progress_fill.visible = current_mode == "travel" and opening_travel_active
 	prev_map_button.visible = current_mode == "travel"
@@ -2244,6 +2351,7 @@ func _apply_battle_layout() -> void:
 	_set_rect(stage_panel, _screen_rect("battle", "stage"))
 	_set_stage_background_rect(_screen_rect("battle", "stage"))
 	_set_rect(stage_label, Rect2(_screen_rect("battle", "stage").position + Vector2(26, 16), Vector2(620, 34)))
+	_set_rect(skill_banner_label, Rect2(_screen_rect("battle", "stage").position + Vector2(280, 24), Vector2(420, 52)))
 	travel_progress_back.visible = false
 	travel_progress_fill.visible = false
 	_set_rect(floor_line, _screen_rect("battle", "floor_baseline"))
@@ -2405,13 +2513,32 @@ func _update_enemy_attack_animation(delta: float) -> void:
 
 func _update_slash_animation(delta: float) -> void:
 	slash_elapsed += delta
-	var frame := mini(SLASH_FRAMES - 1, int(floor(slash_elapsed / SLASH_FRAME_TIME)))
-	slash_effect_art.texture = _frame_texture(slash_effect_frames, frame, null)
-	var slash_rect := Rect2(enemy_base_rect.position + Vector2(-44, 8), Vector2(218, 136))
+	var frames: Array[Texture2D] = current_slash_frames
+	if frames.is_empty():
+		frames = slash_effect_frames
+	var frame_count: int = max(1, frames.size())
+	var frame: int = mini(frame_count - 1, int(floor(slash_elapsed / SLASH_FRAME_TIME)))
+	slash_effect_art.texture = _frame_texture(frames, frame, null)
+	var slash_size := Vector2(218, 136)
+	var slash_center := enemy_base_rect.get_center() + Vector2(-22, -18)
+	if current_attack_is_skill:
+		slash_size = Vector2(292, 176)
+		slash_center = enemy_base_rect.get_center() + Vector2(-42, -24)
+	var slash_rect := Rect2(slash_center - slash_size * 0.5, slash_size)
+	var stage_rect := _screen_rect("battle", "stage")
+	var status_rect := _screen_rect("battle", "status")
+	var safe_left: float = stage_rect.position.x + 12.0
+	var safe_right: float = status_rect.position.x - 8.0
+	if safe_right <= safe_left:
+		safe_right = stage_rect.position.x + stage_rect.size.x - 12.0
+	slash_rect.position.x = clamp(slash_rect.position.x, safe_left, safe_right - slash_rect.size.x)
 	_set_rect(slash_effect_art, slash_rect)
 	slash_effect_art.visible = true
-	slash_effect_art.modulate = Color(1, 1, 1, clamp(1.0 - slash_elapsed / (SLASH_FRAME_TIME * float(SLASH_FRAMES)), 0.0, 1.0))
-	if frame >= SLASH_FRAMES - 1:
+	var fade_alpha: float = clamp(1.0 - slash_elapsed / (SLASH_FRAME_TIME * float(SLASH_FRAMES)), 0.0, 1.0)
+	if current_attack_is_skill:
+		fade_alpha = clamp(0.32 + fade_alpha * 0.92, 0.0, 1.0)
+	slash_effect_art.modulate = Color(1, 1, 1, fade_alpha)
+	if frame >= frame_count - 1:
 		slash_active = false
 		slash_elapsed = 0.0
 		slash_effect_art.visible = false
@@ -2458,9 +2585,17 @@ func _update_battle_impact_feedback() -> void:
 		floor_line.position = _screen_rect("travel", "floor_baseline").position
 
 
-func _start_battle_attack_animation() -> void:
+func _start_battle_attack_animation(attack: Dictionary = {}) -> void:
 	if current_mode != "battle":
 		return
+	current_attack_is_skill = str(attack.get("type", "normal")) == "skill"
+	var attack_slash_frames: Array = attack.get("slash_frames", slash_effect_frames)
+	current_slash_frames.clear()
+	for frame in attack_slash_frames:
+		if frame is Texture2D:
+			current_slash_frames.append(frame)
+	if current_slash_frames.is_empty():
+		current_slash_frames = slash_effect_frames.duplicate()
 	hero_attack_active = true
 	enemy_hit_active = true
 	slash_active = true
@@ -2639,13 +2774,44 @@ func _load_actor_animation_textures() -> void:
 	enemy_idle_sheet_texture = _load_texture(ART_ENEMY_IDLE_SHEET)
 	enemy_hit_sheet_texture = _load_texture(ART_ENEMY_HIT_SHEET)
 	slash_effect_sheet_texture = _load_texture(ART_SLASH_EFFECT_SHEET)
+	_load_skill_slash_textures()
 	hit_burst_sheet_texture = _load_texture(ART_HIT_BURST_SHEET)
 	hero_walk_frames = _build_sheet_frames(hero_walk_sheet_texture, ACTOR_ANIM_FRAME_SIZE, HERO_WALK_FRAMES, HERO_WALK_SHEET_COLUMNS)
 	hero_attack_frames = _build_sheet_frames(hero_attack_sheet_texture, ACTOR_ANIM_FRAME_SIZE, HERO_ATTACK_FRAMES)
 	enemy_idle_frames = _build_sheet_frames(enemy_idle_sheet_texture, ACTOR_ANIM_FRAME_SIZE, ACTOR_LOOP_FRAMES)
 	enemy_hit_frames = _build_sheet_frames(enemy_hit_sheet_texture, ACTOR_ANIM_FRAME_SIZE, ENEMY_HIT_FRAMES)
 	slash_effect_frames = _build_sheet_frames(slash_effect_sheet_texture, SLASH_ANIM_FRAME_SIZE, SLASH_FRAMES)
+	_build_skill_slash_frames()
 	hit_burst_frames = _build_sheet_frames(hit_burst_sheet_texture, HIT_BURST_ANIM_FRAME_SIZE, HIT_BURST_FRAMES)
+
+
+func _load_skill_slash_textures() -> void:
+	skill_slash_sheet_textures.clear()
+	for skill in PLAYER_SKILLS:
+		var skill_id := str(skill.get("id", ""))
+		var path := str(skill.get("slash_sheet", ""))
+		if skill_id.is_empty() or path.is_empty():
+			continue
+		var texture := _load_texture(path)
+		if texture != null:
+			skill_slash_sheet_textures[skill_id] = texture
+
+
+func _build_skill_slash_frames() -> void:
+	skill_slash_frames_by_id.clear()
+	for skill_id in skill_slash_sheet_textures.keys():
+		var texture := skill_slash_sheet_textures[skill_id] as Texture2D
+		skill_slash_frames_by_id[str(skill_id)] = _build_sheet_frames(texture, SLASH_ANIM_FRAME_SIZE, SLASH_FRAMES)
+
+
+func _skill_slash_frames(skill_id: String) -> Array[Texture2D]:
+	var frames: Array[Texture2D] = []
+	var cached_frames = skill_slash_frames_by_id.get(skill_id, [])
+	if cached_frames is Array:
+		for frame in cached_frames:
+			if frame is Texture2D:
+				frames.append(frame)
+	return frames if not frames.is_empty() else slash_effect_frames
 
 
 func _load_enemy_textures() -> void:

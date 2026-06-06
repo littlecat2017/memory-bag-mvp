@@ -70,3 +70,13 @@ Additional runtime enemies added without new image generation on 2026-06-06:
 | `assets/chibi/chibi_enemy_hollow_warden.png` | `reboot/assets/generated/mvp_art/enemies/enemy_hollow_warden.png` | Reused existing chibi enemy art, normalized to 512x512 transparent PNG. |
 | `assets/chibi/chibi_boss_nameless_hunter.png` | `reboot/assets/generated/mvp_art/enemies/boss_nameless_hunter.png` | Reused existing chibi boss art, normalized to 512x512 transparent PNG. |
 | `reboot/assets/generated/mvp_art/enemy.png` | `reboot/assets/generated/mvp_art/enemies/enemy_memory_shell.png` | Reused existing reboot enemy art, normalized to 512x512 transparent PNG. |
+
+Additional skill VFX assets added without new image generation on 2026-06-06:
+
+| Source | Workspace Asset | Status |
+|---|---|---|
+| `reboot/assets/generated/mvp_art/actor_anim/slash_effect_sheet.png` | `reboot/assets/generated/mvp_art/actor_anim/skills/skill_slash_dawn_sheet.png` | Locally derived 6-frame golden skill slash sheet via `scripts/debug/generate_skill_slash_assets.gd`; no image2 quota used. |
+| `reboot/assets/generated/mvp_art/actor_anim/slash_effect_sheet.png` | `reboot/assets/generated/mvp_art/actor_anim/skills/skill_slash_paper_rain_sheet.png` | Locally derived 6-frame blue-purple multi-slash sheet via `scripts/debug/generate_skill_slash_assets.gd`; no image2 quota used. |
+| `reboot/assets/generated/mvp_art/actor_anim/slash_effect_sheet.png` | `reboot/assets/generated/mvp_art/actor_anim/skills/skill_slash_lantern_spin_sheet.png` | Locally derived 6-frame green lantern-spin slash sheet via `scripts/debug/generate_skill_slash_assets.gd`; no image2 quota used. |
+
+2026-06-06 total remains 14 / 50 after the skill VFX pass.
