@@ -64,6 +64,7 @@ const BATTLE_ENEMY_DAMAGE := 5
 const SKILL_TRIGGER_NORMAL_ATTACKS := 2
 const SKILL_BANNER_DURATION := 0.72
 const SKILL_COOLDOWN_SECONDS := 2.0
+const BATTLES_PER_LEVEL := 3
 const BATTLE_PLAYER_RESPONSE_DELAY := 0.34
 const BATTLE_ENEMY_RESPONSE_DELAY := 0.28
 const BATTLE_VICTORY_CONTINUE_DELAY := 0.75
@@ -285,6 +286,9 @@ var pending_resume_event_id := ""
 var opening_travel_active := false
 var opening_travel_meters := 0.0
 var gameplay_encounter_count := 0
+var player_level := 1
+var battle_experience := 0
+var last_reward_notice := ""
 var battle_active := false
 var battle_resolved := false
 var battle_turns := 0
@@ -317,6 +321,8 @@ var drag_source_slot := -1
 var drag_memory_id := ""
 var drag_origin_position := Vector2i(-1, -1)
 var drag_start_position := Vector2.ZERO
+var drag_preview_pointer_offset := Vector2.ZERO
+var drag_hover_grid_position := Vector2i(-1, -1)
 var validation_errors: Array[String] = []
 
 var bg_layer: ColorRect
@@ -344,12 +350,6 @@ var battle_log_art: TextureRect
 var battle_log_label: Label
 var operation_tray: Control
 var operation_tray_art: TextureRect
-var skill_box_panel: PanelContainer
-var skill_box_art: TextureRect
-var skill_box_title: Label
-var skill_row_panels: Array[PanelContainer] = []
-var skill_name_labels: Array[Label] = []
-var skill_cd_labels: Array[Label] = []
 var inventory_grid: GridContainer
 var inventory_item_layer: Control
 var inventory_cells: Array[PanelContainer] = []
@@ -397,6 +397,8 @@ var ending_title_button: PanelContainer
 var drag_preview: PanelContainer
 var drag_preview_icon: TextureRect
 var drag_preview_label: Label
+var memory_tooltip_panel: PanelContainer
+var memory_tooltip_label: Label
 var memory_icons_texture: Texture2D
 var memory_item_textures: Dictionary = {}
 var hero_static_texture: Texture2D
@@ -457,6 +459,9 @@ func _process(delta: float) -> void:
 		var pointer_position := get_viewport().get_mouse_position()
 		drag_moved = drag_moved or pointer_position.distance_to(drag_start_position) >= DRAG_START_THRESHOLD
 		_update_drag_preview_position(pointer_position)
+		_update_drag_hover(pointer_position)
+	else:
+		_update_memory_tooltip(get_viewport().get_mouse_position())
 	if pointer_hold_active:
 		if not _can_pointer_advance():
 			_stop_pointer_hold()
@@ -578,10 +583,16 @@ func _update_opening_travel(delta: float) -> void:
 
 func _refresh_opening_travel_ui() -> void:
 	if stage_label != null and current_mode == "travel":
-		stage_label.text = "前进 %d / %d 米" % [
+		var travel_text := "前进 %d / %d 米    Lv.%d 经验 %d/%d" % [
 			int(round(opening_travel_meters)),
 			int(OPENING_TRAVEL_TARGET_METERS),
+			player_level,
+			battle_experience,
+			BATTLES_PER_LEVEL,
 		]
+		if not last_reward_notice.is_empty() and not last_reward_notice.begins_with("经验 "):
+			travel_text += "    %s" % last_reward_notice
+		stage_label.text = travel_text
 	if travel_progress_fill != null and travel_progress_back != null:
 		var progress: float = clamp(opening_travel_meters / OPENING_TRAVEL_TARGET_METERS, 0.0, 1.0)
 		travel_progress_fill.size.x = travel_progress_back.size.x * progress
@@ -636,16 +647,12 @@ func _update_skill_banner(delta: float) -> void:
 func _update_skill_cooldowns(delta: float) -> void:
 	if delta <= 0.0 or skill_cooldowns.is_empty():
 		return
-	var changed := false
 	for skill_id in skill_cooldowns.keys():
 		var remaining: float = float(skill_cooldowns.get(skill_id, 0.0))
 		if remaining <= 0.0:
 			continue
 		remaining = max(0.0, remaining - delta)
 		skill_cooldowns[skill_id] = remaining
-		changed = true
-	if changed:
-		_refresh_skill_box_ui()
 
 
 func _next_player_attack() -> Dictionary:
@@ -700,26 +707,6 @@ func _set_skill_cooldown(skill_id: String, cooldown: float) -> void:
 	if skill_id.is_empty():
 		return
 	skill_cooldowns[skill_id] = max(0.0, cooldown)
-	_refresh_skill_box_ui()
-
-
-func _refresh_skill_box_ui() -> void:
-	if skill_box_panel == null:
-		return
-	for index in range(skill_row_panels.size()):
-		if index >= PLAYER_SKILLS.size():
-			continue
-		var skill: Dictionary = PLAYER_SKILLS[index]
-		var skill_id := str(skill.get("id", ""))
-		var remaining := _skill_cooldown_remaining(skill_id)
-		var ready := remaining <= 0.0
-		var row := skill_row_panels[index]
-		var name_label := skill_name_labels[index]
-		var cd_label := skill_cd_labels[index]
-		row.modulate = Color(1, 1, 1, 1) if ready else Color(0.55, 0.55, 0.55, 0.72)
-		name_label.add_theme_color_override("font_color", Color(0.17, 0.10, 0.04) if ready else Color(0.34, 0.34, 0.34))
-		cd_label.add_theme_color_override("font_color", Color(0.18, 0.34, 0.13) if ready else Color(0.36, 0.36, 0.36))
-		cd_label.text = "就绪" if ready else "%.1fs" % remaining
 
 
 func _show_skill_banner(skill_name: String) -> void:
@@ -816,15 +803,41 @@ func _begin_gameplay_battle(enemy_id := "") -> void:
 
 
 func _finish_gameplay_battle() -> void:
-	var reward_ids := _available_reward_ids(battle_reward_ids)
+	var reward_ids := _battle_level_reward_ids()
 	if not reward_ids.is_empty():
+		last_reward_notice = "升级到 Lv.%d，获得：%s" % [player_level, _format_rewards(reward_ids)]
 		if _needs_memory_replacement(reward_ids):
 			_clear_battle_log()
 			_begin_memory_replace(reward_ids, "GAMEPLAY_TRAVEL")
 			return
 		_add_memories(reward_ids)
+	else:
+		last_reward_notice = "经验 %d/%d" % [battle_experience, BATTLES_PER_LEVEL]
 	_reset_battle_state()
 	_start_next_travel_segment()
+
+
+func _battle_level_reward_ids() -> Array[String]:
+	var rewards: Array[String] = []
+	battle_experience += 1
+	if battle_experience < BATTLES_PER_LEVEL:
+		return rewards
+	battle_experience = 0
+	player_level += 1
+	var reward_id := _random_gameplay_reward_id()
+	if not reward_id.is_empty():
+		rewards.append(reward_id)
+	return rewards
+
+
+func _random_gameplay_reward_id() -> String:
+	var reward_pool: Array[String] = []
+	for reward_id in GAMEPLAY_REWARD_IDS:
+		reward_pool.append(str(reward_id))
+	var candidates := _available_reward_ids(reward_pool)
+	if candidates.is_empty():
+		return ""
+	return candidates[randi() % candidates.size()]
 
 
 func _available_reward_ids(reward_ids: Array[String]) -> Array[String]:
@@ -1106,8 +1119,6 @@ func _build_ui() -> void:
 	operation_tray_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	operation_tray.add_child(operation_tray_art)
 
-	_build_skill_box()
-
 	inventory_grid = GridContainer.new()
 	inventory_grid.mouse_filter = Control.MOUSE_FILTER_STOP
 	inventory_grid.gui_input.connect(_on_inventory_grid_gui_input)
@@ -1174,6 +1185,7 @@ func _build_ui() -> void:
 	_build_bag_detail_layer()
 	_build_ending_layer()
 	_build_drag_preview()
+	_build_memory_tooltip()
 
 
 func _build_title_layer() -> void:
@@ -1362,6 +1374,7 @@ func _build_inventory_cells() -> void:
 		cell.mouse_filter = Control.MOUSE_FILTER_STOP
 		cell.gui_input.connect(_on_inventory_cell_gui_input.bind(index))
 		cell.custom_minimum_size = cell_size
+		cell.pivot_offset = cell_size * 0.5
 		cell.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var icon := _new_texture_rect(null, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
@@ -1382,81 +1395,6 @@ func _build_inventory_cells() -> void:
 	_refresh_inventory_ui()
 
 
-func _build_skill_box() -> void:
-	skill_row_panels.clear()
-	skill_name_labels.clear()
-	skill_cd_labels.clear()
-	skill_box_panel = _new_panel("skill_box")
-	skill_box_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	operation_tray.add_child(skill_box_panel)
-
-	skill_box_art = _new_texture_rect(ART_DIALOGUE_PANEL, TextureRect.STRETCH_SCALE)
-	skill_box_art.set_anchors_preset(Control.PRESET_FULL_RECT)
-	skill_box_art.modulate = Color(1, 1, 1, 0.88)
-	skill_box_panel.add_child(skill_box_art)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	skill_box_panel.add_child(margin)
-
-	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 8)
-	margin.add_child(stack)
-
-	skill_box_title = _new_label(18, Color(0.20, 0.12, 0.05))
-	skill_box_title.text = "技能"
-	skill_box_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	skill_box_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	skill_box_title.custom_minimum_size = Vector2(0, 28)
-	stack.add_child(skill_box_title)
-
-	for index in range(PLAYER_SKILLS.size()):
-		var skill: Dictionary = PLAYER_SKILLS[index]
-		var row := _new_panel("skill_row")
-		row.custom_minimum_size = Vector2(0, 58)
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var row_art := _new_texture_rect(ART_BUTTON, TextureRect.STRETCH_SCALE)
-		row_art.set_anchors_preset(Control.PRESET_FULL_RECT)
-		row_art.modulate = Color(1, 1, 1, 0.82)
-		row.add_child(row_art)
-
-		var row_margin := MarginContainer.new()
-		row_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-		row_margin.add_theme_constant_override("margin_left", 9)
-		row_margin.add_theme_constant_override("margin_top", 4)
-		row_margin.add_theme_constant_override("margin_right", 9)
-		row_margin.add_theme_constant_override("margin_bottom", 4)
-		row.add_child(row_margin)
-
-		var row_stack := VBoxContainer.new()
-		row_stack.add_theme_constant_override("separation", 0)
-		row_margin.add_child(row_stack)
-
-		var name_label := _new_label(16, Color(0.17, 0.10, 0.04))
-		name_label.text = str(skill.get("name", "技能"))
-		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		name_label.clip_text = true
-		row_stack.add_child(name_label)
-
-		var cd_label := _new_label(13, Color(0.32, 0.19, 0.08))
-		cd_label.text = "就绪"
-		cd_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cd_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		row_stack.add_child(cd_label)
-
-		stack.add_child(row)
-		skill_row_panels.append(row)
-		skill_name_labels.append(name_label)
-		skill_cd_labels.append(cd_label)
-	_refresh_skill_box_ui()
-
-
 func _build_drag_preview() -> void:
 	drag_preview = _new_panel("item_preview")
 	drag_preview.visible = false
@@ -1467,6 +1405,34 @@ func _build_drag_preview() -> void:
 	drag_preview.add_child(drag_preview_icon)
 	add_child(drag_preview)
 	drag_preview.z_index = 100
+
+
+func _build_memory_tooltip() -> void:
+	memory_tooltip_panel = _new_panel("tooltip")
+	memory_tooltip_panel.visible = false
+	memory_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tooltip_style := StyleBoxFlat.new()
+	tooltip_style.bg_color = Color(0.96, 0.88, 0.70, 0.96)
+	tooltip_style.border_color = Color(0.36, 0.22, 0.10, 0.80)
+	tooltip_style.border_width_left = 2
+	tooltip_style.border_width_top = 2
+	tooltip_style.border_width_right = 2
+	tooltip_style.border_width_bottom = 2
+	tooltip_style.corner_radius_top_left = 6
+	tooltip_style.corner_radius_top_right = 6
+	tooltip_style.corner_radius_bottom_left = 6
+	tooltip_style.corner_radius_bottom_right = 6
+	memory_tooltip_panel.add_theme_stylebox_override("panel", tooltip_style)
+	memory_tooltip_label = _new_label(15, Color(0.16, 0.10, 0.05))
+	memory_tooltip_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	memory_tooltip_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	memory_tooltip_label.offset_left = 10
+	memory_tooltip_label.offset_top = 7
+	memory_tooltip_label.offset_right = -10
+	memory_tooltip_label.offset_bottom = -7
+	memory_tooltip_panel.add_child(memory_tooltip_label)
+	add_child(memory_tooltip_panel)
+	memory_tooltip_panel.z_index = 120
 
 
 func _go_to_event(event_id: String) -> void:
@@ -1517,6 +1483,9 @@ func _reset_script_state() -> void:
 	opening_travel_active = false
 	opening_travel_meters = 0.0
 	gameplay_encounter_count = 0
+	player_level = 1
+	battle_experience = 0
+	last_reward_notice = ""
 	last_story_mode = "travel"
 	_reset_battle_state()
 	_refresh_inventory_ui()
@@ -1563,7 +1532,6 @@ func _reset_battle_state() -> void:
 	skill_cooldowns.clear()
 	if skill_banner_label != null:
 		skill_banner_label.visible = false
-	_refresh_skill_box_ui()
 	battle_player_response_elapsed = 0.0
 	battle_enemy_response_elapsed = 0.0
 	battle_victory_elapsed = 0.0
@@ -1946,8 +1914,6 @@ func _apply_mode() -> void:
 	status_box.visible = current_mode == "battle"
 	battle_log_panel.visible = current_mode == "battle"
 	operation_tray.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
-	if skill_box_panel != null:
-		skill_box_panel.visible = operation_tray.visible
 	dialogue_panel.visible = false
 	choice_panel.visible = false
 	title_layer.visible = current_mode == "title"
@@ -2116,9 +2082,12 @@ func _start_drag(source_kind: String, source_slot: int, memory_id: String, point
 	drag_origin_position = _memory_grid_position(memory_id)
 	drag_start_position = pointer_position
 	_update_drag_preview(_memory_name(memory_id))
+	drag_preview_pointer_offset = _drag_preview_offset_for_pointer(pointer_position)
+	drag_hover_grid_position = _grid_position_at_point(pointer_position)
 	_update_drag_preview_position(pointer_position)
 	drag_preview.visible = true
-	_update_inventory_drag_visuals(source_slot)
+	_hide_memory_tooltip()
+	_update_inventory_drag_visuals()
 
 
 func _finish_drag(pointer_position: Vector2) -> void:
@@ -2146,9 +2115,11 @@ func _clear_drag_state() -> void:
 	drag_source_slot = -1
 	drag_memory_id = ""
 	drag_origin_position = Vector2i(-1, -1)
+	drag_preview_pointer_offset = Vector2.ZERO
+	drag_hover_grid_position = Vector2i(-1, -1)
 	if drag_preview != null:
 		drag_preview.visible = false
-	_update_inventory_drag_visuals(-1)
+	_update_inventory_drag_visuals()
 
 
 func _replacement_slot_from_drag(pointer_position: Vector2) -> int:
@@ -2181,6 +2152,16 @@ func _slot_at_position(pointer_position: Vector2) -> int:
 
 func _memory_id_at_slot(slot_index: int) -> String:
 	var grid_position := _grid_position_from_slot(slot_index)
+	for memory_id in owned_memory_ids:
+		if _memory_rect(str(memory_id)).has_point(grid_position):
+			return str(memory_id)
+	return ""
+
+
+func _memory_id_at_point(pointer_position: Vector2) -> String:
+	var grid_position := _grid_position_at_point(pointer_position)
+	if grid_position.x < 0:
+		return ""
 	for memory_id in owned_memory_ids:
 		if _memory_rect(str(memory_id)).has_point(grid_position):
 			return str(memory_id)
@@ -2266,16 +2247,77 @@ func _update_drag_preview(label_text: String) -> void:
 func _update_drag_preview_position(pointer_position: Vector2) -> void:
 	if drag_preview == null:
 		return
-	drag_preview.position = pointer_position + Vector2(14, 14)
+	drag_preview.position = pointer_position - drag_preview_pointer_offset
 
 
-func _update_inventory_drag_visuals(active_slot: int) -> void:
+func _drag_preview_offset_for_pointer(pointer_position: Vector2) -> Vector2:
+	if drag_preview == null or drag_memory_id.is_empty():
+		return Vector2.ZERO
+	var position := _memory_grid_position(drag_memory_id)
+	if position.x < 0:
+		return drag_preview.size * 0.5
+	var item_rect := _memory_item_visual_rect(inventory_item_layer.size, position, _memory_grid_size(drag_memory_id))
+	var item_global_position := inventory_item_layer.get_global_transform().origin + item_rect.position
+	var offset := pointer_position - item_global_position
+	offset.x = clamp(offset.x, 0.0, drag_preview.size.x)
+	offset.y = clamp(offset.y, 0.0, drag_preview.size.y)
+	return offset
+
+
+func _update_drag_hover(pointer_position: Vector2) -> void:
+	var next_position := _grid_position_at_point(pointer_position)
+	if next_position == drag_hover_grid_position:
+		return
+	drag_hover_grid_position = next_position
+	_update_inventory_drag_visuals()
+
+
+func _update_inventory_drag_visuals() -> void:
 	for index in range(inventory_cells.size()):
 		var slot_position := _grid_position_from_slot(index)
-		var active := false
-		if active_slot >= 0 and not drag_memory_id.is_empty():
-			active = _memory_rect(drag_memory_id).has_point(slot_position)
-		inventory_cells[index].modulate = Color(1, 1, 1, 0.48) if active else Color(1, 1, 1, 1)
+		var lifted := false
+		var target := false
+		var valid_target := false
+		if drag_active and not drag_memory_id.is_empty():
+			lifted = _memory_rect(drag_memory_id).has_point(slot_position)
+			if drag_hover_grid_position.x >= 0:
+				target = _memory_rect(drag_memory_id, drag_hover_grid_position).has_point(slot_position)
+				valid_target = _can_place_memory(drag_memory_id, drag_hover_grid_position, drag_memory_id)
+		if target:
+			inventory_cells[index].modulate = Color(1.20, 1.12, 0.82, 1.0) if valid_target else Color(1.0, 0.52, 0.48, 0.92)
+			inventory_cells[index].scale = Vector2(1.045, 1.045) if valid_target else Vector2(1.02, 1.02)
+			inventory_cells[index].z_index = 4
+		elif lifted:
+			inventory_cells[index].modulate = Color(1.08, 1.02, 0.82, 0.82)
+			inventory_cells[index].scale = Vector2(1.025, 1.025)
+			inventory_cells[index].z_index = 3
+		else:
+			inventory_cells[index].modulate = Color(1, 1, 1, 1)
+			inventory_cells[index].scale = Vector2.ONE
+			inventory_cells[index].z_index = 0
+
+
+func _update_memory_tooltip(pointer_position: Vector2) -> void:
+	if memory_tooltip_panel == null or not current_mode in ["travel", "battle", "memory_replace", "bag_detail"]:
+		_hide_memory_tooltip()
+		return
+	var memory_id := _memory_id_at_point(pointer_position)
+	if memory_id.is_empty():
+		_hide_memory_tooltip()
+		return
+	var tooltip_size := Vector2(260, 52)
+	memory_tooltip_label.text = "%s：%s" % [_memory_name(memory_id), _memory_description(memory_id)]
+	memory_tooltip_panel.size = tooltip_size
+	var position := pointer_position + Vector2(18, -tooltip_size.y - 12)
+	position.x = clamp(position.x, 10.0, DESIGN_SIZE.x - tooltip_size.x - 10.0)
+	position.y = clamp(position.y, 10.0, DESIGN_SIZE.y - tooltip_size.y - 10.0)
+	memory_tooltip_panel.position = position
+	memory_tooltip_panel.visible = true
+
+
+func _hide_memory_tooltip() -> void:
+	if memory_tooltip_panel != null:
+		memory_tooltip_panel.visible = false
 
 
 func _string_array(value) -> Array[String]:
@@ -2337,6 +2379,14 @@ func _rebuild_memory_item_layer(item_layer: Control) -> void:
 func _memory_name(memory_id: String) -> String:
 	var memory: Dictionary = memories.get(memory_id, {})
 	return str(memory.get("name", memory_id))
+
+
+func _memory_description(memory_id: String) -> String:
+	var memory: Dictionary = memories.get(memory_id, {})
+	var description := str(memory.get("effect_text", ""))
+	if description.is_empty():
+		description = str(memory.get("description", ""))
+	return description if not description.is_empty() else _memory_name(memory_id)
 
 
 func _short_memory_name(memory_id: String) -> String:
@@ -2519,11 +2569,9 @@ func _apply_battle_layout() -> void:
 func _set_operation_layout(screen_id: String) -> void:
 	var tray_rect := _screen_rect(screen_id, "operation_tray")
 	_set_rect(operation_tray, tray_rect)
-	_set_rect(skill_box_panel, _relative_rect(_screen_rect(screen_id, "skill_box"), tray_rect.position))
 	var inventory_rect := _relative_rect(_screen_rect(screen_id, "inventory_board"), tray_rect.position)
 	_set_rect(inventory_grid, inventory_rect)
 	_set_rect(inventory_item_layer, inventory_rect)
-	_refresh_skill_box_ui()
 	_refresh_inventory_ui()
 
 

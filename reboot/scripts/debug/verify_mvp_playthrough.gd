@@ -36,21 +36,18 @@ func _run() -> void:
 		_expect(not main.dialogue_panel.visible, "encounter %d never shows dialogue" % [encounter_index + 1])
 		_expect(not main.choice_panel.visible, "encounter %d never shows choices" % [encounter_index + 1])
 		_expect(not main.ending_layer.visible, "encounter %d never shows ending" % [encounter_index + 1])
-		var reward_id := str(main.battle_reward_ids[0]) if not main.battle_reward_ids.is_empty() else ""
 		await _resolve_battle(main)
 		_expect(main.current_mode == "travel", "encounter %d victory returns to travel" % [encounter_index + 1])
 		_expect(main.opening_travel_active, "encounter %d starts next travel segment" % [encounter_index + 1])
-		if not reward_id.is_empty():
-			_expect(main.has_memory(reward_id), "encounter %d reward enters backpack" % [encounter_index + 1])
 		_expect(main.memory_grid_positions.size() == main.owned_memory_count(), "encounter %d keeps grid positions for owned memories" % [encounter_index + 1])
 		battle_count += 1
 
 	_expect(battle_count == 10, "playthrough resolves ten gameplay battles")
 	_expect(seen_enemy_ids.size() == 10, "playthrough sees ten enemy ids")
-	_expect(main.owned_memory_count() >= 7, "playthrough gains battle rewards")
-	_expect(main.has_memory("mem_someone_waits"), "first reward memory is present")
-	_expect(main.has_memory("mem_masters_scolding"), "second reward memory is present")
-	_expect(main.has_memory("mem_abandoned_afternoon"), "third reward memory is present")
+	_expect(main.player_level == 4, "playthrough levels up every three battles")
+	_expect(main.battle_experience == 1, "playthrough keeps remaining battle experience")
+	_expect(main.owned_memory_count() >= 7, "playthrough gains three level rewards")
+	_expect(main.last_reward_notice.find("经验") >= 0, "playthrough reports remaining experience after non-level battle")
 	_expect(main.current_event.is_empty(), "playthrough ends in travel without story event")
 	_expect(main.selected_ending_id.is_empty(), "playthrough does not select story ending")
 	_expect(main.route_id.is_empty(), "playthrough does not set story route")

@@ -43,8 +43,6 @@ func _run() -> void:
 	_expect(main.owned_memory_count() == 4, "new run grants standard memories")
 	_expect(main.stage_label.text.find("100") >= 0, "travel shows 100 meter goal")
 	_expect(main.operation_tray.visible, "travel shows operation tray")
-	_expect(main.skill_box_panel.visible, "travel shows skill box")
-	_expect(main.skill_row_panels.size() == main.PLAYER_SKILLS.size(), "skill box has one row per skill")
 	_expect(main.stage_background_clip.visible, "travel shows scrolling stage background")
 	_expect(main.stage_background_tiles[0].texture != null, "travel uses stage background art")
 	_expect(main.prev_map_button.visible and main.next_map_button.visible, "travel shows map switch buttons")
@@ -82,12 +80,10 @@ func _run() -> void:
 	var stage_rect: Rect2 = main.stage_panel.get_global_rect()
 	var status_rect: Rect2 = main.status_box.get_global_rect()
 	var log_rect: Rect2 = main.battle_log_panel.get_global_rect()
-	var skill_box_rect: Rect2 = main.skill_box_panel.get_global_rect()
 	var inventory_rect: Rect2 = main.inventory_grid.get_global_rect()
 	_expect(main.enemy_box.visible, "battle shows enemy")
 	_expect(main.battle_log_panel.visible, "battle shows action log")
-	_expect(skill_box_rect.position.x >= tray_rect.position.x and skill_box_rect.end.x < inventory_rect.position.x, "battle skill box sits left of inventory")
-	_expect(inventory_rect.end.x <= tray_rect.end.x, "battle inventory stays inside tray")
+	_expect(inventory_rect == tray_rect, "battle inventory fills tray")
 	_expect(hero_rect.get_center().x < enemy_rect.get_center().x, "battle hero is left of enemy")
 	_expect(hero_rect.end.y <= tray_rect.position.y, "battle hero stays above tray")
 	_expect(enemy_rect.end.y <= tray_rect.position.y, "battle enemy stays above tray")
@@ -137,10 +133,7 @@ func _run() -> void:
 	_expect(main.current_attack_is_skill, "third player attack triggers a skill")
 	_expect(not main.current_skill.is_empty(), "skill attack records current skill")
 	var skill_id := str(main.current_skill.get("id", ""))
-	var skill_index: int = main.PLAYER_SKILLS.find(main.current_skill)
 	_expect(main._skill_cooldown_remaining(skill_id) > 1.8, "used skill enters cooldown")
-	_expect(skill_index >= 0 and main.skill_cd_labels[skill_index].text.ends_with("s"), "skill box shows cooldown seconds")
-	_expect(skill_index >= 0 and main.skill_row_panels[skill_index].modulate.a < 1.0, "cooling skill row is greyed")
 	_expect(main.skill_banner_label.visible, "skill attack shows skill name banner")
 	_expect(main.skill_banner_label.text == str(main.current_skill.get("name", "")), "skill banner shows current skill name")
 	_expect(main.slash_active and main.current_slash_frames.size() == 6, "skill attack uses skill slash frames")
@@ -149,7 +142,6 @@ func _run() -> void:
 	_expect(main.battle_log_label.text.find(str(main.current_skill.get("name", ""))) >= 0, "battle log records skill name")
 	main._update_skill_cooldowns(main.SKILL_COOLDOWN_SECONDS)
 	_expect(main._skill_cooldown_remaining(skill_id) <= 0.0, "skill cooldown expires after two seconds")
-	_expect(skill_index >= 0 and main.skill_cd_labels[skill_index].text == "就绪", "skill box returns skill to ready")
 
 	for _frame_index in range(20):
 		main._update_actor_animations(0.05)
@@ -182,41 +174,79 @@ func _run() -> void:
 	_expect(main.battle_log_entries.is_empty(), "battle log clears after battle")
 	_expect(main.opening_travel_active, "next travel segment starts")
 	_expect(main.current_event.is_empty(), "battle victory does not advance into story")
-	_expect(main.has_memory(reward_id), "battle reward is added to backpack")
-	_expect(main.owned_memory_count() == 5, "reward increases owned memory count")
+	_expect(not main.has_memory(reward_id), "first battle does not immediately add reward")
+	_expect(main.owned_memory_count() == 4, "first battle only grants experience")
+	_expect(main.battle_experience == 1 and main.player_level == 1, "first battle increases experience")
+	_expect(main.last_reward_notice.find("经验") >= 0, "travel label has experience reward notice")
 	_expect(not main.dialogue_panel.visible and not main.choice_panel.visible and not main.ending_layer.visible, "reward flow stays gameplay-only")
+	main.battle_experience = main.BATTLES_PER_LEVEL - 1
+	var reward_count_before: int = main.owned_memory_count()
+	var level_rewards: Array[String] = main._battle_level_reward_ids()
+	_expect(main.player_level == 2 and main.battle_experience == 0, "third battle levels up")
+	_expect(level_rewards.size() == 1, "level up rolls one random item")
+	main._add_memories(level_rewards)
+	_expect(main.owned_memory_count() == reward_count_before + 1, "level reward adds one memory")
 
 	_expect(main.inventory_cells.size() == 36, "inventory shows full 9x4 grid")
 	_expect(main.inventory_grid.columns == 9, "inventory uses 9 columns")
 	_expect(main.unlocked_memory_slots() == 36, "inventory exposes full spatial board")
 	_expect(main._screen_rect("travel", "inventory_board") == main._screen_rect("bag_detail", "inventory_board"), "travel inventory board matches bag detail")
 	_expect(main._screen_rect("battle", "inventory_board") == main._screen_rect("bag_detail", "inventory_board"), "battle inventory board matches bag detail")
-	_expect(main._screen_rect("travel", "skill_box") == main._screen_rect("battle", "skill_box"), "skill box position is stable across travel and battle")
-	_expect(main.inventory_grid.get_global_rect().position.x > main.skill_box_panel.get_global_rect().end.x, "inventory starts to the right of skill box")
+	_expect(main.inventory_grid.get_global_rect() == main.operation_tray.get_global_rect(), "inventory fills the whole bottom tray")
 
 	main.open_bag_detail()
 	_expect(main.current_mode == "bag_detail", "backpack detail opens from gameplay")
 	main.return_to_story()
 	_expect(main.current_mode == "travel", "backpack detail returns to travel")
 	var sword_before: Vector2i = main._memory_grid_position("mem_wooden_sword")
-	_expect(main.move_memory_to("mem_wooden_sword", Vector2i(0, 3)), "inventory rearrange can move the sword")
+	var sword_move_position := _find_placeable_position(main, "mem_wooden_sword", "mem_wooden_sword", sword_before)
+	_expect(sword_move_position.x >= 0, "test can find an open sword target")
+	_expect(main.move_memory_to("mem_wooden_sword", sword_move_position), "inventory rearrange can move the sword")
 	_expect(main._memory_grid_position("mem_wooden_sword") != sword_before, "sword position changes after rearrange")
+	var sword_pointer: Vector2 = _memory_pointer(main, "mem_wooden_sword")
+	main._update_memory_tooltip(sword_pointer)
+	_expect(main.memory_tooltip_panel.visible, "hovering memory shows tooltip")
+	_expect(main.memory_tooltip_label.text.find("木剑") >= 0, "memory tooltip includes item name")
+	main._start_drag("owned", main.owned_memory_ids.find("mem_wooden_sword"), "mem_wooden_sword", sword_pointer)
+	_expect(main.drag_active, "owned memory drag starts")
+	_expect(main.drag_preview.visible, "owned memory drag shows preview")
+	_expect(main.drag_preview.get_global_rect().has_point(sword_pointer), "drag preview keeps pointer over item")
+	var follow_pointer := sword_pointer + Vector2(38, 24)
+	main._update_drag_preview_position(follow_pointer)
+	_expect(main.drag_preview.position.distance_to(follow_pointer - main.drag_preview_pointer_offset) <= 0.1, "drag preview preserves grab offset")
+	_expect(not main.memory_tooltip_panel.visible, "drag hides memory tooltip")
+	var target_position := _find_placeable_position(main, "mem_wooden_sword", "mem_wooden_sword", main._memory_grid_position("mem_wooden_sword"))
+	_expect(target_position.x >= 0, "test can find drag hover target")
+	var target_pointer: Vector2 = _grid_pointer(main, target_position)
+	main._update_drag_hover(target_pointer)
+	_expect(main.drag_hover_grid_position == target_position, "drag hover follows target cell")
+	var target_slot: int = target_position.y * main.inventory_grid_size().x + target_position.x
+	_expect(main.inventory_cells[target_slot].modulate != Color(1, 1, 1, 1), "drag target cells are highlighted")
+	_expect(main.inventory_cells[target_slot].scale.x > 1.0, "drag target cells lift outward")
+	main._finish_drag(target_pointer)
+	_expect(not main.drag_active, "owned memory drag clears after drop")
 
 	main.current_mode = "memory_replace"
 	main.pending_gain_memory_ids.clear()
-	main.pending_gain_memory_ids.append("mem_no_more_explaining")
+	var pending_test_id := "mem_no_more_explaining"
+	if main.has_memory(pending_test_id):
+		pending_test_id = "mem_empty_nameplate"
+	main.pending_gain_memory_ids.append(pending_test_id)
+	var pending_count_before: int = main.owned_memory_count()
 	main.pending_resume_event_id = "GAMEPLAY_TRAVEL"
 	main._apply_mode()
-	var drag_start: Vector2 = main.inventory_cells[0].get_global_rect().get_center()
-	var drag_drop: Vector2 = main.inventory_cells[31].get_global_rect().get_center()
-	main._start_drag("pending", -1, "mem_no_more_explaining", drag_start)
+	var pending_position: Vector2i = main._first_available_position(pending_test_id)
+	_expect(pending_position.x >= 0, "test can find pending item placement")
+	var drag_start: Vector2 = _grid_pointer(main, pending_position)
+	var drag_drop: Vector2 = _grid_pointer(main, pending_position)
+	main._start_drag("pending", -1, pending_test_id, drag_start)
 	_expect(main.drag_active, "memory drag starts from inventory cell")
 	_expect(main.drag_preview.visible, "memory drag shows preview")
 	main._finish_drag(drag_drop)
 	_expect(not main.drag_active, "memory drag clears after drop")
 	_expect(main.current_mode == "travel", "memory replacement resumes travel")
-	_expect(main.owned_memory_count() == 6, "memory replacement adds pending item without discard")
-	_expect(main.has_memory("mem_no_more_explaining"), "memory replacement adds pending memory")
+	_expect(main.owned_memory_count() == pending_count_before + 1, "memory replacement adds pending item without discard")
+	_expect(main.has_memory(pending_test_id), "memory replacement adds pending memory")
 	_expect(main.has_memory("mem_mothers_soup"), "memory replacement keeps existing memory")
 
 	main.queue_free()
@@ -236,6 +266,32 @@ func _resolve_current_battle(main: Control) -> void:
 		else:
 			main._update_battle_turn_flow(0.05)
 		await process_frame
+
+
+func _find_placeable_position(main: Control, memory_id: String, ignore_memory_id := "", excluded_position := Vector2i(-1, -1)) -> Vector2i:
+	var grid_size: Vector2i = main.inventory_grid_size()
+	var item_size: Vector2i = main._memory_grid_size(memory_id)
+	for y in range(0, grid_size.y - item_size.y + 1):
+		for x in range(0, grid_size.x - item_size.x + 1):
+			var candidate := Vector2i(x, y)
+			if candidate == excluded_position:
+				continue
+			if main._can_place_memory(memory_id, candidate, ignore_memory_id):
+				return candidate
+	return Vector2i(-1, -1)
+
+
+func _grid_pointer(main: Control, grid_position: Vector2i) -> Vector2:
+	var slot: int = grid_position.y * main.inventory_grid_size().x + grid_position.x
+	if slot < 0 or slot >= main.inventory_cells.size():
+		return Vector2.ZERO
+	return main.inventory_cells[slot].get_global_rect().get_center()
+
+
+func _memory_pointer(main: Control, memory_id: String) -> Vector2:
+	var position: Vector2i = main._memory_grid_position(memory_id)
+	var size: Vector2i = main._memory_grid_size(memory_id)
+	return _grid_pointer(main, position + Vector2i(size.x / 2, size.y / 2))
 
 
 func _expect(condition: bool, message: String) -> void:
