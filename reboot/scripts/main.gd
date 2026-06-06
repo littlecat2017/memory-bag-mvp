@@ -20,6 +20,8 @@ const ART_SCROLL_STAGE_TOWER_GARDEN := ART_ROOT + "scroll_stage_tower_garden.png
 const ART_SCROLL_STAGE_TWILIGHT_PLAZA := ART_ROOT + "scroll_stage_twilight_plaza.png"
 const ART_TITLE_BACKGROUND := ART_ROOT + "title_background.png"
 const ART_DIALOGUE_PANEL := ART_ROOT + "dialogue_panel.png"
+const ART_PROLOGUE_BACKGROUND := ART_ROOT + "prologue_background.png"
+const ART_PROLOGUE_DIALOGUE_PANEL := ART_ROOT + "prologue_dialogue_panel_flat.png"
 const ART_BUTTON := ART_ROOT + "button.png"
 const ART_ENDING_BACKGROUND := ART_ROOT + "ending_background.png"
 const ART_HERO := ART_ROOT + "hero.png"
@@ -172,6 +174,8 @@ const ART_ASSET_PATHS := [
 	ART_SCROLL_STAGE_TWILIGHT_PLAZA,
 	ART_TITLE_BACKGROUND,
 	ART_DIALOGUE_PANEL,
+	ART_PROLOGUE_BACKGROUND,
+	ART_PROLOGUE_DIALOGUE_PANEL,
 	ART_BUTTON,
 	ART_ENDING_BACKGROUND,
 	ART_HERO,
@@ -365,8 +369,12 @@ var inventory_cell_labels: Array[Label] = []
 var inventory_cell_icons: Array[TextureRect] = []
 var dialogue_panel: PanelContainer
 var dialogue_panel_art: TextureRect
+var prologue_dialogue_art: TextureRect
+var dialogue_margin: MarginContainer
 var speaker_label: Label
 var text_label: Label
+var prologue_speaker_label: Label
+var prologue_text_label: Label
 var choice_panel: PanelContainer
 var choice_panel_art: TextureRect
 var choice_list: VBoxContainer
@@ -408,6 +416,9 @@ var drag_preview_label: Label
 var memory_tooltip_panel: PanelContainer
 var memory_tooltip_label: Label
 var gameplay_shell_texture: Texture2D
+var dialogue_panel_texture: Texture2D
+var prologue_background_texture: Texture2D
+var prologue_dialogue_panel_texture: Texture2D
 var memory_icons_texture: Texture2D
 var memory_item_textures: Dictionary = {}
 var hero_static_texture: Texture2D
@@ -579,8 +590,22 @@ func advance_prologue() -> void:
 func _refresh_prologue_ui() -> void:
 	if speaker_label != null:
 		speaker_label.text = "旁白"
+		speaker_label.add_theme_color_override("font_color", Color(0.18, 0.10, 0.04))
+		speaker_label.add_theme_color_override("font_outline_color", Color(1.0, 0.88, 0.58, 0.70))
+		speaker_label.add_theme_constant_override("outline_size", 2)
 	if text_label != null:
 		text_label.text = str(PROLOGUE_LINES[prologue_line_index]) if prologue_line_index < PROLOGUE_LINES.size() else ""
+		text_label.add_theme_color_override("font_color", Color(0.10, 0.07, 0.04))
+		text_label.add_theme_color_override("font_outline_color", Color(1.0, 0.92, 0.70, 0.70))
+		text_label.add_theme_constant_override("outline_size", 2)
+	if prologue_speaker_label != null:
+		prologue_speaker_label.text = "旁白"
+		prologue_speaker_label.add_theme_color_override("font_outline_color", Color(1.0, 0.88, 0.58, 0.70))
+		prologue_speaker_label.add_theme_constant_override("outline_size", 2)
+	if prologue_text_label != null:
+		prologue_text_label.text = str(PROLOGUE_LINES[prologue_line_index]) if prologue_line_index < PROLOGUE_LINES.size() else ""
+		prologue_text_label.add_theme_color_override("font_outline_color", Color(1.0, 0.92, 0.70, 0.70))
+		prologue_text_label.add_theme_constant_override("outline_size", 2)
 
 
 func advance_script() -> void:
@@ -1013,6 +1038,9 @@ func _build_ui() -> void:
 	add_child(bg_layer)
 
 	gameplay_shell_texture = _load_texture(ART_GAMEPLAY_SHELL)
+	dialogue_panel_texture = _load_texture(ART_DIALOGUE_PANEL)
+	prologue_background_texture = _load_texture(ART_PROLOGUE_BACKGROUND)
+	prologue_dialogue_panel_texture = _load_texture(ART_PROLOGUE_DIALOGUE_PANEL)
 	screen_background_art = _new_texture_rect(null, TextureRect.STRETCH_SCALE)
 	screen_background_art.texture = gameplay_shell_texture
 	screen_background_art.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1176,11 +1204,12 @@ func _build_ui() -> void:
 	dialogue_panel.gui_input.connect(_on_progress_gui_input)
 	add_child(dialogue_panel)
 
-	dialogue_panel_art = _new_texture_rect(ART_DIALOGUE_PANEL, TextureRect.STRETCH_SCALE)
+	dialogue_panel_art = _new_texture_rect(null, TextureRect.STRETCH_SCALE)
+	dialogue_panel_art.texture = dialogue_panel_texture
 	dialogue_panel_art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dialogue_panel.add_child(dialogue_panel_art)
 
-	var dialogue_margin := MarginContainer.new()
+	dialogue_margin = MarginContainer.new()
 	dialogue_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dialogue_margin.add_theme_constant_override("margin_left", 28)
 	dialogue_margin.add_theme_constant_override("margin_top", 16)
@@ -1193,11 +1222,33 @@ func _build_ui() -> void:
 	dialogue_margin.add_child(dialogue_box)
 
 	speaker_label = _new_label(22, Color(0.22, 0.13, 0.06))
+	speaker_label.name = "SpeakerLabel"
 	dialogue_box.add_child(speaker_label)
 
 	text_label = _new_label(22, Color(0.13, 0.10, 0.07))
+	text_label.name = "DialogueTextLabel"
 	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dialogue_box.add_child(text_label)
+
+	prologue_dialogue_art = _new_texture_rect(null, TextureRect.STRETCH_SCALE)
+	prologue_dialogue_art.texture = prologue_dialogue_panel_texture
+	prologue_dialogue_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	prologue_dialogue_art.visible = false
+	prologue_dialogue_art.z_index = 50
+	add_child(prologue_dialogue_art)
+
+	prologue_speaker_label = _new_label(22, Color(0.18, 0.10, 0.04))
+	prologue_speaker_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	prologue_speaker_label.visible = false
+	prologue_speaker_label.z_index = 60
+	add_child(prologue_speaker_label)
+
+	prologue_text_label = _new_label(22, Color(0.10, 0.07, 0.04))
+	prologue_text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	prologue_text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	prologue_text_label.visible = false
+	prologue_text_label.z_index = 60
+	add_child(prologue_text_label)
 
 	choice_panel = _new_panel("dialogue")
 	add_child(choice_panel)
@@ -1957,7 +2008,10 @@ func _apply_mode() -> void:
 	status_box.visible = current_mode == "battle"
 	battle_log_panel.visible = current_mode == "battle"
 	operation_tray.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
-	dialogue_panel.visible = current_mode == "prologue" or current_mode == "dialogue" or current_mode == "choice"
+	dialogue_panel.visible = current_mode == "dialogue" or current_mode == "choice"
+	prologue_dialogue_art.visible = current_mode == "prologue"
+	prologue_speaker_label.visible = current_mode == "prologue"
+	prologue_text_label.visible = current_mode == "prologue"
 	choice_panel.visible = false
 	title_layer.visible = current_mode == "title"
 	bag_detail_layer.visible = current_mode == "bag_detail"
@@ -1988,8 +2042,8 @@ func _update_screen_background() -> void:
 			screen_background_art.visible = false
 		"prologue":
 			screen_background_art.visible = true
-			screen_background_art.texture = _current_stage_background_texture()
-			screen_background_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			screen_background_art.texture = prologue_background_texture
+			screen_background_art.stretch_mode = TextureRect.STRETCH_SCALE
 		_:
 			screen_background_art.visible = true
 			screen_background_art.texture = gameplay_shell_texture
@@ -1998,11 +2052,19 @@ func _update_screen_background() -> void:
 
 func _apply_dialogue_layout() -> void:
 	_set_rect(dialogue_panel, _screen_rect("dialogue", "dialogue_panel"))
+	dialogue_panel_art.texture = dialogue_panel_texture
+	dialogue_margin.visible = true
+	_set_dialogue_margins(28, 16, 28, 14)
+	_reset_dialogue_label_layout()
 	_set_rect(concept_reference, Rect2(16, 80, 220, 124))
 
 
 func _apply_choice_layout() -> void:
 	_set_rect(dialogue_panel, _screen_rect("dialogue", "dialogue_panel"))
+	dialogue_panel_art.texture = dialogue_panel_texture
+	dialogue_margin.visible = true
+	_set_dialogue_margins(28, 16, 28, 14)
+	_reset_dialogue_label_layout()
 	_set_rect(choice_panel, _screen_rect("choice", "choice_panel"))
 
 
@@ -2562,10 +2624,41 @@ func _apply_title_layout() -> void:
 
 
 func _apply_prologue_layout() -> void:
-	_set_rect(dialogue_panel, _screen_rect("dialogue", "dialogue_panel"))
-	dialogue_panel.visible = true
+	var panel_rect := _screen_rect("dialogue", "dialogue_panel")
+	_set_rect(prologue_dialogue_art, panel_rect)
+	_set_dialogue_margins(44, 18, 44, 18)
+	_set_rect(prologue_speaker_label, Rect2(panel_rect.position + Vector2(44, 18), Vector2(130, 28)))
+	_set_rect(prologue_text_label, Rect2(panel_rect.position + Vector2(44, 72), Vector2(1036, 52)))
+	prologue_dialogue_art.visible = true
 	choice_panel.visible = false
 	_refresh_prologue_ui()
+
+
+func _set_dialogue_margins(left: int, top: int, right: int, bottom: int) -> void:
+	if dialogue_margin == null:
+		return
+	dialogue_margin.add_theme_constant_override("margin_left", left)
+	dialogue_margin.add_theme_constant_override("margin_top", top)
+	dialogue_margin.add_theme_constant_override("margin_right", right)
+	dialogue_margin.add_theme_constant_override("margin_bottom", bottom)
+
+
+func _reset_dialogue_label_layout() -> void:
+	if dialogue_margin == null:
+		return
+	var dialogue_box := dialogue_margin.get_child(0) if dialogue_margin.get_child_count() > 0 else null
+	if dialogue_box == null:
+		return
+	if speaker_label.get_parent() != dialogue_box:
+		speaker_label.reparent(dialogue_box)
+	if text_label.get_parent() != dialogue_box:
+		text_label.reparent(dialogue_box)
+	speaker_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	text_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	speaker_label.position = Vector2.ZERO
+	text_label.position = Vector2.ZERO
+	speaker_label.size = Vector2.ZERO
+	text_label.size = Vector2.ZERO
 
 
 func _apply_bag_detail_layout() -> void:
@@ -2999,21 +3092,30 @@ func _load_json(path: String) -> Dictionary:
 
 
 func _load_texture_rect(texture_rect: TextureRect, path: String) -> void:
-	if not FileAccess.file_exists(path):
-		return
-	var image := Image.new()
-	if image.load(path) != OK:
+	var image := _load_image_file(path)
+	if image == null:
 		return
 	texture_rect.texture = ImageTexture.create_from_image(image)
 
 
 func _load_texture(path: String) -> Texture2D:
+	var image := _load_image_file(path)
+	if image == null:
+		return null
+	return ImageTexture.create_from_image(image)
+
+
+func _load_image_file(path: String) -> Image:
 	if path.is_empty() or not FileAccess.file_exists(path):
 		return null
 	var image := Image.new()
-	if image.load(path) != OK:
+	if path.get_extension().to_lower() == "png":
+		var data := FileAccess.get_file_as_bytes(path)
+		if data.is_empty() or image.load_png_from_buffer(data) != OK:
+			return null
+	elif image.load(path) != OK:
 		return null
-	return ImageTexture.create_from_image(image)
+	return image
 
 
 func _load_memory_item_textures() -> void:
