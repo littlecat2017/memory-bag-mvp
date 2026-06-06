@@ -161,8 +161,7 @@ func _run() -> void:
 	_expect(main.unlocked_memory_slots() == 36, "inventory exposes full spatial board")
 	_expect(main._screen_rect("travel", "inventory_board") == main._screen_rect("bag_detail", "inventory_board"), "travel inventory board matches bag detail")
 	_expect(main._screen_rect("battle", "inventory_board") == main._screen_rect("bag_detail", "inventory_board"), "battle inventory board matches bag detail")
-	_expect(main.trash_zone.get_global_rect().end.x <= main.inventory_grid.get_global_rect().position.x, "discard zone stays left of inventory")
-	_expect(main.inventory_grid.get_global_rect().end.x <= main.found_zone.get_global_rect().position.x, "inventory stays left of found zone")
+	_expect(main.inventory_grid.get_global_rect() == main.operation_tray.get_global_rect(), "inventory fills the whole bottom tray")
 
 	main.open_bag_detail()
 	_expect(main.current_mode == "bag_detail", "backpack detail opens from gameplay")
@@ -178,17 +177,16 @@ func _run() -> void:
 	main.pending_resume_event_id = "GAMEPLAY_TRAVEL"
 	main._apply_mode()
 	var drag_start: Vector2 = main.inventory_cells[0].get_global_rect().get_center()
-	var drag_drop: Vector2 = main.trash_zone.get_global_rect().get_center()
-	main._start_drag("owned", main.owned_memory_ids.find("mem_mothers_soup"), "mem_mothers_soup", drag_start)
+	var drag_drop: Vector2 = main.inventory_cells[31].get_global_rect().get_center()
+	main._start_drag("pending", -1, "mem_no_more_explaining", drag_start)
 	_expect(main.drag_active, "memory drag starts from inventory cell")
 	_expect(main.drag_preview.visible, "memory drag shows preview")
 	main._finish_drag(drag_drop)
 	_expect(not main.drag_active, "memory drag clears after drop")
 	_expect(main.current_mode == "travel", "memory replacement resumes travel")
-	_expect(main.owned_memory_count() == 5, "memory replacement keeps item count after discard and gain")
+	_expect(main.owned_memory_count() == 6, "memory replacement adds pending item without discard")
 	_expect(main.has_memory("mem_no_more_explaining"), "memory replacement adds pending memory")
-	_expect(main.has_discarded("mem_mothers_soup"), "memory replacement discards replaced memory")
-	_expect(not main.has_memory("mem_mothers_soup"), "memory replacement removes old memory")
+	_expect(main.has_memory("mem_mothers_soup"), "memory replacement keeps existing memory")
 
 	main.queue_free()
 	if failed:

@@ -7,6 +7,7 @@ const DRAG_START_THRESHOLD := 8.0
 const MEMORY_ITEM_INSET := Vector2.ZERO
 const ART_ROOT := "res://assets/generated/mvp_art/"
 const ART_GAMEPLAY_SHELL := ART_ROOT + "gameplay_shell.png"
+const ART_INVENTORY_BOARD_FULL := ART_ROOT + "inventory_board_full.png"
 const ART_SCROLL_STAGE_BACKGROUND := ART_ROOT + "scroll_stage_background.png"
 const ART_SCROLL_STAGE_FOREST_TOWER := ART_ROOT + "scroll_stage_forest_tower.png"
 const ART_SCROLL_STAGE_VILLAGE_DAWN := ART_ROOT + "scroll_stage_village_dawn.png"
@@ -80,6 +81,7 @@ const STAGE_MAP_PATHS := [
 ]
 const ART_ASSET_PATHS := [
 	ART_GAMEPLAY_SHELL,
+	ART_INVENTORY_BOARD_FULL,
 	ART_SCROLL_STAGE_BACKGROUND,
 	ART_SCROLL_STAGE_FOREST_TOWER,
 	ART_SCROLL_STAGE_VILLAGE_DAWN,
@@ -255,12 +257,7 @@ var battle_log_panel: PanelContainer
 var battle_log_art: TextureRect
 var battle_log_label: Label
 var operation_tray: Control
-var trash_zone: PanelContainer
-var trash_zone_icon: TextureRect
-var trash_zone_label: Label
-var found_zone: PanelContainer
-var found_zone_icon: TextureRect
-var found_zone_label: Label
+var operation_tray_art: TextureRect
 var inventory_grid: GridContainer
 var inventory_item_layer: Control
 var inventory_cells: Array[PanelContainer] = []
@@ -292,6 +289,7 @@ var bag_detail_background_art: TextureRect
 var bag_detail_close_button: PanelContainer
 var bag_memory_list: PanelContainer
 var bag_detail_panel: PanelContainer
+var bag_detail_inventory_art: TextureRect
 var bag_detail_inventory: GridContainer
 var bag_detail_item_layer: Control
 var bag_detail_cells: Array[PanelContainer] = []
@@ -879,31 +877,10 @@ func _build_ui() -> void:
 	operation_tray = Control.new()
 	add_child(operation_tray)
 
-	var tray_bg := _new_panel("operation")
-	tray_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	operation_tray.add_child(tray_bg)
-
-	trash_zone = _new_panel("trash")
-	trash_zone_icon = _new_texture_rect(_memory_icon_texture("trash"), TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
-	trash_zone_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
-	trash_zone_icon.modulate = Color(1, 1, 1, 0.78)
-	trash_zone.add_child(trash_zone_icon)
-	trash_zone_label = _center_label("弃牌堆")
-	trash_zone_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	trash_zone.add_child(trash_zone_label)
-	operation_tray.add_child(trash_zone)
-
-	found_zone = _new_panel("found")
-	found_zone.mouse_filter = Control.MOUSE_FILTER_STOP
-	found_zone.gui_input.connect(_on_found_zone_gui_input)
-	found_zone_icon = _new_texture_rect(_memory_icon_texture("found"), TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
-	found_zone_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
-	found_zone_icon.modulate = Color(1, 1, 1, 0.70)
-	found_zone.add_child(found_zone_icon)
-	found_zone_label = _center_label("新记忆")
-	found_zone_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	found_zone.add_child(found_zone_label)
-	operation_tray.add_child(found_zone)
+	operation_tray_art = _new_texture_rect(ART_INVENTORY_BOARD_FULL, TextureRect.STRETCH_SCALE)
+	operation_tray_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	operation_tray_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	operation_tray.add_child(operation_tray_art)
 
 	inventory_grid = GridContainer.new()
 	inventory_grid.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1052,6 +1029,10 @@ func _build_bag_detail_layer() -> void:
 	bag_detail_panel = _new_panel("dialogue")
 	bag_detail_panel.add_child(_center_label("记忆详情\n拖动物品调整占格位置"))
 	bag_detail_layer.add_child(bag_detail_panel)
+
+	bag_detail_inventory_art = _new_texture_rect(ART_INVENTORY_BOARD_FULL, TextureRect.STRETCH_SCALE)
+	bag_detail_inventory_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bag_detail_layer.add_child(bag_detail_inventory_art)
 
 	bag_detail_inventory = GridContainer.new()
 	bag_detail_layer.add_child(bag_detail_inventory)
@@ -1460,7 +1441,7 @@ func _begin_memory_replace(memory_ids: Array[String], resume_event_id: String) -
 			pending_gain_memory_ids.append(memory_id)
 	pending_resume_event_id = resume_event_id
 	speaker_label.text = "系统"
-	text_label.text = "背包空间不足。拖动一件记忆到弃牌堆，或把新记忆拖到空白区域。"
+	text_label.text = "背包空间不足。整理已有记忆，给新记忆留出连续格子。"
 	current_mode = "memory_replace"
 	_refresh_inventory_ui()
 	_apply_mode()
@@ -1696,7 +1677,7 @@ func _apply_choice_layout() -> void:
 
 func _apply_memory_replace_layout() -> void:
 	_apply_travel_layout()
-	stage_label.text = "背包替换：新记忆必须落入已解锁格子"
+	stage_label.text = "整理背包：给新记忆留出连续格子"
 
 
 func _handle_progress_mouse_event(event: InputEventMouseButton) -> void:
@@ -1712,14 +1693,6 @@ func _handle_progress_mouse_event(event: InputEventMouseButton) -> void:
 func _on_progress_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		_handle_progress_mouse_event(event as InputEventMouseButton)
-
-
-func _on_found_zone_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed and current_mode == "memory_replace":
-			_start_drag("pending", -1, _pending_memory_id(), mouse_event.global_position)
-			get_viewport().set_input_as_handled()
 
 
 func _on_inventory_grid_gui_input(event: InputEvent) -> void:
@@ -1842,10 +1815,6 @@ func _finish_drag(pointer_position: Vector2) -> void:
 	if current_mode == "memory_replace":
 		if drag_source_kind == "pending" and target_position.x >= 0:
 			handled = accept_pending_memory_at(target_position)
-		elif drag_source_kind == "owned" and _drop_hits_trash(pointer_position):
-			var pending_target := target_position if target_position.x >= 0 else drag_origin_position
-			replace_memory_at(drag_source_slot, pending_target)
-			handled = true
 		elif drag_source_kind == "owned" and target_position.x >= 0:
 			handled = move_memory_to(drag_memory_id, target_position)
 	elif drag_source_kind == "owned" and target_position.x >= 0:
@@ -1883,10 +1852,6 @@ func _can_replace_slot(slot_index: int) -> bool:
 
 func _pending_memory_id() -> String:
 	return str(pending_gain_memory_ids[0]) if not pending_gain_memory_ids.is_empty() else ""
-
-
-func _drop_hits_trash(pointer_position: Vector2) -> bool:
-	return trash_zone.visible and trash_zone.get_global_rect().has_point(pointer_position)
 
 
 func _drop_hits_inventory(pointer_position: Vector2) -> bool:
@@ -2019,30 +1984,6 @@ func _refresh_inventory_ui() -> void:
 			icon.visible = false
 	_rebuild_memory_item_layer(inventory_item_layer)
 	_refresh_detail_inventory_ui()
-	if found_zone_label != null:
-		if pending_gain_memory_ids.is_empty():
-			found_zone_label.text = "新记忆"
-			if found_zone_icon != null:
-				found_zone_icon.texture = _memory_icon_texture("found")
-				found_zone_icon.visible = true
-		else:
-			var pending_memory_id := str(pending_gain_memory_ids[0])
-			found_zone_label.text = "待放入\n%s" % _short_memory_name(pending_memory_id)
-			if found_zone_icon != null:
-				found_zone_icon.texture = _memory_icon_texture(pending_memory_id)
-				found_zone_icon.visible = true
-	if trash_zone_label != null:
-		if discarded_memory_ids.is_empty():
-			trash_zone_label.text = "弃牌堆"
-			if trash_zone_icon != null:
-				trash_zone_icon.texture = _memory_icon_texture("trash")
-				trash_zone_icon.visible = true
-		else:
-			var discarded_memory_id := str(discarded_memory_ids[discarded_memory_ids.size() - 1])
-			trash_zone_label.text = "最近丢弃\n%s" % _short_memory_name(discarded_memory_id)
-			if trash_zone_icon != null:
-				trash_zone_icon.texture = _memory_icon_texture(discarded_memory_id)
-				trash_zone_icon.visible = true
 
 
 func _refresh_detail_inventory_ui() -> void:
@@ -2208,6 +2149,7 @@ func _apply_bag_detail_layout() -> void:
 	_set_rect(bag_detail_layer.get_node("BagDetailClose"), _screen_rect("bag_detail", "close_button"))
 	_set_rect(bag_memory_list, _screen_rect("bag_detail", "memory_list"))
 	_set_rect(bag_detail_panel, _screen_rect("bag_detail", "detail_panel"))
+	_set_rect(bag_detail_inventory_art, _screen_rect("bag_detail", "inventory_board"))
 	_set_rect(bag_detail_inventory, _screen_rect("bag_detail", "inventory_board"))
 	_set_rect(bag_detail_item_layer, _screen_rect("bag_detail", "inventory_board"))
 	_refresh_detail_inventory_ui()
@@ -2262,8 +2204,6 @@ func _apply_battle_layout() -> void:
 func _set_operation_layout(screen_id: String) -> void:
 	var tray_rect := _screen_rect(screen_id, "operation_tray")
 	_set_rect(operation_tray, tray_rect)
-	_set_rect(trash_zone, _relative_rect(_screen_rect(screen_id, "trash_zone"), tray_rect.position))
-	_set_rect(found_zone, _relative_rect(_screen_rect(screen_id, "found_zone"), tray_rect.position))
 	var inventory_rect := _relative_rect(_screen_rect(screen_id, "inventory_board"), tray_rect.position)
 	_set_rect(inventory_grid, inventory_rect)
 	_set_rect(inventory_item_layer, inventory_rect)
