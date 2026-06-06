@@ -12,12 +12,19 @@ const ART_SCROLL_STAGE_BACKGROUND := ART_ROOT + "scroll_stage_background.png"
 const ART_SCROLL_STAGE_FOREST_TOWER := ART_ROOT + "scroll_stage_forest_tower.png"
 const ART_SCROLL_STAGE_VILLAGE_DAWN := ART_ROOT + "scroll_stage_village_dawn.png"
 const ART_SCROLL_STAGE_MEMORIAL_PATH := ART_ROOT + "scroll_stage_memorial_path.png"
+const ART_SCROLL_STAGE_BAMBOO_BRIDGE := ART_ROOT + "scroll_stage_bamboo_bridge.png"
+const ART_SCROLL_STAGE_LANTERN_GROVE := ART_ROOT + "scroll_stage_lantern_grove.png"
+const ART_SCROLL_STAGE_MOUNTAIN_TERRACE := ART_ROOT + "scroll_stage_mountain_terrace.png"
+const ART_SCROLL_STAGE_RAINY_ROAD := ART_ROOT + "scroll_stage_rainy_road.png"
+const ART_SCROLL_STAGE_TOWER_GARDEN := ART_ROOT + "scroll_stage_tower_garden.png"
+const ART_SCROLL_STAGE_TWILIGHT_PLAZA := ART_ROOT + "scroll_stage_twilight_plaza.png"
 const ART_TITLE_BACKGROUND := ART_ROOT + "title_background.png"
 const ART_DIALOGUE_PANEL := ART_ROOT + "dialogue_panel.png"
 const ART_BUTTON := ART_ROOT + "button.png"
 const ART_ENDING_BACKGROUND := ART_ROOT + "ending_background.png"
 const ART_HERO := ART_ROOT + "hero.png"
 const ART_ENEMY := ART_ROOT + "enemy.png"
+const ART_ENEMY_ROOT := ART_ROOT + "enemies/"
 const ART_ACTOR_ANIM_ROOT := ART_ROOT + "actor_anim/"
 const ART_HERO_WALK_SHEET := ART_ACTOR_ANIM_ROOT + "hero_walk_sheet.png"
 const ART_HERO_ATTACK_SHEET := ART_ACTOR_ANIM_ROOT + "hero_attack_sheet.png"
@@ -60,10 +67,40 @@ const BATTLE_LOG_MAX_ENTRIES := 3
 const STAGE_SCROLL_SPEED := 48.0
 const GAMEPLAY_ENEMY_IDS := [
 	"enemy_hollow_wolves",
-	"enemy_blank_knight",
-	"enemy_memory_thief",
-	"boss_memory_shell",
+	"enemy_nameless_deer",
+	"enemy_hollow_warden",
+	"boss_nameless_hunter",
+	"enemy_paper_moth",
+	"enemy_lantern_husk",
+	"enemy_threadbound_doll",
+	"enemy_ink_sentinel",
+	"enemy_bellroot_imp",
+	"enemy_memory_shell",
 ]
+const ENEMY_ART_PATHS := {
+	"enemy_hollow_wolves": ART_ENEMY_ROOT + "enemy_hollow_wolves.png",
+	"enemy_nameless_deer": ART_ENEMY_ROOT + "enemy_nameless_deer.png",
+	"enemy_hollow_warden": ART_ENEMY_ROOT + "enemy_hollow_warden.png",
+	"boss_nameless_hunter": ART_ENEMY_ROOT + "boss_nameless_hunter.png",
+	"enemy_paper_moth": ART_ENEMY_ROOT + "enemy_paper_moth.png",
+	"enemy_lantern_husk": ART_ENEMY_ROOT + "enemy_lantern_husk.png",
+	"enemy_threadbound_doll": ART_ENEMY_ROOT + "enemy_threadbound_doll.png",
+	"enemy_ink_sentinel": ART_ENEMY_ROOT + "enemy_ink_sentinel.png",
+	"enemy_bellroot_imp": ART_ENEMY_ROOT + "enemy_bellroot_imp.png",
+	"enemy_memory_shell": ART_ENEMY_ROOT + "enemy_memory_shell.png",
+}
+const ENEMY_DISPLAY_NAMES := {
+	"enemy_hollow_wolves": "空壳狼群",
+	"enemy_nameless_deer": "无名鹿",
+	"enemy_hollow_warden": "空壳守卫",
+	"boss_nameless_hunter": "忘名猎人",
+	"enemy_paper_moth": "纸翼残蛾",
+	"enemy_lantern_husk": "提灯空壳",
+	"enemy_threadbound_doll": "缝线人偶",
+	"enemy_ink_sentinel": "墨痕哨兵",
+	"enemy_bellroot_imp": "铃根小鬼",
+	"enemy_memory_shell": "记忆空壳",
+}
 const GAMEPLAY_REWARD_IDS := [
 	"mem_someone_waits",
 	"mem_masters_scolding",
@@ -78,6 +115,13 @@ const STAGE_MAP_PATHS := [
 	ART_SCROLL_STAGE_FOREST_TOWER,
 	ART_SCROLL_STAGE_VILLAGE_DAWN,
 	ART_SCROLL_STAGE_MEMORIAL_PATH,
+	ART_SCROLL_STAGE_BACKGROUND,
+	ART_SCROLL_STAGE_BAMBOO_BRIDGE,
+	ART_SCROLL_STAGE_LANTERN_GROVE,
+	ART_SCROLL_STAGE_MOUNTAIN_TERRACE,
+	ART_SCROLL_STAGE_RAINY_ROAD,
+	ART_SCROLL_STAGE_TOWER_GARDEN,
+	ART_SCROLL_STAGE_TWILIGHT_PLAZA,
 ]
 const ART_ASSET_PATHS := [
 	ART_GAMEPLAY_SHELL,
@@ -86,6 +130,12 @@ const ART_ASSET_PATHS := [
 	ART_SCROLL_STAGE_FOREST_TOWER,
 	ART_SCROLL_STAGE_VILLAGE_DAWN,
 	ART_SCROLL_STAGE_MEMORIAL_PATH,
+	ART_SCROLL_STAGE_BAMBOO_BRIDGE,
+	ART_SCROLL_STAGE_LANTERN_GROVE,
+	ART_SCROLL_STAGE_MOUNTAIN_TERRACE,
+	ART_SCROLL_STAGE_RAINY_ROAD,
+	ART_SCROLL_STAGE_TOWER_GARDEN,
+	ART_SCROLL_STAGE_TWILIGHT_PLAZA,
 	ART_TITLE_BACKGROUND,
 	ART_DIALOGUE_PANEL,
 	ART_BUTTON,
@@ -309,6 +359,8 @@ var memory_icons_texture: Texture2D
 var memory_item_textures: Dictionary = {}
 var hero_static_texture: Texture2D
 var enemy_static_texture: Texture2D
+var enemy_fallback_texture: Texture2D
+var enemy_textures: Dictionary = {}
 var hero_walk_sheet_texture: Texture2D
 var hero_attack_sheet_texture: Texture2D
 var enemy_idle_sheet_texture: Texture2D
@@ -730,6 +782,10 @@ func _validate_art_assets() -> void:
 	for path in ART_ASSET_PATHS:
 		if not FileAccess.file_exists(path):
 			validation_errors.append("missing MVP art asset: %s" % path)
+	for enemy_id in GAMEPLAY_ENEMY_IDS:
+		var enemy_path := str(ENEMY_ART_PATHS.get(str(enemy_id), ""))
+		if enemy_path.is_empty() or not FileAccess.file_exists(enemy_path):
+			validation_errors.append("missing enemy art asset: %s" % enemy_id)
 	for memory_id in MEMORY_GRID_SIZES.keys():
 		var item_path := str(MEMORY_ITEM_ART_PATHS.get(str(memory_id), ""))
 		if item_path.is_empty() or not FileAccess.file_exists(item_path):
@@ -1235,6 +1291,7 @@ func _begin_battle(event: Dictionary) -> void:
 	hero_hp = hero_max_hp
 	enemy_max_hp = _battle_enemy_max_hp(battle_enemy_id)
 	enemy_hp = enemy_max_hp
+	_apply_enemy_texture_for_battle()
 	battle_phase = "player"
 	battle_action_text = "你的回合：自动出剑"
 	battle_player_response_elapsed = 0.0
@@ -2109,13 +2166,13 @@ func _format_ending_name(ending_id: String) -> String:
 
 
 func _format_enemy_name(enemy_id: String) -> String:
+	if ENEMY_DISPLAY_NAMES.has(enemy_id):
+		return str(ENEMY_DISPLAY_NAMES[enemy_id])
 	return enemy_id.replace("enemy_", "").replace("boss_", "").replace("_", " / ")
 
 
 func _battle_enemy_label() -> String:
-	if battle_enemy_id.begins_with("boss_"):
-		return "Boss"
-	return "敌群"
+	return _format_enemy_name(battle_enemy_id)
 
 
 func _battle_enemy_max_hp(enemy_id: String) -> int:
@@ -2280,7 +2337,7 @@ func _update_actor_animations(delta: float) -> void:
 		elif enemy_attack_active:
 			_update_enemy_attack_animation(delta)
 		else:
-			enemy_art.texture = _frame_texture(enemy_idle_frames, _loop_frame(enemy_animation_elapsed, ENEMY_IDLE_FRAME_TIME, ACTOR_LOOP_FRAMES), enemy_static_texture)
+			enemy_art.texture = enemy_static_texture
 			enemy_box.position = enemy_base_rect.position + Vector2(sin(enemy_animation_elapsed * TAU * 1.6) * 3.0, sin(enemy_animation_elapsed * TAU * 1.1) * 2.0)
 	else:
 		enemy_art.texture = enemy_static_texture
@@ -2322,7 +2379,7 @@ func _update_hero_hit_animation(delta: float) -> void:
 func _update_enemy_hit_animation(delta: float) -> void:
 	enemy_hit_elapsed += delta
 	var frame := mini(ENEMY_HIT_FRAMES - 1, int(floor(enemy_hit_elapsed / ENEMY_HIT_FRAME_TIME)))
-	enemy_art.texture = _frame_texture(enemy_hit_frames, frame, enemy_static_texture)
+	enemy_art.texture = enemy_static_texture
 	var shake := Vector2(sin(enemy_hit_elapsed * 68.0) * 9.0, sin(enemy_hit_elapsed * 43.0) * 4.0)
 	enemy_box.position = enemy_base_rect.position + shake
 	var flash_strength: float = clamp(1.0 - enemy_hit_elapsed / (ENEMY_HIT_FRAME_TIME * float(ENEMY_HIT_FRAMES)), 0.0, 1.0)
@@ -2336,7 +2393,7 @@ func _update_enemy_hit_animation(delta: float) -> void:
 
 func _update_enemy_attack_animation(delta: float) -> void:
 	enemy_attack_elapsed += delta
-	enemy_art.texture = _frame_texture(enemy_idle_frames, _loop_frame(enemy_animation_elapsed, ENEMY_IDLE_FRAME_TIME, ACTOR_LOOP_FRAMES), enemy_static_texture)
+	enemy_art.texture = enemy_static_texture
 	var progress: float = clamp(enemy_attack_elapsed / BATTLE_ENEMY_ATTACK_DURATION, 0.0, 1.0)
 	var lunge: float = sin(progress * PI) * -82.0
 	enemy_box.position = enemy_base_rect.position + Vector2(lunge, -sin(progress * PI * 2.0) * 5.0)
@@ -2574,7 +2631,9 @@ func _load_memory_item_textures() -> void:
 
 func _load_actor_animation_textures() -> void:
 	hero_static_texture = _load_texture(ART_HERO)
-	enemy_static_texture = _load_texture(ART_ENEMY)
+	enemy_fallback_texture = _load_texture(ART_ENEMY)
+	enemy_static_texture = enemy_fallback_texture
+	_load_enemy_textures()
 	hero_walk_sheet_texture = _load_texture(ART_HERO_WALK_SHEET)
 	hero_attack_sheet_texture = _load_texture(ART_HERO_ATTACK_SHEET)
 	enemy_idle_sheet_texture = _load_texture(ART_ENEMY_IDLE_SHEET)
@@ -2587,6 +2646,26 @@ func _load_actor_animation_textures() -> void:
 	enemy_hit_frames = _build_sheet_frames(enemy_hit_sheet_texture, ACTOR_ANIM_FRAME_SIZE, ENEMY_HIT_FRAMES)
 	slash_effect_frames = _build_sheet_frames(slash_effect_sheet_texture, SLASH_ANIM_FRAME_SIZE, SLASH_FRAMES)
 	hit_burst_frames = _build_sheet_frames(hit_burst_sheet_texture, HIT_BURST_ANIM_FRAME_SIZE, HIT_BURST_FRAMES)
+
+
+func _load_enemy_textures() -> void:
+	enemy_textures.clear()
+	for enemy_id in ENEMY_ART_PATHS.keys():
+		var texture := _load_texture(str(ENEMY_ART_PATHS[enemy_id]))
+		if texture != null:
+			enemy_textures[str(enemy_id)] = texture
+
+
+func _enemy_texture(enemy_id: String) -> Texture2D:
+	var texture := enemy_textures.get(enemy_id, null) as Texture2D
+	return texture if texture != null else enemy_fallback_texture
+
+
+func _apply_enemy_texture_for_battle() -> void:
+	if enemy_art == null:
+		return
+	enemy_static_texture = _enemy_texture(battle_enemy_id)
+	enemy_art.texture = enemy_static_texture
 
 
 func _load_stage_background_textures() -> void:

@@ -4,6 +4,7 @@ const MainScene := preload("res://scenes/main.tscn")
 
 var failed := false
 var battle_count := 0
+var seen_enemy_ids: Array[String] = []
 
 
 func _init() -> void:
@@ -20,13 +21,18 @@ func _run() -> void:
 	main.start_script()
 	await process_frame
 
-	for encounter_index in range(3):
+	for encounter_index in range(10):
 		_expect(main.current_mode == "travel", "encounter %d starts from travel" % [encounter_index + 1])
 		_expect(main.opening_travel_active, "encounter %d travel is active" % [encounter_index + 1])
 		_expect(main.current_stage_map_index == encounter_index % main.stage_background_textures.size(), "encounter %d uses expected stage map" % [encounter_index + 1])
 		await _drive_to_battle(main)
 		_expect(main.current_mode == "battle", "encounter %d reaches battle" % [encounter_index + 1])
 		_expect(main.current_stage_map_index == encounter_index % main.stage_background_textures.size(), "encounter %d battle keeps travel stage map" % [encounter_index + 1])
+		var expected_enemy_id := str(main.GAMEPLAY_ENEMY_IDS[encounter_index % main.GAMEPLAY_ENEMY_IDS.size()])
+		_expect(main.battle_enemy_id == expected_enemy_id, "encounter %d uses expected enemy id" % [encounter_index + 1])
+		_expect(not seen_enemy_ids.has(main.battle_enemy_id), "encounter %d enemy is not repeated in first cycle" % [encounter_index + 1])
+		seen_enemy_ids.append(main.battle_enemy_id)
+		_expect(main.enemy_art.texture == main.enemy_textures[main.battle_enemy_id], "encounter %d displays its enemy texture" % [encounter_index + 1])
 		_expect(not main.dialogue_panel.visible, "encounter %d never shows dialogue" % [encounter_index + 1])
 		_expect(not main.choice_panel.visible, "encounter %d never shows choices" % [encounter_index + 1])
 		_expect(not main.ending_layer.visible, "encounter %d never shows ending" % [encounter_index + 1])
@@ -39,7 +45,8 @@ func _run() -> void:
 		_expect(main.memory_grid_positions.size() == main.owned_memory_count(), "encounter %d keeps grid positions for owned memories" % [encounter_index + 1])
 		battle_count += 1
 
-	_expect(battle_count == 3, "playthrough resolves three gameplay battles")
+	_expect(battle_count == 10, "playthrough resolves ten gameplay battles")
+	_expect(seen_enemy_ids.size() == 10, "playthrough sees ten enemy ids")
 	_expect(main.owned_memory_count() >= 7, "playthrough gains battle rewards")
 	_expect(main.has_memory("mem_someone_waits"), "first reward memory is present")
 	_expect(main.has_memory("mem_masters_scolding"), "second reward memory is present")

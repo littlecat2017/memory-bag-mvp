@@ -21,13 +21,20 @@ func _run() -> void:
 	_expect(not main.stage_background_tiles.is_empty(), "stage background tiles exist")
 	_expect(main.stage_background_tiles[0].texture != null, "scrolling stage background texture")
 	_expect(main.stage_background_tiles[0].texture.get_width() == 2048 and main.stage_background_tiles[0].texture.get_height() == 512, "scrolling stage background is normalized")
-	_expect(main.stage_background_textures.size() >= 3, "three scrolling stage maps are loaded")
+	_expect(main.stage_background_textures.size() == 10, "ten scrolling stage maps are loaded")
 	for texture in main.stage_background_textures:
 		_expect(texture.get_width() == 2048 and texture.get_height() == 512, "stage map texture is normalized")
 	_expect(main.title_background_art.texture != null, "title background texture")
 	_expect(main.dialogue_panel_art.texture != null, "dialogue panel texture")
 	_expect(main.hero_art.texture != null, "hero texture")
 	_expect(main.enemy_art.texture != null, "enemy texture")
+	_expect(main.enemy_textures.size() == main.GAMEPLAY_ENEMY_IDS.size(), "ten gameplay enemy textures are loaded")
+	for enemy_id in main.GAMEPLAY_ENEMY_IDS:
+		var enemy_texture: Texture2D = main.enemy_textures.get(str(enemy_id), null)
+		_expect(enemy_texture != null, "%s enemy texture is loaded" % enemy_id)
+		if enemy_texture != null:
+			_expect(enemy_texture.get_width() == 512 and enemy_texture.get_height() == 512, "%s enemy texture is normalized" % enemy_id)
+			_expect(_texture_has_clean_border(enemy_texture), "%s enemy texture has transparent borders" % enemy_id)
 	_expect(main.hero_walk_sheet_texture != null, "hero walk animation sheet texture")
 	_expect(main.hero_attack_sheet_texture != null, "hero attack animation sheet texture")
 	_expect(main.enemy_idle_sheet_texture != null, "enemy idle animation sheet texture")
