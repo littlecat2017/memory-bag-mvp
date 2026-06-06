@@ -37,7 +37,16 @@ func _run() -> void:
 	_expect(main.title_start_button.get_global_rect().end.y < main.title_quit_button.get_global_rect().position.y, "title buttons stack vertically")
 
 	main.advance_by_pointer()
-	_expect(main.current_mode == "travel", "start enters gameplay travel")
+	_expect(main.current_mode == "prologue", "start enters prologue")
+	_expect(main.dialogue_panel.visible, "prologue shows dialogue panel")
+	_expect(not main.operation_tray.visible, "prologue hides operation tray")
+	_expect(main.speaker_label.text == "旁白", "prologue uses narrator")
+	_expect(main.text_label.text == str(main.PROLOGUE_LINES[0]), "prologue shows first line")
+	main.advance_by_pointer()
+	_expect(main.current_mode == "prologue", "prologue advances one line")
+	_expect(main.prologue_line_index == 1, "prologue line index advances")
+	await _finish_prologue(main)
+	_expect(main.current_mode == "travel", "prologue ends into gameplay travel")
 	_expect(main.opening_travel_active, "travel begins active")
 	_expect(main.current_event.is_empty(), "travel has no story event")
 	_expect(main.owned_memory_count() == 4, "new run grants standard memories")
@@ -265,6 +274,14 @@ func _resolve_current_battle(main: Control) -> void:
 			main._update_actor_animations(0.05)
 		else:
 			main._update_battle_turn_flow(0.05)
+		await process_frame
+
+
+func _finish_prologue(main: Control) -> void:
+	for _line_index in range(main.PROLOGUE_LINES.size() + 2):
+		if main.current_mode != "prologue":
+			return
+		main.advance_by_pointer()
 		await process_frame
 
 

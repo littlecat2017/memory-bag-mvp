@@ -31,6 +31,10 @@ func _run() -> void:
 		return
 
 	main.start_script()
+	await _settle(4)
+	if not _save_snapshot("00b_prologue_art.png"):
+		return
+	await _finish_prologue(main)
 	main._update_opening_travel(1.2)
 	await _settle(4)
 	if not _save_snapshot("01_opening_walk_art.png"):
@@ -114,6 +118,14 @@ func _fail(message: String) -> bool:
 
 func _settle(frames: int) -> void:
 	for _index in range(frames):
+		await process_frame
+
+
+func _finish_prologue(main: Control) -> void:
+	for _line_index in range(main.PROLOGUE_LINES.size() + 2):
+		if main.current_mode != "prologue":
+			return
+		main.advance_by_pointer()
 		await process_frame
 
 

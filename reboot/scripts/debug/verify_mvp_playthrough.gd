@@ -20,6 +20,8 @@ func _run() -> void:
 	_expect(main.validation_errors.is_empty(), "no validation errors")
 	main.start_script()
 	await process_frame
+	_expect(main.current_mode == "prologue", "playthrough starts with prologue")
+	await _finish_prologue(main)
 
 	for encounter_index in range(10):
 		_expect(main.current_mode == "travel", "encounter %d starts from travel" % [encounter_index + 1])
@@ -69,6 +71,14 @@ func _drive_to_battle(main: Control) -> void:
 		if main.current_mode == "battle":
 			return
 		main._update_opening_travel(0.5)
+		await process_frame
+
+
+func _finish_prologue(main: Control) -> void:
+	for _line_index in range(main.PROLOGUE_LINES.size() + 2):
+		if main.current_mode != "prologue":
+			return
+		main.advance_by_pointer()
 		await process_frame
 
 

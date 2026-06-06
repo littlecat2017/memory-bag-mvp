@@ -73,6 +73,7 @@ func _run() -> void:
 
 	main.start_script()
 	await process_frame
+	await _finish_prologue(main)
 	_expect(main.inventory_cell_icons.size() == 36, "inventory has icon holders")
 	_expect(main.inventory_item_layer.get_child_count() == 4, "owned memories render as item overlays")
 	_expect(main._memory_grid_size("mem_wooden_sword") == Vector2i(4, 1), "wooden sword uses a multi-cell footprint")
@@ -110,6 +111,14 @@ func _rendered_item_matches_grid(main: Control, memory_id: String) -> bool:
 			var rect := Rect2(child.position, child.size)
 			return rect.position.distance_to(expected_rect.position) <= 1.0 and rect.size.distance_to(expected_rect.size) <= 1.0
 	return false
+
+
+func _finish_prologue(main: Control) -> void:
+	for _line_index in range(main.PROLOGUE_LINES.size() + 2):
+		if main.current_mode != "prologue":
+			return
+		main.advance_by_pointer()
+		await process_frame
 
 
 func _texture_matches_grid(main: Control, memory_id: String) -> bool:

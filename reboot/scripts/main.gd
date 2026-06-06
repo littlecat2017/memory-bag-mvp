@@ -128,6 +128,13 @@ const PLAYER_SKILLS := [
 		"slash_sheet": ART_SKILL_SLASH_LANTERN_SPIN_SHEET,
 	},
 ]
+const PROLOGUE_LINES := [
+	"这座塔从世界尽头升起之后，名字开始从人们口中消失。",
+	"失去名字的人不会立刻死去。他们会忘记归途，忘记誓言，最后只剩下一具会行走的空壳。",
+	"幸存者把残留的记忆装进背包：一碗汤、一把旧剑、一本写满划痕的日记。",
+	"记忆会互相挤压，也会改变一个人的力量。整理它们，就是整理自己还没有丢掉的部分。",
+	"于是，少年背起这些零散的记忆，朝塔的方向踏上了旅途。",
+]
 const GAMEPLAY_REWARD_IDS := [
 	"mem_someone_waits",
 	"mem_masters_scolding",
@@ -289,6 +296,7 @@ var gameplay_encounter_count := 0
 var player_level := 1
 var battle_experience := 0
 var last_reward_notice := ""
+var prologue_line_index := 0
 var battle_active := false
 var battle_resolved := false
 var battle_turns := 0
@@ -399,6 +407,7 @@ var drag_preview_icon: TextureRect
 var drag_preview_label: Label
 var memory_tooltip_panel: PanelContainer
 var memory_tooltip_label: Label
+var gameplay_shell_texture: Texture2D
 var memory_icons_texture: Texture2D
 var memory_item_textures: Dictionary = {}
 var hero_static_texture: Texture2D
@@ -501,6 +510,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_select"):
 			if current_mode == "title":
 				start_script()
+			elif current_mode == "prologue":
+				advance_prologue()
 			elif current_mode == "battle":
 				advance_battle()
 			elif current_mode == "travel":
@@ -536,7 +547,7 @@ func start_script() -> void:
 	_reset_script_state()
 	_grant_standard_opening_memories()
 	gameplay_encounter_count = 0
-	_start_next_travel_segment()
+	_start_prologue()
 	_refresh_inventory_ui()
 
 
@@ -544,11 +555,41 @@ func start_source_script() -> void:
 	start_script()
 
 
+func _start_prologue() -> void:
+	prologue_line_index = 0
+	current_mode = "prologue"
+	last_story_mode = "prologue"
+	opening_travel_active = false
+	current_event = {}
+	current_event_index = 0
+	_refresh_prologue_ui()
+	_apply_mode()
+
+
+func advance_prologue() -> void:
+	if current_mode != "prologue":
+		return
+	prologue_line_index += 1
+	if prologue_line_index >= PROLOGUE_LINES.size():
+		_start_next_travel_segment()
+		return
+	_refresh_prologue_ui()
+
+
+func _refresh_prologue_ui() -> void:
+	if speaker_label != null:
+		speaker_label.text = "旁白"
+	if text_label != null:
+		text_label.text = str(PROLOGUE_LINES[prologue_line_index]) if prologue_line_index < PROLOGUE_LINES.size() else ""
+
+
 func advance_script() -> void:
 	if opening_travel_active:
 		return
 	if current_mode == "title":
 		start_script()
+	elif current_mode == "prologue":
+		advance_prologue()
 	elif current_mode == "battle":
 		advance_battle()
 	elif current_mode == "travel":
@@ -971,7 +1012,9 @@ func _build_ui() -> void:
 	bg_layer.gui_input.connect(_on_progress_gui_input)
 	add_child(bg_layer)
 
-	screen_background_art = _new_texture_rect(ART_GAMEPLAY_SHELL, TextureRect.STRETCH_SCALE)
+	gameplay_shell_texture = _load_texture(ART_GAMEPLAY_SHELL)
+	screen_background_art = _new_texture_rect(null, TextureRect.STRETCH_SCALE)
+	screen_background_art.texture = gameplay_shell_texture
 	screen_background_art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	screen_background_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(screen_background_art)
@@ -1914,7 +1957,7 @@ func _apply_mode() -> void:
 	status_box.visible = current_mode == "battle"
 	battle_log_panel.visible = current_mode == "battle"
 	operation_tray.visible = current_mode == "travel" or current_mode == "battle" or current_mode == "memory_replace"
-	dialogue_panel.visible = false
+	dialogue_panel.visible = current_mode == "prologue" or current_mode == "dialogue" or current_mode == "choice"
 	choice_panel.visible = false
 	title_layer.visible = current_mode == "title"
 	bag_detail_layer.visible = current_mode == "bag_detail"
@@ -1923,6 +1966,8 @@ func _apply_mode() -> void:
 	source_label.visible = false
 	if current_mode == "title":
 		_apply_title_layout()
+	elif current_mode == "prologue":
+		_apply_prologue_layout()
 	elif current_mode == "bag_detail":
 		_apply_bag_detail_layout()
 	elif current_mode == "battle":
@@ -1941,8 +1986,14 @@ func _update_screen_background() -> void:
 	match current_mode:
 		"title":
 			screen_background_art.visible = false
+		"prologue":
+			screen_background_art.visible = true
+			screen_background_art.texture = _current_stage_background_texture()
+			screen_background_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		_:
 			screen_background_art.visible = true
+			screen_background_art.texture = gameplay_shell_texture
+			screen_background_art.stretch_mode = TextureRect.STRETCH_SCALE
 
 
 func _apply_dialogue_layout() -> void:
@@ -2059,7 +2110,7 @@ func _stop_pointer_hold() -> void:
 func _can_pointer_advance() -> bool:
 	if opening_travel_active:
 		return false
-	return current_mode in ["title", "battle"]
+	return current_mode in ["title", "prologue", "battle"]
 
 
 func _advance_by_pointer() -> void:
@@ -2067,6 +2118,8 @@ func _advance_by_pointer() -> void:
 		return
 	if current_mode == "title":
 		start_script()
+	elif current_mode == "prologue":
+		advance_prologue()
 	elif current_mode == "battle":
 		advance_battle()
 
@@ -2506,6 +2559,13 @@ func _apply_title_layout() -> void:
 	_set_rect(title_start_button, _screen_rect("title", "primary_button"))
 	_set_rect(title_quit_button, _screen_rect("title", "quit_button"))
 	_set_rect(title_note_panel, _screen_rect("title", "note_panel"))
+
+
+func _apply_prologue_layout() -> void:
+	_set_rect(dialogue_panel, _screen_rect("dialogue", "dialogue_panel"))
+	dialogue_panel.visible = true
+	choice_panel.visible = false
+	_refresh_prologue_ui()
 
 
 func _apply_bag_detail_layout() -> void:
