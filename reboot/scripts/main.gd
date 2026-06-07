@@ -67,6 +67,7 @@ const SKILL_TRIGGER_NORMAL_ATTACKS := 2
 const SKILL_BANNER_DURATION := 0.72
 const SKILL_COOLDOWN_SECONDS := 2.0
 const BATTLES_PER_LEVEL := 3
+const ATTRIBUTE_POINTS_PER_LEVEL := 2
 const BATTLE_PLAYER_RESPONSE_DELAY := 0.34
 const BATTLE_ENEMY_RESPONSE_DELAY := 0.28
 const BATTLE_VICTORY_CONTINUE_DELAY := 0.75
@@ -129,6 +130,37 @@ const PLAYER_SKILLS := [
 		"damage": 15,
 		"slash_sheet": ART_SKILL_SLASH_LANTERN_SPIN_SHEET,
 	},
+]
+const EQUIPMENT_SLOTS := [
+	{"id": "weapon", "name": "武器"},
+	{"id": "armor", "name": "防具"},
+	{"id": "amulet", "name": "饰品"},
+	{"id": "relic", "name": "遗物"},
+]
+const PLAYER_ATTRIBUTES := [
+	{"id": "strength", "name": "力量", "description": "提升普通攻击和技能伤害"},
+	{"id": "vitality", "name": "体质", "description": "提升生命上限"},
+	{"id": "agility", "name": "敏捷", "description": "提升暴击率"},
+	{"id": "spirit", "name": "精神", "description": "提升技能伤害"},
+]
+const EQUIPMENT_DEFS := {
+	"training_sword": {"slot": "weapon", "name": "练习木剑", "attack": 2, "max_hp": 0, "crit": 0.00, "skill_power": 0, "description": "可靠但普通的起步武器。"},
+	"warm_cloak": {"slot": "armor", "name": "旧呢披风", "attack": 0, "max_hp": 8, "crit": 0.00, "skill_power": 0, "description": "增加一点生命，适合刚出发的旅人。"},
+	"brass_locket": {"slot": "amulet", "name": "黄铜挂坠", "attack": 0, "max_hp": 0, "crit": 0.05, "skill_power": 1, "description": "让技能更稳定，也带来少量暴击。"},
+	"tower_splinter": {"slot": "relic", "name": "塔木碎片", "attack": 1, "max_hp": 4, "crit": 0.02, "skill_power": 1, "description": "来自高塔边缘的碎片，均衡提升战斗能力。"},
+	"iron_leaf_blade": {"slot": "weapon", "name": "铁叶长剑", "attack": 6, "max_hp": 0, "crit": 0.03, "skill_power": 1, "description": "明显提升攻击，是前期最直接的成长。"},
+	"sunthread_coat": {"slot": "armor", "name": "日线外套", "attack": 0, "max_hp": 18, "crit": 0.00, "skill_power": 0, "description": "大幅提升生命上限，让自动战斗更稳。"},
+	"glass_bell": {"slot": "amulet", "name": "玻璃小铃", "attack": 1, "max_hp": 0, "crit": 0.10, "skill_power": 2, "description": "偏向爆发与技能伤害。"},
+	"memory_compass": {"slot": "relic", "name": "记忆罗盘", "attack": 2, "max_hp": 8, "crit": 0.04, "skill_power": 2, "description": "指向下一段旅途的成长遗物。"},
+}
+const EQUIPMENT_DROP_ORDER := [
+	"warm_cloak",
+	"brass_locket",
+	"iron_leaf_blade",
+	"tower_splinter",
+	"sunthread_coat",
+	"glass_bell",
+	"memory_compass",
 ]
 const PROLOGUE_LINES := [
 	"这座塔从世界尽头升起之后，名字开始从人们口中消失。",
@@ -299,6 +331,20 @@ var opening_travel_meters := 0.0
 var gameplay_encounter_count := 0
 var player_level := 1
 var battle_experience := 0
+var player_attribute_points := 0
+var player_attributes := {
+	"strength": 0,
+	"vitality": 0,
+	"agility": 0,
+	"spirit": 0,
+}
+var player_equipment := {
+	"weapon": "training_sword",
+	"armor": "",
+	"amulet": "",
+	"relic": "",
+}
+var pending_equipment_id := ""
 var last_reward_notice := ""
 var prologue_line_index := 0
 var battle_active := false
@@ -367,6 +413,15 @@ var inventory_item_layer: Control
 var inventory_cells: Array[PanelContainer] = []
 var inventory_cell_labels: Array[Label] = []
 var inventory_cell_icons: Array[TextureRect] = []
+var growth_panel: Control
+var growth_summary_label: Label
+var growth_equipment_labels: Dictionary = {}
+var growth_equip_button: PanelContainer
+var growth_equip_button_label: Label
+var growth_attribute_labels: Dictionary = {}
+var growth_attribute_buttons: Dictionary = {}
+var growth_skill_label: Label
+var growth_notice_label: Label
 var dialogue_panel: PanelContainer
 var dialogue_panel_art: TextureRect
 var prologue_dialogue_art: TextureRect
@@ -556,10 +611,10 @@ func jump_to_event(event_id: String) -> void:
 
 func start_script() -> void:
 	_reset_script_state()
-	_grant_standard_opening_memories()
 	gameplay_encounter_count = 0
 	_start_prologue()
 	_refresh_inventory_ui()
+	_refresh_growth_ui()
 
 
 func start_source_script() -> void:
@@ -649,12 +704,13 @@ func _update_opening_travel(delta: float) -> void:
 
 func _refresh_opening_travel_ui() -> void:
 	if stage_label != null and current_mode == "travel":
-		var travel_text := "前进 %d / %d 米    Lv.%d 经验 %d/%d" % [
+		var travel_text := "前进 %d / %d 米    Lv.%d 经验 %d/%d    属性点 %d" % [
 			int(round(opening_travel_meters)),
 			int(OPENING_TRAVEL_TARGET_METERS),
 			player_level,
 			battle_experience,
 			BATTLES_PER_LEVEL,
+			player_attribute_points,
 		]
 		if not last_reward_notice.is_empty() and not last_reward_notice.begins_with("经验 "):
 			travel_text += "    %s" % last_reward_notice
@@ -730,13 +786,14 @@ func _next_player_attack() -> Dictionary:
 			normal_attack_counter = 0
 			current_attack_is_skill = true
 			current_skill = skill
-			_show_skill_banner(str(skill.get("name", "")))
+			var skill_name := str(skill.get("name", "技能"))
+			_show_skill_banner(skill_name)
 			return {
 				"type": "skill",
 				"id": str(skill.get("id", "")),
-				"name": str(skill.get("name", "")),
-				"log_name": str(skill.get("name", "技能")),
-				"damage": int(skill.get("damage", BATTLE_PLAYER_DAMAGE)),
+				"name": skill_name,
+				"log_name": skill_name,
+				"damage": _player_attack_damage(int(skill.get("damage", BATTLE_PLAYER_DAMAGE)), true),
 				"slash_frames": _skill_slash_frames(str(skill.get("id", ""))),
 			}
 		normal_attack_counter = SKILL_TRIGGER_NORMAL_ATTACKS
@@ -749,8 +806,8 @@ func _next_player_attack() -> Dictionary:
 		"type": "normal",
 		"id": "normal_slash",
 		"name": "普通攻击",
-		"log_name": "你出剑",
-		"damage": BATTLE_PLAYER_DAMAGE,
+		"log_name": "普通攻击",
+		"damage": _player_attack_damage(BATTLE_PLAYER_DAMAGE, false),
 		"slash_frames": slash_effect_frames,
 	}
 
@@ -782,6 +839,177 @@ func _show_skill_banner(skill_name: String) -> void:
 	skill_banner_elapsed = SKILL_BANNER_DURATION
 	skill_banner_label.visible = true
 	skill_banner_label.modulate = Color.WHITE
+
+
+func _reset_growth_state() -> void:
+	player_attributes = {
+		"strength": 0,
+		"vitality": 0,
+		"agility": 0,
+		"spirit": 0,
+	}
+	player_equipment = {
+		"weapon": "training_sword",
+		"armor": "",
+		"amulet": "",
+		"relic": "",
+	}
+	pending_equipment_id = ""
+
+
+func _growth_stats() -> Dictionary:
+	var stats := {
+		"attack": BATTLE_PLAYER_DAMAGE + int(player_attributes.get("strength", 0)) * 2,
+		"max_hp": BATTLE_HERO_MAX_HP + int(player_attributes.get("vitality", 0)) * 8,
+		"crit": 0.05 + float(player_attributes.get("agility", 0)) * 0.025,
+		"skill_power": int(player_attributes.get("spirit", 0)) * 2,
+	}
+	for slot_id in player_equipment.keys():
+		var equipment_id := str(player_equipment.get(slot_id, ""))
+		var equipment: Dictionary = EQUIPMENT_DEFS.get(equipment_id, {})
+		stats.attack += int(equipment.get("attack", 0))
+		stats.max_hp += int(equipment.get("max_hp", 0))
+		stats.crit += float(equipment.get("crit", 0.0))
+		stats.skill_power += int(equipment.get("skill_power", 0))
+	stats.crit = clamp(float(stats.crit), 0.0, 0.45)
+	return stats
+
+
+func _equipment_name(equipment_id: String) -> String:
+	if equipment_id.is_empty():
+		return "空"
+	var equipment: Dictionary = EQUIPMENT_DEFS.get(equipment_id, {})
+	return str(equipment.get("name", equipment_id))
+
+
+func _equipment_line(equipment_id: String) -> String:
+	if equipment_id.is_empty():
+		return "空"
+	var equipment: Dictionary = EQUIPMENT_DEFS.get(equipment_id, {})
+	var parts: Array[String] = []
+	if int(equipment.get("attack", 0)) != 0:
+		parts.append("攻+%d" % int(equipment.get("attack", 0)))
+	if int(equipment.get("max_hp", 0)) != 0:
+		parts.append("血+%d" % int(equipment.get("max_hp", 0)))
+	if float(equipment.get("crit", 0.0)) > 0.0:
+		parts.append("暴+%d%%" % int(round(float(equipment.get("crit", 0.0)) * 100.0)))
+	if int(equipment.get("skill_power", 0)) != 0:
+		parts.append("技+%d" % int(equipment.get("skill_power", 0)))
+	return "%s\n%s" % [_equipment_name(equipment_id), " / ".join(parts)]
+
+
+func _next_equipment_drop_id() -> String:
+	if EQUIPMENT_DROP_ORDER.is_empty():
+		return ""
+	var index: int = max(0, gameplay_encounter_count - 1) % EQUIPMENT_DROP_ORDER.size()
+	return str(EQUIPMENT_DROP_ORDER[index])
+
+
+func _set_pending_equipment(equipment_id: String) -> void:
+	if equipment_id.is_empty():
+		return
+	pending_equipment_id = equipment_id
+	last_reward_notice = "发现装备：%s" % _equipment_name(equipment_id)
+	_refresh_growth_ui()
+
+
+func _accept_pending_equipment() -> void:
+	if pending_equipment_id.is_empty():
+		return
+	var equipment: Dictionary = EQUIPMENT_DEFS.get(pending_equipment_id, {})
+	var slot_id := str(equipment.get("slot", ""))
+	if slot_id.is_empty():
+		pending_equipment_id = ""
+		_refresh_growth_ui()
+		return
+	player_equipment[slot_id] = pending_equipment_id
+	last_reward_notice = "已装备：%s" % _equipment_name(pending_equipment_id)
+	pending_equipment_id = ""
+	_refresh_growth_ui()
+
+
+func _spend_attribute_point(attribute_id: String) -> void:
+	if player_attribute_points <= 0 or not player_attributes.has(attribute_id):
+		return
+	player_attribute_points -= 1
+	player_attributes[attribute_id] = int(player_attributes.get(attribute_id, 0)) + 1
+	var stats := _growth_stats()
+	var new_max_hp := int(stats.get("max_hp", BATTLE_HERO_MAX_HP))
+	if current_mode == "battle":
+		var old_max_hp := hero_max_hp
+		hero_max_hp = new_max_hp
+		hero_hp = mini(hero_max_hp, hero_hp + max(0, hero_max_hp - old_max_hp))
+	last_reward_notice = "属性提升：%s" % _attribute_name(attribute_id)
+	_refresh_growth_ui()
+	_refresh_battle_ui()
+
+
+func _attribute_name(attribute_id: String) -> String:
+	for attr in PLAYER_ATTRIBUTES:
+		if str(attr.get("id", "")) == attribute_id:
+			return str(attr.get("name", attribute_id))
+	return attribute_id
+
+
+func _attribute_description(attribute_id: String) -> String:
+	for attr in PLAYER_ATTRIBUTES:
+		if str(attr.get("id", "")) == attribute_id:
+			return str(attr.get("description", ""))
+	return ""
+
+
+func _player_attack_damage(base_damage: int, is_skill := false) -> int:
+	var stats := _growth_stats()
+	var damage := base_damage + int(stats.get("attack", 0)) - BATTLE_PLAYER_DAMAGE
+	if is_skill:
+		damage += int(stats.get("skill_power", 0))
+	if randf() < float(stats.get("crit", 0.0)):
+		damage = int(round(float(damage) * 1.55))
+		battle_action_text = "暴击！"
+	return maxi(1, damage)
+
+
+func _refresh_growth_ui() -> void:
+	if growth_panel == null:
+		return
+	var stats := _growth_stats()
+	if growth_summary_label != null:
+		growth_summary_label.text = "Lv.%d  经验 %d/%d\n可用属性点：%d\n攻击 %d  生命 %d\n暴击 %d%%  技能强度 %d" % [
+			player_level,
+			battle_experience,
+			BATTLES_PER_LEVEL,
+			player_attribute_points,
+			int(stats.get("attack", 0)),
+			int(stats.get("max_hp", 0)),
+			int(round(float(stats.get("crit", 0.0)) * 100.0)),
+			int(stats.get("skill_power", 0)),
+		]
+	for slot in EQUIPMENT_SLOTS:
+		var slot_id := str(slot.get("id", ""))
+		var label := growth_equipment_labels.get(slot_id, null) as Label
+		if label != null:
+			label.text = "%s\n%s" % [str(slot.get("name", slot_id)), _equipment_line(str(player_equipment.get(slot_id, "")))]
+	if growth_equip_button_label != null:
+		if pending_equipment_id.is_empty():
+			growth_equip_button_label.text = "暂无新装备"
+			growth_equip_button.modulate = Color(1, 1, 1, 0.64)
+		else:
+			var equipment: Dictionary = EQUIPMENT_DEFS.get(pending_equipment_id, {})
+			growth_equip_button_label.text = "装备 %s\n%s" % [_equipment_name(pending_equipment_id), str(equipment.get("description", ""))]
+			growth_equip_button.modulate = Color.WHITE
+	for attr in PLAYER_ATTRIBUTES:
+		var attr_id := str(attr.get("id", ""))
+		var attr_label := growth_attribute_labels.get(attr_id, null) as Label
+		if attr_label != null:
+			attr_label.text = "%s %d" % [str(attr.get("name", attr_id)), int(player_attributes.get(attr_id, 0))]
+			attr_label.tooltip_text = _attribute_description(attr_id)
+		var attr_button := growth_attribute_buttons.get(attr_id, null) as Button
+		if attr_button != null:
+			attr_button.disabled = player_attribute_points <= 0
+	if growth_skill_label != null:
+		growth_skill_label.text = "自动技能\n每 2 次普攻后随机释放技能。\n属性“精神”和装备会提高技能伤害。"
+	if growth_notice_label != null:
+		growth_notice_label.text = last_reward_notice
 
 
 func _perform_player_battle_turn() -> void:
@@ -869,31 +1097,41 @@ func _begin_gameplay_battle(enemy_id := "") -> void:
 
 
 func _finish_gameplay_battle() -> void:
-	var reward_ids := _battle_level_reward_ids()
-	if not reward_ids.is_empty():
-		last_reward_notice = "升级到 Lv.%d，获得：%s" % [player_level, _format_rewards(reward_ids)]
-		if _needs_memory_replacement(reward_ids):
-			_clear_battle_log()
-			_begin_memory_replace(reward_ids, "GAMEPLAY_TRAVEL")
-			return
-		_add_memories(reward_ids)
+	var leveled := _apply_battle_experience()
+	var equipment_drop := _next_equipment_drop_id()
+	if not equipment_drop.is_empty():
+		pending_equipment_id = equipment_drop
+	if leveled:
+		last_reward_notice = "升级到 Lv.%d，获得 %d 点属性点；发现装备：%s" % [
+			player_level,
+			ATTRIBUTE_POINTS_PER_LEVEL,
+			_equipment_name(equipment_drop),
+		]
+	elif not equipment_drop.is_empty():
+		last_reward_notice = "经验 %d/%d；发现装备：%s" % [
+			battle_experience,
+			BATTLES_PER_LEVEL,
+			_equipment_name(equipment_drop),
+		]
 	else:
 		last_reward_notice = "经验 %d/%d" % [battle_experience, BATTLES_PER_LEVEL]
+	_refresh_growth_ui()
 	_reset_battle_state()
 	_start_next_travel_segment()
 
 
-func _battle_level_reward_ids() -> Array[String]:
-	var rewards: Array[String] = []
+func _apply_battle_experience() -> bool:
 	battle_experience += 1
 	if battle_experience < BATTLES_PER_LEVEL:
-		return rewards
+		return false
 	battle_experience = 0
 	player_level += 1
-	var reward_id := _random_gameplay_reward_id()
-	if not reward_id.is_empty():
-		rewards.append(reward_id)
-	return rewards
+	player_attribute_points += ATTRIBUTE_POINTS_PER_LEVEL
+	return true
+
+
+func _battle_level_reward_ids() -> Array[String]:
+	return []
 
 
 func _random_gameplay_reward_id() -> String:
@@ -1200,6 +1438,8 @@ func _build_ui() -> void:
 	inventory_item_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	operation_tray.add_child(inventory_item_layer)
 
+	_build_growth_panel()
+
 	dialogue_panel = _new_panel("dialogue")
 	dialogue_panel.gui_input.connect(_on_progress_gui_input)
 	add_child(dialogue_panel)
@@ -1282,6 +1522,71 @@ func _build_ui() -> void:
 	_build_memory_tooltip()
 
 
+func _build_growth_panel() -> void:
+	growth_panel = Control.new()
+	growth_panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	operation_tray.add_child(growth_panel)
+
+	growth_summary_label = _new_label(19, Color(0.15, 0.09, 0.04))
+	growth_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	growth_panel.add_child(growth_summary_label)
+
+	var equipment_title := _new_label(18, Color(0.18, 0.10, 0.04))
+	equipment_title.name = "EquipmentTitle"
+	equipment_title.text = "装备"
+	growth_panel.add_child(equipment_title)
+
+	for slot in EQUIPMENT_SLOTS:
+		var slot_id := str(slot.get("id", ""))
+		var slot_panel := _new_panel("growth_card")
+		slot_panel.name = "Equipment_%s" % slot_id
+		growth_panel.add_child(slot_panel)
+		var label := _center_label("")
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.add_theme_font_size_override("font_size", 15)
+		slot_panel.add_child(label)
+		growth_equipment_labels[slot_id] = label
+
+	growth_equip_button = _new_panel("button")
+	growth_equip_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	growth_equip_button.gui_input.connect(_on_growth_equip_gui_input)
+	_add_button_art(growth_equip_button)
+	growth_equip_button_label = _center_label("暂无新装备")
+	growth_equip_button_label.add_theme_font_size_override("font_size", 16)
+	growth_equip_button.add_child(growth_equip_button_label)
+	growth_panel.add_child(growth_equip_button)
+
+	var attr_title := _new_label(18, Color(0.18, 0.10, 0.04))
+	attr_title.name = "AttributeTitle"
+	attr_title.text = "属性点"
+	growth_panel.add_child(attr_title)
+
+	for attr in PLAYER_ATTRIBUTES:
+		var attr_id := str(attr.get("id", ""))
+		var row := HBoxContainer.new()
+		row.name = "Attr_%s" % attr_id
+		row.add_theme_constant_override("separation", 8)
+		growth_panel.add_child(row)
+		var label := _new_label(15, Color(0.12, 0.08, 0.04))
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
+		var button := Button.new()
+		button.text = "+"
+		button.custom_minimum_size = Vector2(34, 28)
+		button.pressed.connect(_spend_attribute_point.bind(attr_id))
+		row.add_child(button)
+		growth_attribute_labels[attr_id] = label
+		growth_attribute_buttons[attr_id] = button
+
+	growth_skill_label = _new_label(15, Color(0.12, 0.08, 0.04))
+	growth_skill_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	growth_panel.add_child(growth_skill_label)
+
+	growth_notice_label = _new_label(16, Color(0.35, 0.12, 0.05))
+	growth_notice_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	growth_panel.add_child(growth_notice_label)
+
+
 func _build_title_layer() -> void:
 	title_layer = Control.new()
 	title_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1292,13 +1597,13 @@ func _build_title_layer() -> void:
 	title_layer.add_child(title_background_art)
 
 	title_text_label = _new_label(44, Color(0.16, 0.10, 0.05))
-	title_text_label.text = "记忆背包"
+	title_text_label.text = "尖塔旅人"
 	title_text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_text_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_layer.add_child(title_text_label)
 
 	title_subtitle_label = _new_label(22, Color(0.24, 0.17, 0.10))
-	title_subtitle_label.text = "移动、战斗、拾取、整理背包"
+	title_subtitle_label.text = "自动行走与战斗，升级、装备、分配属性点"
 	title_subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_subtitle_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_layer.add_child(title_subtitle_label)
@@ -1579,10 +1884,13 @@ func _reset_script_state() -> void:
 	gameplay_encounter_count = 0
 	player_level = 1
 	battle_experience = 0
+	player_attribute_points = 0
+	_reset_growth_state()
 	last_reward_notice = ""
 	last_story_mode = "travel"
 	_reset_battle_state()
 	_refresh_inventory_ui()
+	_refresh_growth_ui()
 
 
 func _event_type(event: Dictionary) -> String:
@@ -1595,13 +1903,14 @@ func _begin_battle(event: Dictionary) -> void:
 	battle_turns = 0
 	battle_enemy_id = str(event.get("enemy_id", "unknown_enemy"))
 	battle_reward_ids = _string_array(event.get("reward", []))
-	hero_max_hp = BATTLE_HERO_MAX_HP
+	var stats := _growth_stats()
+	hero_max_hp = int(stats.get("max_hp", BATTLE_HERO_MAX_HP))
 	hero_hp = hero_max_hp
 	enemy_max_hp = _battle_enemy_max_hp(battle_enemy_id)
 	enemy_hp = enemy_max_hp
 	_apply_enemy_texture_for_battle()
 	battle_phase = "player"
-	battle_action_text = "你的回合：自动出剑"
+	battle_action_text = "我方自动出招"
 	battle_player_response_elapsed = 0.0
 	battle_enemy_response_elapsed = 0.0
 	battle_victory_elapsed = 0.0
@@ -1666,6 +1975,7 @@ func _refresh_battle_ui() -> void:
 		else:
 			status_box_label.text = "%s\n自动结算" % _battle_enemy_label()
 		status_box_label.add_theme_font_size_override("font_size", 13)
+	_refresh_growth_ui()
 
 
 func _append_battle_log(entry: String) -> void:
@@ -2092,7 +2402,14 @@ func _on_inventory_grid_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed and current_mode in ["travel", "battle"]:
-			open_bag_detail()
+			get_viewport().set_input_as_handled()
+
+
+func _on_growth_equip_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			_accept_pending_equipment()
 			get_viewport().set_input_as_handled()
 
 
@@ -2725,7 +3042,39 @@ func _set_operation_layout(screen_id: String) -> void:
 	var inventory_rect := _relative_rect(_screen_rect(screen_id, "inventory_board"), tray_rect.position)
 	_set_rect(inventory_grid, inventory_rect)
 	_set_rect(inventory_item_layer, inventory_rect)
+	if growth_panel != null:
+		_set_rect(growth_panel, Rect2(Vector2.ZERO, tray_rect.size))
+		_apply_growth_panel_layout(tray_rect.size)
+	inventory_grid.visible = false
+	inventory_item_layer.visible = false
 	_refresh_inventory_ui()
+	_refresh_growth_ui()
+
+
+func _apply_growth_panel_layout(panel_size: Vector2) -> void:
+	if growth_panel == null:
+		return
+	var margin := 26.0
+	_set_rect(growth_summary_label, Rect2(margin, 18, 300, 106))
+	var equipment_title := growth_panel.get_node_or_null("EquipmentTitle") as Label
+	if equipment_title != null:
+		_set_rect(equipment_title, Rect2(360, 18, 180, 26))
+	for index in range(EQUIPMENT_SLOTS.size()):
+		var slot_id := str(EQUIPMENT_SLOTS[index].get("id", ""))
+		var slot_panel := growth_panel.get_node_or_null("Equipment_%s" % slot_id) as Control
+		if slot_panel != null:
+			_set_rect(slot_panel, Rect2(350 + float(index % 2) * 180.0, 54 + float(index / 2) * 72.0, 166, 58))
+	_set_rect(growth_equip_button, Rect2(350, 208, 346, 62))
+	var attr_title := growth_panel.get_node_or_null("AttributeTitle") as Label
+	if attr_title != null:
+		_set_rect(attr_title, Rect2(740, 18, 180, 26))
+	for index in range(PLAYER_ATTRIBUTES.size()):
+		var attr_id := str(PLAYER_ATTRIBUTES[index].get("id", ""))
+		var row := growth_panel.get_node_or_null("Attr_%s" % attr_id) as Control
+		if row != null:
+			_set_rect(row, Rect2(740, 52 + float(index) * 39.0, 190, 30))
+	_set_rect(growth_skill_label, Rect2(970, 24, 172, 118))
+	_set_rect(growth_notice_label, Rect2(740, 216, panel_size.x - 770, 58))
 
 
 func _set_stage_background_rect(rect: Rect2) -> void:

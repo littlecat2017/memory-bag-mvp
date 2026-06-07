@@ -63,29 +63,24 @@ func _run() -> void:
 
 	await _wait_for_travel(main)
 	await _settle(4)
-	if not _save_snapshot("06_reward_travel_art.png"):
+	if not _save_snapshot("06_growth_reward_travel_art.png"):
+		return
+	main._accept_pending_equipment()
+	main.player_attribute_points = max(main.player_attribute_points, 1)
+	main._spend_attribute_point("strength")
+	await _settle(4)
+	if not _save_snapshot("07_growth_panel_after_choice_art.png"):
 		return
 
 	await _drive_to_battle(main)
 	await _settle(4)
-	if not _save_snapshot("06b_second_map_battle_art.png"):
+	if not _save_snapshot("08_second_map_battle_art.png"):
 		return
 	if not await _resolve_current_battle(main):
 		return
 	await _wait_for_travel(main)
 	await _settle(4)
-	if not _save_snapshot("06c_third_map_travel_art.png"):
-		return
-
-	main.move_memory_to("mem_wooden_sword", Vector2i(0, 3))
-	main.show_mode("travel")
-	await _settle(4)
-	if not _save_snapshot("07_spatial_rearrange_art.png"):
-		return
-
-	main.show_mode("bag_detail")
-	await _settle(4)
-	if not _save_snapshot("08_bag_detail_art.png"):
+	if not _save_snapshot("09_third_map_travel_art.png"):
 		return
 
 	main.queue_free()

@@ -41,15 +41,18 @@ func _run() -> void:
 		await _resolve_battle(main)
 		_expect(main.current_mode == "travel", "encounter %d victory returns to travel" % [encounter_index + 1])
 		_expect(main.opening_travel_active, "encounter %d starts next travel segment" % [encounter_index + 1])
-		_expect(main.memory_grid_positions.size() == main.owned_memory_count(), "encounter %d keeps grid positions for owned memories" % [encounter_index + 1])
+		_expect(main.pending_equipment_id != "", "encounter %d drops equipment for player decision" % [encounter_index + 1])
+		main._accept_pending_equipment()
+		_expect(main.pending_equipment_id == "", "encounter %d can equip dropped item" % [encounter_index + 1])
 		battle_count += 1
 
 	_expect(battle_count == 10, "playthrough resolves ten gameplay battles")
 	_expect(seen_enemy_ids.size() == 10, "playthrough sees ten enemy ids")
 	_expect(main.player_level == 4, "playthrough levels up every three battles")
 	_expect(main.battle_experience == 1, "playthrough keeps remaining battle experience")
-	_expect(main.owned_memory_count() >= 7, "playthrough gains three level rewards")
-	_expect(main.last_reward_notice.find("经验") >= 0, "playthrough reports remaining experience after non-level battle")
+	_expect(main.player_attribute_points == 6, "playthrough gains attribute points from levels")
+	_expect(str(main.player_equipment.get("weapon", "")) != "training_sword", "playthrough upgrades weapon slot")
+	_expect(main.battle_experience == 1, "playthrough keeps one progress point toward next level")
 	_expect(main.current_event.is_empty(), "playthrough ends in travel without story event")
 	_expect(main.selected_ending_id.is_empty(), "playthrough does not select story ending")
 	_expect(main.route_id.is_empty(), "playthrough does not set story route")
@@ -59,9 +62,10 @@ func _run() -> void:
 		quit(1)
 		return
 	print("verify_mvp_playthrough: ok")
-	print("verify_mvp_playthrough: battles=%d memories=%d" % [
+	print("verify_mvp_playthrough: battles=%d level=%d attribute_points=%d" % [
 		battle_count,
-		main.owned_memory_count(),
+		main.player_level,
+		main.player_attribute_points,
 	])
 	quit(0)
 

@@ -74,13 +74,13 @@ func _run() -> void:
 	main.start_script()
 	await process_frame
 	await _finish_prologue(main)
-	_expect(main.inventory_cell_icons.size() == 36, "inventory has icon holders")
-	_expect(main.inventory_item_layer.get_child_count() == 4, "owned memories render as item overlays")
-	_expect(main._memory_grid_size("mem_wooden_sword") == Vector2i(4, 1), "wooden sword uses a multi-cell footprint")
+	_expect(main.growth_panel != null and main.growth_panel.visible, "growth panel replaces backpack board in gameplay")
+	_expect(main.growth_summary_label != null and main.growth_summary_label.text.find("Lv.") >= 0, "growth summary renders level text")
+	_expect(main.growth_equipment_labels.size() == main.EQUIPMENT_SLOTS.size(), "equipment slots render in growth panel")
+	_expect(not main.inventory_grid.visible, "spatial backpack grid is hidden from main gameplay")
+	_expect(main.inventory_item_layer.get_child_count() == 0, "main gameplay does not render memory item overlays")
 	var sword_texture: Texture2D = main._memory_item_texture("mem_wooden_sword")
-	_expect(sword_texture != null and sword_texture.get_width() > sword_texture.get_height() * 3, "wooden sword item art matches its horizontal footprint")
-	_expect(_rendered_item_matches_grid(main, "mem_wooden_sword"), "wooden sword rendered item matches its grid footprint")
-	_expect(_rendered_item_matches_grid(main, "mem_reason_to_depart"), "reason journal rendered item matches its grid footprint")
+	_expect(sword_texture != null and sword_texture.get_width() > sword_texture.get_height() * 3, "archived wooden sword item art remains loadable")
 	for memory_id in main.MEMORY_GRID_SIZES.keys():
 		var typed_id := str(memory_id)
 		_expect(_texture_has_clean_border(main._memory_item_texture(typed_id)), "%s item texture has transparent borders" % typed_id)
@@ -98,19 +98,6 @@ func _expect(condition: bool, message: String) -> void:
 		return
 	failed = true
 	push_error("verify_art_assets: %s" % message)
-
-
-func _rendered_item_matches_grid(main: Control, memory_id: String) -> bool:
-	var position: Vector2i = main._memory_grid_position(memory_id)
-	if position.x < 0:
-		return false
-	var size: Vector2i = main._memory_grid_size(memory_id)
-	var expected_rect: Rect2 = main._memory_item_visual_rect(main.inventory_item_layer.size, position, size)
-	for child in main.inventory_item_layer.get_children():
-		if child is Control and str(child.tooltip_text) == main._memory_name(memory_id):
-			var rect := Rect2(child.position, child.size)
-			return rect.position.distance_to(expected_rect.position) <= 1.0 and rect.size.distance_to(expected_rect.size) <= 1.0
-	return false
 
 
 func _finish_prologue(main: Control) -> void:
