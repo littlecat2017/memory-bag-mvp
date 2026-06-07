@@ -3442,14 +3442,20 @@ func _load_json(path: String) -> Dictionary:
 
 func _load_texture_rect(texture_rect: TextureRect, path: String) -> void:
 	var image := _load_image_file(path)
-	if image == null:
+	if image != null:
+		texture_rect.texture = ImageTexture.create_from_image(image)
 		return
-	texture_rect.texture = ImageTexture.create_from_image(image)
+	var loaded := ResourceLoader.load(path)
+	if loaded is Texture2D:
+		texture_rect.texture = loaded
 
 
 func _load_texture(path: String) -> Texture2D:
 	var image := _load_image_file(path)
 	if image == null:
+		var loaded := ResourceLoader.load(path)
+		if loaded is Texture2D:
+			return loaded
 		return null
 	return ImageTexture.create_from_image(image)
 
